@@ -1,0 +1,363 @@
+{
+  "nav": {
+    "home": "Trang chủ",
+    "products": "Sản phẩm",
+    "courts": "Sân bóng",
+    "about": "Giới thiệu",
+    "contact": "Liên hệ",
+    "login": "Đăng nhập",
+    "register": "Đăng ký",
+    "profile": "Hồ sơ",
+    "orders": "Đơn hàng",
+    "bookings": "Đặt sân",
+    "wishlist": "Yêu thích",
+    "logout": "Đăng xuất",
+    "admin": "Quản trị",
+    "search": "Tìm kiếm sản phẩm..."
+  },
+  "home": {
+    "hero": {
+      "title": "Just Do It",
+      "subtitle": "Tìm Đồ Thể Thao Hoàn Hảo",
+      "cta": "Mua Ngay"
+    },
+    "featured": "Sản phẩm nổi bật",
+    "categories": "Mua theo danh mục",
+    "courts": "Đặt sân của bạn",
+    "promo": "Khuyến mãi đặc biệt"
+  },
+  "products": {
+    "title": "Tất cả sản phẩm",
+    "filter": "Bộ lọc",
+    "sort": "Sắp xếp",
+    "price": "Giá",
+    "category": "Danh mục",
+    "brand": "Thương hiệu",
+    "size": "Kích cỡ",
+    "color": "Màu sắc",
+    "addToCart": "Thêm vào giỏ",
+    "addToWishlist": "Thêm vào yêu thích",
+    "removeFromWishlist": "Xóa khỏi yêu thích",
+    "outOfStock": "Hết hàng",
+    "inStock": "Còn hàng"
+  },
+  "product": {
+    "details": "Chi tiết sản phẩm",
+    "description": "Mô tả",
+    "reviews": "Đánh giá",
+    "writeReview": "Viết đánh giá",
+    "selectSize": "Chọn kích cỡ",
+    "selectColor": "Chọn màu",
+    "quantity": "Số lượng",
+    "addToCart": "Thêm vào giỏ",
+    "buyNow": "Mua ngay"
+  },
+  "cart": {
+    "title": "Giỏ hàng",
+    "empty": "Giỏ hàng của bạn trống",
+    "subtotal": "Tạm tính",
+    "shipping": "Phí vận chuyển",
+    "tax": "Thuế",
+    "total": "Tổng cộng",
+    "checkout": "Thanh toán",
+    "continueShopping": "Tiếp tục mua sắm",
+    "remove": "Xóa"
+  },
+  "checkout": {
+    "title": "Thanh toán",
+    "shipping": "Địa chỉ giao hàng",
+    "payment": "Phương thức thanh toán",
+    "orderSummary": "Tóm tắt đơn hàng",
+    "placeOrder": "Đặt hàng"
+  },
+  "courts": {
+    "title": "Đặt sân",
+    "available": "Sân có sẵn",
+    "bookNow": "Đặt ngay",
+    "selectDate": "Chọn ngày",
+    "selectTime": "Chọn khung giờ",
+    "price": "Giá mỗi giờ",
+    "book": "Đặt sân"
+  },
+  "auth": {
+    "login": "Đăng nhập",
+    "register": "Đăng ký",
+    "email": "Email",
+    "password": "Mật khẩu",
+    "confirmPassword": "Xác nhận mật khẩu",
+    "firstName": "Họ",
+    "lastName": "Tên",
+    "phone": "Số điện thoại",
+    "forgotPassword": "Quên mật khẩu?",
+    "noAccount": "Chưa có tài khoản?",
+    "hasAccount": "Đã có tài khoản?",
+    "loginWithGoogle": "Đăng nhập bằng Google"
+  },
+  "profile": {
+    "title": "Hồ sơ của tôi",
+    "edit": "Chỉnh sửa hồ sơ",
+    "changePassword": "Đổi mật khẩu",
+    "orders": "Đơn hàng của tôi",
+    "bookings": "Đặt sân của tôi",
+    "wishlist": "Yêu thích",
+    "addresses": "Địa chỉ"
+  },
+  "common": {
+    "loading": "Đang tải...",
+    "error": "Đã xảy ra lỗi",
+    "success": "Thành công",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "edit": "Chỉnh sửa",
+    "close": "Đóng",
+    "back": "Quay lại",
+    "next": "Tiếp theo",
+    "previous": "Trước",
+    "viewAll": "Xem tất cả",
+    "noResults": "Không tìm thấy kết quả",
+    "noProducts": "Chưa có sản phẩm",
+    "noCourts": "Chưa có sân bóng",
+    "noCategories": "Chưa có danh mục"
+  },
+  "about": {
+    "title": "Về Chúng Tôi",
+    "subtitle": "Điểm đến hàng đầu cho đồ thể thao và đặt sân bóng",
+    "story": {
+      "title": "Câu Chuyện Của Chúng Tôi",
+      "content": "Sports E-commerce được thành lập với sứ mệnh mang đến cho khách hàng những sản phẩm thể thao chất lượng cao và dịch vụ đặt sân bóng tiện lợi. Chúng tôi cam kết cung cấp trải nghiệm mua sắm tốt nhất với giá cả hợp lý và dịch vụ khách hàng xuất sắc."
+    },
+    "mission": {
+      "title": "Sứ Mệnh",
+      "description": "Mang đến sản phẩm thể thao chất lượng cao và dịch vụ đặt sân tiện lợi cho mọi người"
+    },
+    "vision": {
+      "title": "Tầm Nhìn",
+      "description": "Trở thành nền tảng thương mại điện tử thể thao hàng đầu tại Việt Nam"
+    },
+    "values": {
+      "title": "Giá Trị",
+      "description": "Chất lượng, uy tín, và sự hài lòng của khách hàng là ưu tiên hàng đầu"
+    },
+    "commitment": {
+      "title": "Cam Kết",
+      "description": "Cam kết mang đến trải nghiệm mua sắm tốt nhất với giá cả hợp lý"
+    },
+    "stats": {
+      "customers": "Khách hàng",
+      "products": "Sản phẩm",
+      "courts": "Sân bóng",
+      "satisfaction": "Hài lòng"
+    }
+  },
+  "contact": {
+    "title": "Liên Hệ",
+    "subtitle": "Chúng tôi luôn sẵn sàng hỗ trợ bạn",
+    "form": {
+      "title": "Gửi Tin Nhắn",
+      "name": "Họ và tên",
+      "namePlaceholder": "Nhập họ và tên",
+      "email": "Email",
+      "emailPlaceholder": "Nhập email",
+      "phone": "Số điện thoại",
+      "phonePlaceholder": "Nhập số điện thoại",
+      "subject": "Chủ đề",
+      "subjectPlaceholder": "Nhập chủ đề",
+      "message": "Tin nhắn",
+      "messagePlaceholder": "Nhập tin nhắn của bạn",
+      "submit": "Gửi tin nhắn"
+    },
+    "info": {
+      "title": "Thông Tin Liên Hệ",
+      "email": {
+        "title": "Email"
+      },
+      "phone": {
+        "title": "Điện thoại"
+      },
+      "address": {
+        "title": "Địa chỉ",
+        "content": "123 Đường ABC, Quận XYZ, TP. Hồ Chí Minh"
+      }
+    },
+    "hours": {
+      "title": "Giờ Làm Việc",
+      "weekdays": "Thứ 2 - Thứ 6",
+      "weekdaysTime": "8:00 - 18:00",
+      "weekend": "Thứ 7 - Chủ nhật",
+      "weekendTime": "9:00 - 17:00"
+    },
+    "success": "Gửi tin nhắn thành công!",
+    "error": "Có lỗi xảy ra. Vui lòng thử lại."
+  },
+  "faq": {
+    "title": "Câu Hỏi Thường Gặp",
+    "subtitle": "Tìm câu trả lời cho các câu hỏi phổ biến",
+    "questions": {
+      "1": {
+        "question": "Làm thế nào để đặt hàng?",
+        "answer": "Bạn có thể đặt hàng bằng cách thêm sản phẩm vào giỏ hàng, sau đó tiến hành thanh toán. Chúng tôi hỗ trợ nhiều phương thức thanh toán khác nhau."
+      },
+      "2": {
+        "question": "Thời gian giao hàng là bao lâu?",
+        "answer": "Thời gian giao hàng phụ thuộc vào phương thức vận chuyển bạn chọn. Giao hàng tiêu chuẩn thường mất 3-5 ngày, giao hàng nhanh mất 1-2 ngày."
+      },
+      "3": {
+        "question": "Tôi có thể đổi/trả hàng không?",
+        "answer": "Có, chúng tôi chấp nhận đổi/trả hàng trong vòng 7 ngày kể từ ngày nhận hàng. Sản phẩm phải còn nguyên vẹn và chưa sử dụng."
+      },
+      "4": {
+        "question": "Làm thế nào để đặt sân bóng?",
+        "answer": "Bạn có thể tìm kiếm sân bóng trên trang web, chọn ngày và giờ phù hợp, sau đó tiến hành đặt sân và thanh toán."
+      },
+      "5": {
+        "question": "Tôi có thể hủy đặt sân không?",
+        "answer": "Có, bạn có thể hủy đặt sân trước 24 giờ để được hoàn tiền. Hủy sau thời gian này có thể bị phí hủy."
+      },
+      "6": {
+        "question": "Phương thức thanh toán nào được chấp nhận?",
+        "answer": "Chúng tôi chấp nhận thanh toán bằng thẻ tín dụng, thẻ ghi nợ, ví điện tử và tiền mặt khi nhận hàng."
+      },
+      "7": {
+        "question": "Làm thế nào để theo dõi đơn hàng?",
+        "answer": "Sau khi đặt hàng, bạn sẽ nhận được email xác nhận với mã đơn hàng. Bạn có thể sử dụng mã này để theo dõi đơn hàng trong phần 'Đơn hàng của tôi'."
+      },
+      "8": {
+        "question": "Tôi có thể mua sản phẩm với số lượng lớn không?",
+        "answer": "Có, chúng tôi có chương trình giảm giá cho đơn hàng số lượng lớn. Vui lòng liên hệ với chúng tôi để biết thêm chi tiết."
+      }
+    },
+    "cta": {
+      "title": "Không tìm thấy câu trả lời?",
+      "description": "Nếu bạn có câu hỏi khác, vui lòng",
+      "link": "liên hệ với chúng tôi"
+    }
+  },
+  "shipping": {
+    "title": "Vận Chuyển",
+    "subtitle": "Thông tin về các phương thức vận chuyển và chính sách giao hàng",
+    "time": "Thời gian",
+    "price": "Giá",
+    "methods": {
+      "standard": {
+        "title": "Giao Hàng Tiêu Chuẩn",
+        "description": "Giao hàng trong nước với thời gian hợp lý",
+        "time": "3-5 ngày làm việc",
+        "price": "30.000 ₫"
+      },
+      "express": {
+        "title": "Giao Hàng Nhanh",
+        "description": "Giao hàng nhanh chóng cho khách hàng cần gấp",
+        "time": "1-2 ngày làm việc",
+        "price": "50.000 ₫"
+      },
+      "premium": {
+        "title": "Giao Hàng Cao Cấp",
+        "description": "Giao hàng trong ngày với bảo hiểm đầy đủ",
+        "time": "Trong ngày",
+        "price": "100.000 ₫"
+      }
+    },
+    "policies": {
+      "title": "Chính Sách Vận Chuyển",
+      "returns": {
+        "title": "Đổi/Trả Hàng",
+        "description": "Chấp nhận đổi/trả hàng trong vòng 7 ngày. Sản phẩm phải còn nguyên vẹn và chưa sử dụng."
+      },
+      "insurance": {
+        "title": "Bảo Hiểm",
+        "description": "Tất cả đơn hàng đều được bảo hiểm trong quá trình vận chuyển. Nếu sản phẩm bị hư hỏng, chúng tôi sẽ hoàn tiền hoặc đổi mới."
+      }
+    },
+    "info": {
+      "title": "Lưu Ý",
+      "content": "Thời gian giao hàng có thể thay đổi tùy theo địa điểm và điều kiện thời tiết. Chúng tôi sẽ thông báo cho bạn nếu có bất kỳ thay đổi nào."
+    }
+  },
+  "privacy": {
+    "title": "Chính Sách Bảo Mật",
+    "lastUpdated": "Cập nhật lần cuối: 2024",
+    "sections": {
+      "1": {
+        "title": "1. Thu Thập Thông Tin",
+        "content": "Chúng tôi thu thập thông tin cá nhân của bạn khi bạn đăng ký tài khoản, đặt hàng, hoặc sử dụng dịch vụ của chúng tôi. Thông tin này bao gồm tên, email, số điện thoại, địa chỉ và thông tin thanh toán."
+      },
+      "2": {
+        "title": "2. Sử Dụng Thông Tin",
+        "content": "Chúng tôi sử dụng thông tin của bạn để xử lý đơn hàng, cải thiện dịch vụ, gửi thông báo về đơn hàng, và cung cấp hỗ trợ khách hàng."
+      },
+      "3": {
+        "title": "3. Bảo Mật Thông Tin",
+        "content": "Chúng tôi sử dụng các biện pháp bảo mật tiên tiến để bảo vệ thông tin cá nhân của bạn. Tất cả dữ liệu được mã hóa và lưu trữ an toàn."
+      },
+      "4": {
+        "title": "4. Chia Sẻ Thông Tin",
+        "content": "Chúng tôi không bán, cho thuê hoặc chia sẻ thông tin cá nhân của bạn với bên thứ ba, trừ khi được yêu cầu bởi pháp luật."
+      },
+      "5": {
+        "title": "5. Quyền Của Bạn",
+        "content": "Bạn có quyền truy cập, chỉnh sửa, hoặc xóa thông tin cá nhân của mình bất cứ lúc nào bằng cách đăng nhập vào tài khoản của bạn."
+      },
+      "6": {
+        "title": "6. Liên Hệ",
+        "content": "Nếu bạn có câu hỏi về chính sách bảo mật này, vui lòng liên hệ với chúng tôi qua email: privacy@sportsecommerce.com"
+      }
+    }
+  },
+  "footer": {
+    "shop": {
+      "title": "Cửa hàng",
+      "allProducts": "Tất cả sản phẩm",
+      "shoes": "Giày",
+      "apparel": "Quần áo",
+      "equipment": "Dụng cụ"
+    },
+    "support": {
+      "title": "Hỗ trợ",
+      "about": "Về chúng tôi",
+      "contact": "Liên hệ",
+      "faq": "Câu hỏi thường gặp",
+      "shipping": "Vận chuyển"
+    },
+    "bookings": {
+      "title": "Đặt sân",
+      "findCourts": "Tìm sân",
+      "football": "Bóng đá",
+      "basketball": "Bóng rổ",
+      "tennis": "Quần vợt"
+    },
+    "copyright": "Sports E-commerce. Tất cả quyền được bảo lưu.",
+    "privacy": "Chính sách bảo mật",
+    "terms": "Điều khoản dịch vụ"
+  },
+  "terms": {
+    "title": "Điều Khoản Dịch Vụ",
+    "lastUpdated": "Cập nhật lần cuối: 2024",
+    "sections": {
+      "1": {
+        "title": "1. Chấp Nhận Điều Khoản",
+        "content": "Bằng cách sử dụng trang web này, bạn đồng ý tuân thủ và bị ràng buộc bởi các điều khoản và điều kiện này."
+      },
+      "2": {
+        "title": "2. Sử Dụng Dịch Vụ",
+        "content": "Bạn đồng ý sử dụng dịch vụ của chúng tôi một cách hợp pháp và không vi phạm bất kỳ quy định nào của pháp luật."
+      },
+      "3": {
+        "title": "3. Đơn Hàng và Thanh Toán",
+        "content": "Tất cả đơn hàng đều phụ thuộc vào sự chấp nhận của chúng tôi. Chúng tôi có quyền từ chối hoặc hủy bất kỳ đơn hàng nào."
+      },
+      "4": {
+        "title": "4. Giá Cả và Sản Phẩm",
+        "content": "Chúng tôi cố gắng đảm bảo tính chính xác của thông tin sản phẩm và giá cả, nhưng có thể có lỗi. Chúng tôi có quyền sửa lỗi và từ chối đơn hàng dựa trên thông tin không chính xác."
+      },
+      "5": {
+        "title": "5. Trả Hàng và Hoàn Tiền",
+        "content": "Chính sách trả hàng và hoàn tiền được áp dụng theo quy định của chúng tôi. Vui lòng xem chi tiết trong phần 'Vận Chuyển'."
+      },
+      "6": {
+        "title": "6. Giới Hạn Trách Nhiệm",
+        "content": "Chúng tôi không chịu trách nhiệm cho bất kỳ thiệt hại nào phát sinh từ việc sử dụng hoặc không thể sử dụng dịch vụ của chúng tôi."
+      }
+    }
+  }
+}

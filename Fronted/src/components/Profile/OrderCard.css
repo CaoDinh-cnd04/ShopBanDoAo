@@ -1,0 +1,20 @@
+.order-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.order-card:hover {
+    border-color: var(--bs-primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.order-items {
+    margin-top: 0.5rem;
+}
+
+.order-item-badge {
+    font-weight: normal;
+    padding: 0.35rem 0.65rem;
+}

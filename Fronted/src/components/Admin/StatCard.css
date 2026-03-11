@@ -1,0 +1,82 @@
+/* New Admin KPI card styles (work with AdminLayout.css theme) */
+.admin-kpi {
+  border-radius: 16px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(10px);
+  color: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+  height: 100%;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.admin-kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+  background: rgba(255, 255, 255, 0.075) !important;
+}
+
+.admin-kpi-body {
+  padding: 1rem 1rem !important;
+}
+
+.admin-kpi-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-kpi-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.admin-kpi-value {
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  margin-top: 0.25rem;
+}
+
+.admin-kpi-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.admin-kpi-sub {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.68);
+}
+.admin-kpi-sub.is-up {
+  color: rgba(34, 197, 94, 0.95);
+}
+.admin-kpi-sub.is-down {
+  color: rgba(239, 68, 68, 0.95);
+}
+
+/* Tonal variants */
+.admin-kpi-indigo {
+  border-color: rgba(99, 102, 241, 0.35) !important;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(255, 255, 255, 0.05)) !important;
+}
+.admin-kpi-green {
+  border-color: rgba(34, 197, 94, 0.32) !important;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(255, 255, 255, 0.05)) !important;
+}
+.admin-kpi-amber {
+  border-color: rgba(245, 158, 11, 0.32) !important;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(255, 255, 255, 0.05)) !important;
+}
+.admin-kpi-surface {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}

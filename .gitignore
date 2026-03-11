@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+# Firebase keys only (keep package.json, tsconfig, etc.)
+*-firebase-adminsdk-*.json
+sports-ecommerce-*-firebase-adminsdk-*.json
+firebase-service-account.json
+
+# Build / logs
+uploads/
+logs/
+*.log
+/build
+/dist
+/coverage
+
+# IDE & OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+

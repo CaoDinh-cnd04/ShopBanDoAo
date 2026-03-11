@@ -1,0 +1,13 @@
+.contact-page {
+  min-height: 80vh;
+}
+
+.contact-icon {
+  min-width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(138, 43, 226, 0.1);
+  border-radius: 50%;
+}

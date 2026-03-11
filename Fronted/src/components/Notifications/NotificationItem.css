@@ -1,0 +1,18 @@
+.notification-item {
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+.notification-item:hover {
+    background-color: #f8f9fa;
+    border-left-color: var(--bs-primary);
+}
+
+.notification-item.unread {
+    background-color: #f0f8ff;
+    border-left-color: var(--bs-primary);
+}
+
+.notification-item.unread:hover {
+    background-color: #e6f2ff;
+}

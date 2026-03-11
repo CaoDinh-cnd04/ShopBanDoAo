@@ -1,0 +1,363 @@
+{
+  "nav": {
+    "home": "Home",
+    "products": "Products",
+    "courts": "Courts",
+    "about": "About",
+    "contact": "Contact",
+    "login": "Login",
+    "register": "Register",
+    "profile": "Profile",
+    "orders": "Orders",
+    "bookings": "Bookings",
+    "wishlist": "Wishlist",
+    "logout": "Logout",
+    "admin": "Admin",
+    "search": "Search products..."
+  },
+  "home": {
+    "hero": {
+      "title": "Just Do It",
+      "subtitle": "Find Your Perfect Sports Gear",
+      "cta": "Shop Now"
+    },
+    "featured": "Featured Products",
+    "categories": "Shop by Category",
+    "courts": "Book Your Court",
+    "promo": "Special Promotion"
+  },
+  "products": {
+    "title": "All Products",
+    "filter": "Filters",
+    "sort": "Sort by",
+    "price": "Price",
+    "category": "Category",
+    "brand": "Brand",
+    "size": "Size",
+    "color": "Color",
+    "addToCart": "Add to Cart",
+    "addToWishlist": "Add to Wishlist",
+    "removeFromWishlist": "Remove from Wishlist",
+    "outOfStock": "Out of Stock",
+    "inStock": "In Stock"
+  },
+  "product": {
+    "details": "Product Details",
+    "description": "Description",
+    "reviews": "Reviews",
+    "writeReview": "Write a Review",
+    "selectSize": "Select Size",
+    "selectColor": "Select Color",
+    "quantity": "Quantity",
+    "addToCart": "Add to Cart",
+    "buyNow": "Buy Now"
+  },
+  "cart": {
+    "title": "Shopping Cart",
+    "empty": "Your cart is empty",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "tax": "Tax",
+    "total": "Total",
+    "checkout": "Checkout",
+    "continueShopping": "Continue Shopping",
+    "remove": "Remove"
+  },
+  "checkout": {
+    "title": "Checkout",
+    "shipping": "Shipping Address",
+    "payment": "Payment Method",
+    "orderSummary": "Order Summary",
+    "placeOrder": "Place Order"
+  },
+  "courts": {
+    "title": "Book a Court",
+    "available": "Available Courts",
+    "bookNow": "Book Now",
+    "selectDate": "Select Date",
+    "selectTime": "Select Time Slot",
+    "price": "Price per Hour",
+    "book": "Book Court"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "phone": "Phone",
+    "forgotPassword": "Forgot Password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "loginWithGoogle": "Login with Google"
+  },
+  "profile": {
+    "title": "My Profile",
+    "edit": "Edit Profile",
+    "changePassword": "Change Password",
+    "orders": "My Orders",
+    "bookings": "My Bookings",
+    "wishlist": "Wishlist",
+    "addresses": "Addresses"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "viewAll": "View All",
+    "noResults": "No results found",
+    "noProducts": "No products available",
+    "noCourts": "No courts available",
+    "noCategories": "No categories available"
+  },
+  "about": {
+    "title": "About Us",
+    "subtitle": "Your ultimate destination for sports gear and court bookings",
+    "story": {
+      "title": "Our Story",
+      "content": "Sports E-commerce was founded with the mission to bring customers high-quality sports products and convenient court booking services. We are committed to providing the best shopping experience with reasonable prices and excellent customer service."
+    },
+    "mission": {
+      "title": "Mission",
+      "description": "To bring high-quality sports products and convenient court booking services to everyone"
+    },
+    "vision": {
+      "title": "Vision",
+      "description": "To become the leading sports e-commerce platform in Vietnam"
+    },
+    "values": {
+      "title": "Values",
+      "description": "Quality, trust, and customer satisfaction are our top priorities"
+    },
+    "commitment": {
+      "title": "Commitment",
+      "description": "Committed to providing the best shopping experience with reasonable prices"
+    },
+    "stats": {
+      "customers": "Customers",
+      "products": "Products",
+      "courts": "Courts",
+      "satisfaction": "Satisfaction"
+    }
+  },
+  "contact": {
+    "title": "Contact Us",
+    "subtitle": "We're always here to help",
+    "form": {
+      "title": "Send Message",
+      "name": "Name",
+      "namePlaceholder": "Enter your name",
+      "email": "Email",
+      "emailPlaceholder": "Enter your email",
+      "phone": "Phone",
+      "phonePlaceholder": "Enter your phone",
+      "subject": "Subject",
+      "subjectPlaceholder": "Enter subject",
+      "message": "Message",
+      "messagePlaceholder": "Enter your message",
+      "submit": "Send Message"
+    },
+    "info": {
+      "title": "Contact Information",
+      "email": {
+        "title": "Email"
+      },
+      "phone": {
+        "title": "Phone"
+      },
+      "address": {
+        "title": "Address",
+        "content": "123 ABC Street, XYZ District, Ho Chi Minh City"
+      }
+    },
+    "hours": {
+      "title": "Business Hours",
+      "weekdays": "Monday - Friday",
+      "weekdaysTime": "8:00 AM - 6:00 PM",
+      "weekend": "Saturday - Sunday",
+      "weekendTime": "9:00 AM - 5:00 PM"
+    },
+    "success": "Message sent successfully!",
+    "error": "An error occurred. Please try again."
+  },
+  "faq": {
+    "title": "Frequently Asked Questions",
+    "subtitle": "Find answers to common questions",
+    "questions": {
+      "1": {
+        "question": "How do I place an order?",
+        "answer": "You can place an order by adding products to your cart and proceeding to checkout. We support multiple payment methods."
+      },
+      "2": {
+        "question": "What is the delivery time?",
+        "answer": "Delivery time depends on the shipping method you choose. Standard shipping usually takes 3-5 days, express shipping takes 1-2 days."
+      },
+      "3": {
+        "question": "Can I return/exchange items?",
+        "answer": "Yes, we accept returns/exchanges within 7 days of receiving the item. Products must be in original condition and unused."
+      },
+      "4": {
+        "question": "How do I book a court?",
+        "answer": "You can search for courts on the website, select a suitable date and time, then proceed to book and pay."
+      },
+      "5": {
+        "question": "Can I cancel a court booking?",
+        "answer": "Yes, you can cancel a court booking 24 hours in advance for a full refund. Cancellations after this time may incur a cancellation fee."
+      },
+      "6": {
+        "question": "What payment methods are accepted?",
+        "answer": "We accept credit cards, debit cards, e-wallets, and cash on delivery."
+      },
+      "7": {
+        "question": "How do I track my order?",
+        "answer": "After placing an order, you will receive a confirmation email with an order number. You can use this number to track your order in the 'My Orders' section."
+      },
+      "8": {
+        "question": "Can I buy products in bulk?",
+        "answer": "Yes, we offer discounts for bulk orders. Please contact us for more details."
+      }
+    },
+    "cta": {
+      "title": "Can't find your answer?",
+      "description": "If you have other questions, please",
+      "link": "contact us"
+    }
+  },
+  "shipping": {
+    "title": "Shipping",
+    "subtitle": "Information about shipping methods and delivery policies",
+    "time": "Time",
+    "price": "Price",
+    "methods": {
+      "standard": {
+        "title": "Standard Shipping",
+        "description": "Domestic shipping with reasonable time",
+        "time": "3-5 business days",
+        "price": "$2"
+      },
+      "express": {
+        "title": "Express Shipping",
+        "description": "Fast shipping for customers in a hurry",
+        "time": "1-2 business days",
+        "price": "$4"
+      },
+      "premium": {
+        "title": "Premium Shipping",
+        "description": "Same-day delivery with full insurance",
+        "time": "Same day",
+        "price": "$8"
+      }
+    },
+    "policies": {
+      "title": "Shipping Policies",
+      "returns": {
+        "title": "Returns & Exchanges",
+        "description": "We accept returns/exchanges within 7 days. Products must be in original condition and unused."
+      },
+      "insurance": {
+        "title": "Insurance",
+        "description": "All orders are insured during shipping. If products are damaged, we will refund or replace them."
+      }
+    },
+    "info": {
+      "title": "Note",
+      "content": "Delivery times may vary depending on location and weather conditions. We will notify you of any changes."
+    }
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "lastUpdated": "Last updated: 2024",
+    "sections": {
+      "1": {
+        "title": "1. Information Collection",
+        "content": "We collect your personal information when you register an account, place an order, or use our services. This information includes name, email, phone number, address, and payment information."
+      },
+      "2": {
+        "title": "2. Use of Information",
+        "content": "We use your information to process orders, improve services, send order notifications, and provide customer support."
+      },
+      "3": {
+        "title": "3. Information Security",
+        "content": "We use advanced security measures to protect your personal information. All data is encrypted and stored securely."
+      },
+      "4": {
+        "title": "4. Information Sharing",
+        "content": "We do not sell, rent, or share your personal information with third parties, except as required by law."
+      },
+      "5": {
+        "title": "5. Your Rights",
+        "content": "You have the right to access, edit, or delete your personal information at any time by logging into your account."
+      },
+      "6": {
+        "title": "6. Contact",
+        "content": "If you have questions about this privacy policy, please contact us at: privacy@sportsecommerce.com"
+      }
+    }
+  },
+  "footer": {
+    "shop": {
+      "title": "Shop",
+      "allProducts": "All Products",
+      "shoes": "Shoes",
+      "apparel": "Apparel",
+      "equipment": "Equipment"
+    },
+    "support": {
+      "title": "Support",
+      "about": "About Us",
+      "contact": "Contact",
+      "faq": "FAQ",
+      "shipping": "Shipping"
+    },
+    "bookings": {
+      "title": "Bookings",
+      "findCourts": "Find Courts",
+      "football": "Football",
+      "basketball": "Basketball",
+      "tennis": "Tennis"
+    },
+    "copyright": "Sports E-commerce. All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service"
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "lastUpdated": "Last updated: 2024",
+    "sections": {
+      "1": {
+        "title": "1. Acceptance of Terms",
+        "content": "By using this website, you agree to comply with and be bound by these terms and conditions."
+      },
+      "2": {
+        "title": "2. Use of Services",
+        "content": "You agree to use our services lawfully and not violate any legal regulations."
+      },
+      "3": {
+        "title": "3. Orders and Payments",
+        "content": "All orders are subject to our acceptance. We reserve the right to refuse or cancel any order."
+      },
+      "4": {
+        "title": "4. Prices and Products",
+        "content": "We strive to ensure the accuracy of product information and prices, but errors may occur. We reserve the right to correct errors and refuse orders based on inaccurate information."
+      },
+      "5": {
+        "title": "5. Returns and Refunds",
+        "content": "Return and refund policies apply according to our regulations. Please see details in the 'Shipping' section."
+      },
+      "6": {
+        "title": "6. Limitation of Liability",
+        "content": "We are not liable for any damages arising from the use or inability to use our services."
+      }
+    }
+  }
+}

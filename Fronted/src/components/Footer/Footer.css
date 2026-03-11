@@ -1,0 +1,42 @@
+.footer-custom {
+  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  color: var(--text-primary);
+  margin-top: auto;
+  border-top: 2px solid var(--border-light);
+  position: relative;
+}
+
+.footer-custom::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--bg-gradient);
+}
+
+.footer-custom a {
+  transition: var(--transition);
+  position: relative;
+}
+
+.footer-custom a::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--bg-gradient);
+  transition: width 0.3s ease;
+}
+
+.footer-custom a:hover::after {
+  width: 100%;
+}
+
+.footer-custom a:hover {
+  color: var(--primary-color) !important;
+  transform: translateX(5px);
+}

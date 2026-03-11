@@ -1,0 +1,10 @@
+.voucher-card {
+  border: 2px dashed var(--border-color);
+  transition: var(--transition);
+}
+
+.voucher-card:hover {
+  border-color: var(--accent-color);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}

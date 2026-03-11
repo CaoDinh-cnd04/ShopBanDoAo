@@ -1,0 +1,15 @@
+.notification-item {
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  padding: 15px;
+  transition: var(--transition);
+}
+
+.notification-item:hover {
+  background-color: var(--bg-secondary);
+}
+
+.notification-item.unread {
+  background-color: rgba(0, 123, 255, 0.1);
+  border-left: 3px solid var(--accent-color);
+}

@@ -1,0 +1,36 @@
+.voucher-card {
+    transition: all 0.3s ease;
+    border: 2px dashed #dee2e6;
+}
+
+.voucher-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    border-color: var(--bs-primary);
+}
+
+.voucher-discount {
+    min-width: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.voucher-discount h2 {
+    font-size: 1.75rem;
+}
+
+.voucher-card .card-body {
+    padding: 1rem;
+}
+
+@media (max-width: 768px) {
+    .voucher-discount {
+        min-width: 90px;
+    }
+
+    .voucher-discount h2 {
+        font-size: 1.25rem;
+    }
+}
