@@ -59,7 +59,17 @@ jobs:
           MONGODB_DB_NAME: SportsEcommerce
           JWT_SECRET: ci-test-secret-key-at-least-32-characters-long
           ALLOWED_ORIGINS: http://localhost:5173
-        run: timeout 10 node server.js
+        shell: bash
+        run: |
+          set +e
+          timeout 10s node server.js
+          code=$?
+          # GNU timeout: 124 = hết giờ, server vẫn chạy → smoke OK
+          if [ "$code" -eq 124 ]; then
+            echo "Smoke OK: server khởi động và chạy đến khi timeout."
+            exit 0
+          fi
+          exit "$code"
 
   # ========== Frontend (React + Vite) ==========
   frontend:
