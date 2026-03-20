@@ -1,208 +1,265 @@
-import { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Table, Button, Form, Modal, Spinner } from 'react-bootstrap';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Row, Col, Card, Button, Form, Spinner, Badge } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import adminService from '../../services/adminService';
 
+const buildReviewParams = (f) => {
+  const params = {
+    page: f.page,
+    limit: f.limit,
+    type: f.type || 'all'
+  };
+  if (f.isApproved !== '') params.isApproved = f.isApproved;
+  if (f.rating) params.rating = f.rating;
+  return params;
+};
+
+const typeLabel = (t) => {
+  const s = (t || '').toString();
+  if (s.toLowerCase() === 'product') return 'Sản phẩm';
+  if (s.toLowerCase() === 'court') return 'Sân';
+  return s;
+};
+
 const AdminReviews = () => {
-    const [reviews, setReviews] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [filters, setFilters] = useState({
-        page: 1,
-        limit: 20,
-        type: 'all', // 'product', 'court', 'all'
-        isApproved: '',
-        rating: ''
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState(null);
+
+  const filters = useMemo(
+    () => ({
+      page: Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1),
+      limit: 20,
+      type: searchParams.get('type') || 'all',
+      isApproved: searchParams.get('isApproved') ?? '',
+      rating: searchParams.get('rating') || ''
+    }),
+    [searchParams]
+  );
+
+  const patchParams = (patch) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(patch).forEach(([k, v]) => {
+      if (v === '' || v == null || v === undefined) next.delete(k);
+      else next.set(k, String(v));
     });
-    const [pagination, setPagination] = useState(null);
+    setSearchParams(next);
+  };
 
-    useEffect(() => {
-        fetchReviews();
-    }, [filters.page, filters.type, filters.isApproved]);
+  const fetchReviews = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = buildReviewParams(filters);
+      const response = await adminService.reviews.getAllReviews(params);
+      const payload = response.data?.data;
+      setReviews(Array.isArray(payload?.reviews) ? payload.reviews : []);
+      setPagination(payload?.pagination ?? null);
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+      toast.error('Lỗi khi tải danh sách reviews');
+    } finally {
+      setLoading(false);
+    }
+  }, [filters]);
 
-    const fetchReviews = async () => {
-        try {
-            setLoading(true);
-            const response = await adminService.reviews.getAllReviews(filters);
-            setReviews(response.data.data.reviews);
-            setPagination(response.data.data.pagination);
-        } catch (error) {
-            console.error('Error fetching reviews:', error);
-            toast.error('Lỗi khi tải danh sách reviews');
-        } finally {
-            setLoading(false);
-        }
-    };
+  useEffect(() => {
+    fetchReviews();
+  }, [fetchReviews]);
 
-    const handleApprove = async (reviewId, type, currentStatus) => {
-        try {
-            await adminService.reviews.updateReviewStatus(reviewId, type, !currentStatus);
-            toast.success(currentStatus ? 'Từ chối review thành công' : 'Duyệt review thành công');
-            fetchReviews();
-        } catch (error) {
-            console.error('Error updating review status:', error);
-            toast.error('Lỗi khi cập nhật trạng thái review');
-        }
-    };
+  const reviewTypeKey = (review) =>
+    ((review.reviewType ?? review.ReviewType) || '').toLowerCase() === 'court' ? 'court' : 'product';
 
-    const handleDelete = async (reviewId, type) => {
-        if (!window.confirm('Bạn có chắc muốn xóa review này?')) return;
+  const handleApprove = async (review, currentApproved) => {
+    const reviewId = review.reviewId ?? review.ReviewID ?? review._id;
+    try {
+      await adminService.reviews.updateReviewStatus(reviewId, reviewTypeKey(review), !currentApproved);
+      toast.success(currentApproved ? 'Đã từ chối hiển thị' : 'Đã duyệt');
+      fetchReviews();
+    } catch (error) {
+      console.error('Error updating review status:', error);
+      toast.error('Lỗi khi cập nhật trạng thái review');
+    }
+  };
 
-        try {
-            await adminService.reviews.deleteReview(reviewId, type);
-            toast.success('Xóa review thành công');
-            fetchReviews();
-        } catch (error) {
-            console.error('Error deleting review:', error);
-            toast.error('Lỗi khi xóa review');
-        }
-    };
+  const handleDelete = async (review) => {
+    if (!window.confirm('Bạn có chắc muốn xóa review này?')) return;
 
-    const renderStars = (rating) => {
-        return Array.from({ length: 5 }, (_, i) => (
-            <i
-                key={i}
-                className={`bi bi-star${i < rating ? '-fill' : ''} text-warning`}
-            ></i>
-        ));
-    };
+    const reviewId = review.reviewId ?? review.ReviewID ?? review._id;
+    try {
+      await adminService.reviews.deleteReview(reviewId, reviewTypeKey(review));
+      toast.success('Xóa review thành công');
+      fetchReviews();
+    } catch (error) {
+      console.error('Error deleting review:', error);
+      toast.error('Lỗi khi xóa review');
+    }
+  };
 
-    return (
-        <Container fluid className="admin-page-wrap">
-            <h1 className="admin-page-title mb-3">
-                <i className="bi bi-star-fill me-2"></i>
-                Quản Lý Reviews
-            </h1>
+  const renderStars = (rating) =>
+    Array.from({ length: 5 }, (_, i) => (
+      <i key={i} className={`bi bi-star${i < rating ? '-fill' : ''} text-warning`} />
+    ));
 
-            {/* Filters */}
-            <Form className="mb-4">
-                <Row>
-                    <Col md={3}>
-                        <Form.Select
-                            value={filters.type}
-                            onChange={(e) => setFilters({ ...filters, type: e.target.value, page: 1 })}
-                        >
-                            <option value="all">Tất cả</option>
-                            <option value="product">Sản phẩm</option>
-                            <option value="court">Sân</option>
-                        </Form.Select>
-                    </Col>
-                    <Col md={3}>
-                        <Form.Select
-                            value={filters.isApproved}
-                            onChange={(e) => setFilters({ ...filters, isApproved: e.target.value, page: 1 })}
-                        >
-                            <option value="">Tất cả trạng thái</option>
-                            <option value="true">Đã duyệt</option>
-                            <option value="false">Chờ duyệt</option>
-                        </Form.Select>
-                    </Col>
-                    <Col md={3}>
-                        <Form.Select
-                            value={filters.rating}
-                            onChange={(e) => setFilters({ ...filters, rating: e.target.value, page: 1 })}
-                        >
-                            <option value="">Tất cả đánh giá</option>
-                            <option value="5">5 sao</option>
-                            <option value="4">4 sao</option>
-                            <option value="3">3 sao</option>
-                            <option value="2">2 sao</option>
-                            <option value="1">1 sao</option>
-                        </Form.Select>
-                    </Col>
-                </Row>
-            </Form>
+  return (
+    <div className="admin-page">
+      <div className="admin-page-header">
+        <div>
+          <h1 className="admin-page-title">Đánh giá</h1>
+          <div className="admin-page-subtitle">
+            Lọc theo loại (sản phẩm / sân), trạng thái duyệt, số sao — tham số đồng bộ URL (
+            <code>?type=product&amp;isApproved=false</code>).
+          </div>
+        </div>
+      </div>
 
-            {/* Reviews List */}
-            {loading ? (
-                <div className="text-center py-5">
-                    <Spinner animation="border" variant="primary" />
-                </div>
-            ) : (
-                <>
-                    <Row>
-                        {reviews.length > 0 ? (
-                            reviews.map((review) => (
-                                <Col md={12} key={`${review.ReviewType}-${review.ReviewID}`} className="mb-3">
-                                    <Card className="shadow-sm">
-                                        <Card.Body>
-                                            <div className="d-flex justify-content-between align-items-start">
-                                                <div className="flex-grow-1">
-                                                    <div className="d-flex align-items-center mb-2">
-                                                        <span className="badge bg-info me-2">{review.ReviewType}</span>
-                                                        {renderStars(review.Rating)}
-                                                        <span className="ms-2 text-muted">
-                                                            {new Date(review.CreatedDate).toLocaleDateString('vi-VN')}
-                                                        </span>
-                                                    </div>
-                                                    <h6 className="fw-bold">{review.ReviewTitle}</h6>
-                                                    <p className="mb-2">{review.ReviewContent}</p>
-                                                    <div className="text-muted small">
-                                                        <i className="bi bi-person me-1"></i>
-                                                        {review.UserName} ({review.UserEmail})
-                                                        <span className="mx-2">•</span>
-                                                        <i className="bi bi-box me-1"></i>
-                                                        {review.ItemName}
-                                                    </div>
-                                                </div>
-                                                <div className="d-flex flex-column gap-2">
-                                                    <Button
-                                                        size="sm"
-                                                        variant={review.IsApproved ? 'success' : 'outline-success'}
-                                                        onClick={() => handleApprove(review.ReviewID, review.ReviewType.toLowerCase(), review.IsApproved)}
-                                                    >
-                                                        <i className={`bi bi-${review.IsApproved ? 'check-circle-fill' : 'check-circle'}`}></i>
-                                                        {review.IsApproved ? ' Đã duyệt' : ' Duyệt'}
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline-danger"
-                                                        onClick={() => handleDelete(review.ReviewID, review.ReviewType.toLowerCase())}
-                                                    >
-                                                        <i className="bi bi-trash"></i> Xóa
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </Card.Body>
-                                    </Card>
-                                </Col>
-                            ))
-                        ) : (
-                            <Col md={12}>
-                                <Card>
-                                    <Card.Body className="text-center text-muted py-5">
-                                        Không có review nào
-                                    </Card.Body>
-                                </Card>
-                            </Col>
-                        )}
-                    </Row>
+      <Card className="admin-panel mb-3">
+        <Card.Body className="admin-panel-body">
+          <Row className="g-2">
+            <Col md={3}>
+              <Form.Label className="small text-muted">Loại</Form.Label>
+              <Form.Select
+                value={filters.type}
+                onChange={(e) => patchParams({ type: e.target.value, page: '' })}
+              >
+                <option value="all">Tất cả</option>
+                <option value="product">Sản phẩm</option>
+                <option value="court">Sân</option>
+              </Form.Select>
+            </Col>
+            <Col md={3}>
+              <Form.Label className="small text-muted">Duyệt</Form.Label>
+              <Form.Select
+                value={filters.isApproved}
+                onChange={(e) => patchParams({ isApproved: e.target.value, page: '' })}
+              >
+                <option value="">Tất cả</option>
+                <option value="true">Đã duyệt</option>
+                <option value="false">Chờ duyệt</option>
+              </Form.Select>
+            </Col>
+            <Col md={3}>
+              <Form.Label className="small text-muted">Số sao</Form.Label>
+              <Form.Select
+                value={filters.rating}
+                onChange={(e) => patchParams({ rating: e.target.value, page: '' })}
+              >
+                <option value="">Tất cả</option>
+                <option value="5">5 sao</option>
+                <option value="4">4 sao</option>
+                <option value="3">3 sao</option>
+                <option value="2">2 sao</option>
+                <option value="1">1 sao</option>
+              </Form.Select>
+            </Col>
+          </Row>
+        </Card.Body>
+      </Card>
 
-                    {/* Pagination */}
-                    {pagination && pagination.totalPages > 1 && (
-                        <div className="d-flex justify-content-center mt-4">
+      {loading ? (
+        <div className="text-center py-5">
+          <Spinner animation="border" variant="primary" />
+        </div>
+      ) : (
+        <>
+          <Row>
+            {reviews.length > 0 ? (
+              reviews.map((review) => {
+                const rt = review.reviewType ?? review.ReviewType;
+                const isCourt = (rt || '').toLowerCase() === 'court';
+                const approved = !!(review.isApproved ?? review.IsApproved);
+                return (
+                  <Col md={12} key={`${rt}-${review.reviewId ?? review._id}`} className="mb-3">
+                    <Card className="admin-panel">
+                      <Card.Body className="admin-panel-body">
+                        <div className="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                          <div className="flex-grow-1">
+                            <div className="d-flex align-items-center mb-2 flex-wrap gap-2">
+                              <Badge bg={isCourt ? 'warning' : 'info'}>{typeLabel(rt)}</Badge>
+                              {renderStars(review.rating ?? review.Rating)}
+                              <span className="text-muted small">
+                                {new Date(review.createdDate ?? review.CreatedDate).toLocaleString('vi-VN')}
+                              </span>
+                              {approved ? (
+                                <Badge bg="success">Đã duyệt</Badge>
+                              ) : (
+                                <Badge bg="secondary">Chờ duyệt</Badge>
+                              )}
+                            </div>
+                            <h6 className="fw-bold mb-2">{review.reviewTitle ?? review.ReviewTitle}</h6>
+                            <p className="mb-2" style={{ color: 'rgba(255,255,255,0.88)' }}>
+                              {review.reviewContent ?? review.ReviewContent}
+                            </p>
+                            <div className="small" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                              <i className="bi bi-person me-1"></i>
+                              {review.userName ?? review.UserName} ({review.userEmail ?? review.UserEmail})
+                              <span className="mx-2">•</span>
+                              <i className="bi bi-box me-1"></i>
+                              {review.itemName ?? review.ItemName}
+                            </div>
+                          </div>
+                          <div className="d-flex flex-column gap-2">
                             <Button
-                                variant="outline-primary"
-                                disabled={filters.page === 1}
-                                onClick={() => setFilters({ ...filters, page: filters.page - 1 })}
+                              size="sm"
+                              variant={approved ? 'success' : 'outline-success'}
+                              onClick={() => handleApprove(review, approved)}
                             >
-                                <i className="bi bi-chevron-left"></i> Trước
+                              <i
+                                className={`bi bi-${approved ? 'check-circle-fill' : 'check-circle'} me-1`}
+                              ></i>
+                              {approved ? 'Đã duyệt' : 'Duyệt'}
                             </Button>
-                            <span className="mx-3 align-self-center">
-                                Trang {pagination.currentPage} / {pagination.totalPages}
-                            </span>
                             <Button
-                                variant="outline-primary"
-                                disabled={filters.page === pagination.totalPages}
-                                onClick={() => setFilters({ ...filters, page: filters.page + 1 })}
+                              size="sm"
+                              variant="outline-danger"
+                              onClick={() => handleDelete(review)}
                             >
-                                Sau <i className="bi bi-chevron-right"></i>
+                              <i className="bi bi-trash me-1"></i> Xóa
                             </Button>
+                          </div>
                         </div>
-                    )}
-                </>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                );
+              })
+            ) : (
+              <Col md={12}>
+                <Card className="admin-panel">
+                  <Card.Body className="text-center py-5" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                    Không có review nào
+                  </Card.Body>
+                </Card>
+              </Col>
             )}
-        </Container>
-    );
+          </Row>
+
+          {pagination && pagination.totalPages > 1 && (
+            <div className="d-flex justify-content-center mt-4">
+              <Button
+                variant="outline-primary"
+                disabled={filters.page === 1}
+                onClick={() => patchParams({ page: filters.page - 1 > 1 ? String(filters.page - 1) : '' })}
+              >
+                Trước
+              </Button>
+              <span className="mx-3 align-self-center">
+                Trang {pagination.currentPage} / {pagination.totalPages}
+              </span>
+              <Button
+                variant="outline-primary"
+                disabled={filters.page === pagination.totalPages}
+                onClick={() => patchParams({ page: String(filters.page + 1) })}
+              >
+                Sau
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 };
 
 export default AdminReviews;

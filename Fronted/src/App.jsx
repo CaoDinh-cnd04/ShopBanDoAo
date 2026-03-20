@@ -23,14 +23,21 @@ import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import Profile from './pages/Profile/Profile';
 import Orders from './pages/Profile/Orders';
+import OrderDetail from './pages/Profile/OrderDetail';
 import Bookings from './pages/Profile/Bookings';
+import BookingDetail from './pages/Profile/BookingDetail';
 import Wishlist from './pages/Profile/Wishlist';
 import AdminLayout from './components/Admin/AdminLayout';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminProducts from './pages/Admin/AdminProducts';
+import AdminProductForm from './pages/Admin/AdminProductForm';
+import AdminCategories from './pages/Admin/AdminCategories';
+import AdminCourts from './pages/Admin/AdminCourts';
+import AdminVouchers from './pages/Admin/AdminVouchers';
 import AdminOrders from './pages/Admin/AdminOrders';
 import AdminBookings from './pages/Admin/AdminBookings';
 import AdminUsers from './pages/Admin/AdminUsers';
+import AdminUserDetail from './pages/Admin/AdminUserDetail';
 import AdminReviews from './pages/Admin/AdminReviews';
 import About from './pages/About/About';
 import Contact from './pages/Contact/Contact';
@@ -122,10 +129,26 @@ function App() {
               }
             />
             <Route
+              path="profile/orders/:id"
+              element={
+                <ProtectedRoute>
+                  <OrderDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="profile/orders"
               element={
                 <ProtectedRoute>
                   <Orders />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="profile/bookings/:id"
+              element={
+                <ProtectedRoute>
+                  <BookingDetail />
                 </ProtectedRoute>
               }
             />
@@ -169,8 +192,14 @@ function App() {
           >
             <Route index element={<AdminDashboard />} />
             <Route path="products" element={<AdminProducts />} />
+            <Route path="products/new" element={<AdminProductForm />} />
+            <Route path="products/:id" element={<AdminProductForm />} />
+            <Route path="categories" element={<AdminCategories />} />
             <Route path="orders" element={<AdminOrders />} />
             <Route path="bookings" element={<AdminBookings />} />
+            <Route path="courts" element={<AdminCourts />} />
+            <Route path="vouchers" element={<AdminVouchers />} />
+            <Route path="users/:id" element={<AdminUserDetail />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="reviews" element={<AdminReviews />} />
           </Route>

@@ -21,15 +21,15 @@ const TopProducts = ({ products }) => {
           <tbody>
             {items.length > 0 ? (
               items.map((product, index) => (
-                <tr key={product.ProductID || index}>
+                <tr key={product.productId || product.ProductID || index}>
                   <td>{index + 1}</td>
-                  <td className="fw-semibold">{product.ProductName}</td>
+                  <td className="fw-semibold">{product.productName || product.ProductName}</td>
                   <td>
-                    <span className="admin-pill">{product.TotalQuantity}</span>
+                    <span className="admin-pill">{product.totalQuantity ?? product.TotalQuantity ?? 0}</span>
                   </td>
                   <td className="fw-bold">
                     {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                      product.TotalRevenue || 0
+                      product.totalRevenue ?? product.TotalRevenue ?? 0
                     )}
                   </td>
                 </tr>

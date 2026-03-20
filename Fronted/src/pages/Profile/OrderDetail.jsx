@@ -43,7 +43,7 @@ const OrderDetail = () => {
 
     const getStatusTimeline = () => {
         const statuses = ['Chờ xử lý', 'Đã xác nhận', 'Đang giao', 'Hoàn thành'];
-        const currentIndex = statuses.indexOf(order?.Status);
+        const currentIndex = statuses.indexOf(order?.statusName || order?.Status);
 
         return statuses.map((status, index) => ({
             status,
@@ -77,7 +77,7 @@ const OrderDetail = () => {
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h2 className="fw-bold mb-0">
                     <i className="bi bi-receipt me-2"></i>
-                    Chi Tiết Đơn Hàng #{order.OrderCode}
+                    Chi Tiết Đơn Hàng #{order.orderCode ?? order.OrderCode}
                 </h2>
                 <Button variant="outline-secondary" onClick={() => navigate('/profile/orders')}>
                     <i className="bi bi-arrow-left me-2"></i>
@@ -117,23 +117,23 @@ const OrderDetail = () => {
                             <Row className="mb-3">
                                 <Col md={6}>
                                     <p className="mb-1 text-muted">Mã đơn hàng:</p>
-                                    <p className="fw-bold">{order.OrderCode}</p>
+                                    <p className="fw-bold">{order.orderCode ?? order.OrderCode}</p>
                                 </Col>
                                 <Col md={6}>
                                     <p className="mb-1 text-muted">Ngày đặt:</p>
                                     <p className="fw-bold">
-                                        {new Date(order.OrderDate).toLocaleString('vi-VN')}
+                                        {new Date(order.orderDate ?? order.OrderDate).toLocaleString('vi-VN')}
                                     </p>
                                 </Col>
                             </Row>
                             <Row className="mb-3">
                                 <Col md={6}>
                                     <p className="mb-1 text-muted">Trạng thái:</p>
-                                    {getStatusBadge(order.Status)}
+                                    {getStatusBadge(order.statusName ?? order.Status)}
                                 </Col>
                                 <Col md={6}>
                                     <p className="mb-1 text-muted">Phương thức thanh toán:</p>
-                                    <p className="fw-bold">{order.PaymentMethod}</p>
+                                    <p className="fw-bold">{order.paymentMethod ?? order.PaymentMethod}</p>
                                 </Col>
                             </Row>
                         </Card.Body>
@@ -155,20 +155,20 @@ const OrderDetail = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {order.Items?.map((item, index) => (
+                                    {(order.items ?? order.Items)?.map((item, index) => (
                                         <tr key={index}>
                                             <td>
                                                 <div className="d-flex align-items-center">
                                                     <img
-                                                        src={item.ProductImage || '/placeholder.jpg'}
-                                                        alt={item.ProductName}
+                                                        src={(item.productImage ?? item.ProductImage) || '/placeholder.jpg'}
+                                                        alt={item.productName ?? item.ProductName}
                                                         style={{ width: '50px', height: '50px', objectFit: 'cover' }}
                                                         className="rounded me-2"
                                                     />
                                                     <div>
-                                                        <div className="fw-bold">{item.ProductName}</div>
-                                                        {item.VariantName && (
-                                                            <small className="text-muted">{item.VariantName}</small>
+                                                        <div className="fw-bold">{item.productName ?? item.ProductName}</div>
+                                                        {(item.variantName ?? item.VariantName) && (
+                                                            <small className="text-muted">{item.variantName ?? item.VariantName}</small>
                                                         )}
                                                     </div>
                                                 </div>
@@ -177,14 +177,14 @@ const OrderDetail = () => {
                                                 {new Intl.NumberFormat('vi-VN', {
                                                     style: 'currency',
                                                     currency: 'VND'
-                                                }).format(item.Price)}
+                                                }).format(item.price ?? item.Price ?? 0)}
                                             </td>
-                                            <td>{item.Quantity}</td>
+                                            <td>{item.quantity ?? item.Quantity ?? 0}</td>
                                             <td className="fw-bold">
                                                 {new Intl.NumberFormat('vi-VN', {
                                                     style: 'currency',
                                                     currency: 'VND'
-                                                }).format(item.Price * item.Quantity)}
+                                                }).format((item.price ?? item.Price ?? 0) * (item.quantity ?? item.Quantity ?? 0))}
                                             </td>
                                         </tr>
                                     ))}
@@ -201,14 +201,14 @@ const OrderDetail = () => {
                             <h5 className="mb-0">Địa chỉ giao hàng</h5>
                         </Card.Header>
                         <Card.Body>
-                            <p className="mb-1 fw-bold">{order.ReceiverName}</p>
+                            <p className="mb-1 fw-bold">{order.receiverName ?? order.ReceiverName}</p>
                             <p className="mb-1">
                                 <i className="bi bi-telephone me-2"></i>
-                                {order.ReceiverPhone}
+                                {order.receiverPhone ?? order.ReceiverPhone}
                             </p>
                             <p className="mb-0 text-muted">
                                 <i className="bi bi-geo-alt me-2"></i>
-                                {order.ShippingAddress}
+                                {order.shippingAddress ?? order.ShippingAddress}
                             </p>
                         </Card.Body>
                     </Card>
@@ -224,28 +224,28 @@ const OrderDetail = () => {
                                     {new Intl.NumberFormat('vi-VN', {
                                         style: 'currency',
                                         currency: 'VND'
-                                    }).format(order.SubTotal || order.TotalAmount)}
+                                    }).format(order.subTotal ?? order.SubTotal ?? order.totalAmount ?? order.TotalAmount ?? 0)}
                                 </span>
                             </div>
-                            {order.ShippingFee > 0 && (
+                            {(order.shippingFee ?? order.ShippingFee ?? 0) > 0 && (
                                 <div className="d-flex justify-content-between mb-2">
                                     <span>Phí vận chuyển:</span>
                                     <span>
                                         {new Intl.NumberFormat('vi-VN', {
                                             style: 'currency',
                                             currency: 'VND'
-                                        }).format(order.ShippingFee)}
+                                        }).format(order.shippingFee ?? order.ShippingFee)}
                                     </span>
                                 </div>
                             )}
-                            {order.DiscountAmount > 0 && (
+                            {(order.discountAmount ?? order.DiscountAmount ?? 0) > 0 && (
                                 <div className="d-flex justify-content-between mb-2 text-success">
                                     <span>Giảm giá:</span>
                                     <span>
                                         -{new Intl.NumberFormat('vi-VN', {
                                             style: 'currency',
                                             currency: 'VND'
-                                        }).format(order.DiscountAmount)}
+                                        }).format(order.discountAmount ?? order.DiscountAmount)}
                                     </span>
                                 </div>
                             )}
@@ -256,7 +256,7 @@ const OrderDetail = () => {
                                     {new Intl.NumberFormat('vi-VN', {
                                         style: 'currency',
                                         currency: 'VND'
-                                    }).format(order.TotalAmount)}
+                                    }).format(order.totalAmount ?? order.TotalAmount ?? 0)}
                                 </span>
                             </div>
                         </Card.Body>

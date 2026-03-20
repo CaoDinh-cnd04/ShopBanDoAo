@@ -1,9 +1,8 @@
 /**
  * MongoDB (Atlas) connection
- * Dùng khi chuyển từ SQL Server sang MongoDB.
  * Set MONGODB_URI trong .env (lấy từ MongoDB Atlas → Connect → Connection string).
  */
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 require('dotenv').config();
 
 const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
@@ -57,5 +56,6 @@ module.exports = {
     connectMongo,
     getDb,
     closeMongo,
-    dbName
+    dbName,
+    ObjectId
 };

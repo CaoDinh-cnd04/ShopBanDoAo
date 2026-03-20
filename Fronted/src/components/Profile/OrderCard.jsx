@@ -34,13 +34,13 @@ const OrderCard = ({ order }) => {
                             <div className="d-flex align-items-center gap-3 mb-2">
                                 <h6 className="mb-0">
                                     <FaShoppingBag className="me-2 text-primary" />
-                                    Đơn hàng #{order.OrderID || order.id}
+                                    Đơn hàng #{order.orderId || order.OrderID || order.id}
                                 </h6>
-                                <StatusBadge status={order.Status || order.status} type="order" />
+                                <StatusBadge status={order.statusName || order.Status || order.status} type="order" />
                             </div>
 
                             <p className="text-muted mb-2 small">
-                                Ngày đặt: {formatDate(order.OrderDate || order.orderDate)}
+                                Ngày đặt: {formatDate(order.orderDate || order.OrderDate)}
                             </p>
 
                             {order.items && order.items.length > 0 && (
@@ -66,7 +66,7 @@ const OrderCard = ({ order }) => {
 
                         <Col md={4} className="text-md-end">
                             <h5 className="text-primary mb-3">
-                                {(order.TotalAmount || order.totalAmount)?.toLocaleString('vi-VN')} ₫
+                                {(order.totalAmount ?? order.TotalAmount)?.toLocaleString('vi-VN')} ₫
                             </h5>
 
                             <div className="d-flex gap-2 justify-content-md-end">
@@ -101,8 +101,9 @@ const OrderCard = ({ order }) => {
 
 OrderCard.propTypes = {
     order: PropTypes.shape({
-        OrderID: PropTypes.number,
-        id: PropTypes.number,
+        OrderID: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+        orderId: PropTypes.string,
+        id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
         OrderDate: PropTypes.string,
         orderDate: PropTypes.string,
         TotalAmount: PropTypes.number,

@@ -115,7 +115,7 @@ const Bookings = () => {
         <div className="bookings-list">
           {filteredBookings.map((booking) => (
             <BookingCard
-              key={booking.BookingID || booking.id}
+              key={booking.bookingId ?? booking.BookingID ?? booking.id}
               booking={booking}
               onCancel={handleCancelClick}
             />

@@ -66,7 +66,7 @@ const BookingDetail = () => {
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h2 className="fw-bold mb-0">
                     <i className="bi bi-calendar-check me-2"></i>
-                    Chi Tiết Booking #{booking.BookingCode}
+                    Chi Tiết Booking #{booking.bookingCode ?? booking.BookingCode}
                 </h2>
                 <Button variant="outline-secondary" onClick={() => navigate('/profile/bookings')}>
                     <i className="bi bi-arrow-left me-2"></i>
@@ -85,23 +85,23 @@ const BookingDetail = () => {
                             <Row className="mb-3">
                                 <Col md={6}>
                                     <p className="mb-1 text-muted">Mã booking:</p>
-                                    <p className="fw-bold">{booking.BookingCode}</p>
+                                    <p className="fw-bold">{booking.bookingCode ?? booking.BookingCode}</p>
                                 </Col>
                                 <Col md={6}>
                                     <p className="mb-1 text-muted">Ngày đặt:</p>
                                     <p className="fw-bold">
-                                        {new Date(booking.BookingDate).toLocaleDateString('vi-VN')}
+                                        {new Date(booking.bookingDate ?? booking.BookingDate).toLocaleDateString('vi-VN')}
                                     </p>
                                 </Col>
                             </Row>
                             <Row className="mb-3">
                                 <Col md={6}>
                                     <p className="mb-1 text-muted">Trạng thái:</p>
-                                    {getStatusBadge(booking.Status)}
+                                    {getStatusBadge(booking.statusName ?? booking.Status)}
                                 </Col>
                                 <Col md={6}>
                                     <p className="mb-1 text-muted">Phương thức thanh toán:</p>
-                                    <p className="fw-bold">{booking.PaymentMethod}</p>
+                                    <p className="fw-bold">{booking.paymentMethod ?? booking.PaymentMethod}</p>
                                 </Col>
                             </Row>
                         </Card.Body>
@@ -150,16 +150,16 @@ const BookingDetail = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {booking.TimeSlots?.map((slot, index) => (
+                                    {(booking.timeSlots ?? booking.TimeSlots)?.map((slot, index) => (
                                         <tr key={index}>
-                                            <td>{new Date(slot.Date).toLocaleDateString('vi-VN')}</td>
-                                            <td>{slot.StartTime}</td>
-                                            <td>{slot.EndTime}</td>
+                                            <td>{new Date(slot.date ?? slot.Date).toLocaleDateString('vi-VN')}</td>
+                                            <td>{slot.startTime ?? slot.StartTime}</td>
+                                            <td>{slot.endTime ?? slot.EndTime}</td>
                                             <td className="fw-bold">
                                                 {new Intl.NumberFormat('vi-VN', {
                                                     style: 'currency',
                                                     currency: 'VND'
-                                                }).format(slot.Price)}
+                                                }).format(slot.price ?? slot.Price ?? 0)}
                                             </td>
                                         </tr>
                                     ))}
@@ -195,7 +195,7 @@ const BookingDetail = () => {
                         <Card.Body>
                             <div className="d-flex justify-content-between mb-2">
                                 <span>Số khung giờ:</span>
-                                <span className="fw-bold">{booking.TimeSlots?.length || 0}</span>
+                                <span className="fw-bold">{(booking.timeSlots ?? booking.TimeSlots)?.length ?? 0}</span>
                             </div>
                             <div className="d-flex justify-content-between mb-2">
                                 <span>Tạm tính:</span>
@@ -203,17 +203,17 @@ const BookingDetail = () => {
                                     {new Intl.NumberFormat('vi-VN', {
                                         style: 'currency',
                                         currency: 'VND'
-                                    }).format(booking.SubTotal || booking.TotalAmount)}
+                                    }).format(booking.subTotal ?? booking.SubTotal ?? booking.totalAmount ?? booking.TotalAmount ?? 0)}
                                 </span>
                             </div>
-                            {booking.DiscountAmount > 0 && (
+                            {(booking.discountAmount ?? booking.DiscountAmount ?? 0) > 0 && (
                                 <div className="d-flex justify-content-between mb-2 text-success">
                                     <span>Giảm giá:</span>
                                     <span>
                                         -{new Intl.NumberFormat('vi-VN', {
                                             style: 'currency',
                                             currency: 'VND'
-                                        }).format(booking.DiscountAmount)}
+                                        }).format(booking.discountAmount ?? booking.DiscountAmount)}
                                     </span>
                                 </div>
                             )}
@@ -224,19 +224,19 @@ const BookingDetail = () => {
                                     {new Intl.NumberFormat('vi-VN', {
                                         style: 'currency',
                                         currency: 'VND'
-                                    }).format(booking.TotalAmount)}
+                                    }).format(booking.totalAmount ?? booking.TotalAmount ?? 0)}
                                 </span>
                             </div>
                         </Card.Body>
                     </Card>
 
-                    {booking.Notes && (
+                    {(booking.notes ?? booking.Notes) && (
                         <Card className="mt-3 shadow-sm">
                             <Card.Header className="bg-white">
                                 <h6 className="mb-0">Ghi chú</h6>
                             </Card.Header>
                             <Card.Body>
-                                <p className="mb-0 text-muted">{booking.Notes}</p>
+                                <p className="mb-0 text-muted">{booking.notes ?? booking.Notes}</p>
                             </Card.Body>
                         </Card>
                     )}

@@ -22,9 +22,10 @@ const BookingCard = ({ booking, onCancel }) => {
         return timeString.substring(0, 5); // HH:MM
     };
 
-    const canCancel = booking.Status?.toLowerCase() === 'confirmed' ||
-        booking.status?.toLowerCase() === 'đã xác nhận' ||
-        booking.Status?.toLowerCase() === 'pending';
+    const statusVal = booking.statusName ?? booking.Status ?? booking.status;
+    const canCancel = statusVal?.toLowerCase() === 'confirmed' ||
+        statusVal?.toLowerCase() === 'đã xác nhận' ||
+        statusVal?.toLowerCase() === 'pending';
 
     const isUpcoming = () => {
         const bookingDate = new Date(booking.BookingDate || booking.bookingDate);
@@ -46,7 +47,7 @@ const BookingCard = ({ booking, onCancel }) => {
                                 <h6 className="mb-0 fw-bold">
                                     {booking.court?.CourtName || booking.court?.courtName || 'Sân thể thao'}
                                 </h6>
-                                <StatusBadge status={booking.Status || booking.status} type="booking" />
+                                <StatusBadge status={booking.statusName ?? booking.Status ?? booking.status} type="booking" />
                                 {isUpcoming() && (
                                     <Badge bg="info" className="d-inline-flex align-items-center gap-1">
                                         <FaClock size={12} />
@@ -85,7 +86,7 @@ const BookingCard = ({ booking, onCancel }) => {
                                 <Button
                                     variant="outline-primary"
                                     size="sm"
-                                    onClick={() => navigate(`/profile/bookings/${booking.BookingID || booking.id}`)}
+                                    onClick={() => navigate(`/profile/bookings/${booking.bookingId ?? booking.BookingID ?? booking.id}`)}
                                     className="d-inline-flex align-items-center gap-1"
                                 >
                                     <FaEye size={14} />
@@ -96,7 +97,7 @@ const BookingCard = ({ booking, onCancel }) => {
                                     <Button
                                         variant="outline-danger"
                                         size="sm"
-                                        onClick={() => onCancel?.(booking.BookingID || booking.id)}
+                                        onClick={() => onCancel?.(booking.bookingId ?? booking.BookingID ?? booking.id)}
                                         className="d-inline-flex align-items-center gap-1"
                                     >
                                         <FaTimesCircle size={14} />

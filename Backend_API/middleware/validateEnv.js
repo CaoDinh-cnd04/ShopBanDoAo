@@ -5,10 +5,7 @@
 
 const validateEnv = () => {
     const required = [
-        'DB_SERVER',
-        'DB_DATABASE',
-        'DB_USER',
-        'DB_PASSWORD',
+        'MONGODB_URI',
         'JWT_SECRET'
     ];
 

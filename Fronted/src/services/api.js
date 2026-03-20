@@ -25,14 +25,20 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor - Handle errors
+// Response interceptor — 401: logout, redirect login kèm returnUrl (tránh lặp khi đang ở /login)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid
       store.dispatch(logout());
-      window.location.href = '/login';
+      const path = `${window.location.pathname}${window.location.search}`;
+      const onLogin = path.startsWith('/login');
+      if (onLogin) {
+        window.location.href = '/login';
+      } else {
+        const returnUrl = encodeURIComponent(path);
+        window.location.href = `/login?returnUrl=${returnUrl}`;
+      }
     }
     return Promise.reject(error);
   }

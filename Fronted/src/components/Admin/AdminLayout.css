@@ -382,3 +382,27 @@
   border: 1px solid rgba(99, 102, 241, 0.35);
   color: rgba(255, 255, 255, 0.92);
 }
+
+.admin-back-link {
+  color: var(--a-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+.admin-back-link:hover {
+  color: var(--a-primary);
+}
+
+.admin-cat-nav .nav-link {
+  color: var(--a-muted);
+  border-color: transparent;
+}
+.admin-cat-nav .nav-link:hover {
+  color: var(--a-text);
+  border-color: transparent;
+}
+.admin-cat-nav .nav-link.active {
+  color: var(--a-text);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--a-border);
+  border-bottom-color: var(--a-primary);
+}

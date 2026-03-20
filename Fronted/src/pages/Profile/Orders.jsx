@@ -37,17 +37,17 @@ const Orders = () => {
     // Search
     if (searchTerm) {
       result = result.filter((order) => {
-        const orderId = String(order.OrderID || order.id);
+        const orderId = String(order.orderId ?? order.OrderID ?? order.id);
         return orderId.includes(searchTerm);
       });
     }
 
     // Sort
     result.sort((a, b) => {
-      const dateA = new Date(a.OrderDate || a.orderDate);
-      const dateB = new Date(b.OrderDate || b.orderDate);
-      const amountA = a.TotalAmount || a.totalAmount || 0;
-      const amountB = b.TotalAmount || b.totalAmount || 0;
+      const dateA = new Date(a.orderDate ?? a.OrderDate);
+      const dateB = new Date(b.orderDate ?? b.OrderDate);
+      const amountA = a.totalAmount ?? a.TotalAmount ?? 0;
+      const amountB = b.totalAmount ?? b.TotalAmount ?? 0;
 
       switch (sortBy) {
         case 'newest':
@@ -92,7 +92,7 @@ const Orders = () => {
       ) : (
         <div className="orders-list">
           {filteredOrders.map((order) => (
-            <OrderCard key={order.OrderID || order.id} order={order} />
+            <OrderCard key={order.orderId ?? order.OrderID ?? order.id} order={order} />
           ))}
         </div>
       )}

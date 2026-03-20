@@ -14,7 +14,7 @@ const WishlistCard = ({ item }) => {
     const dispatch = useDispatch();
 
     const product = item.product || item.Product || {};
-    const wishlistItemId = item.WishlistItemID || item.id;
+    const wishlistItemId = item.wishlistItemId ?? item.WishlistItemID ?? item.id;
 
     const handleRemove = async () => {
         const result = await dispatch(removeFromWishlist(wishlistItemId));
@@ -27,7 +27,7 @@ const WishlistCard = ({ item }) => {
 
     const handleAddToCart = async () => {
         const result = await dispatch(addToCart({
-            productId: product.ProductID || product.id,
+            productId: product.productId ?? product.ProductID ?? product.id,
             quantity: 1,
         }));
         if (addToCart.fulfilled.match(result)) {
@@ -51,10 +51,10 @@ const WishlistCard = ({ item }) => {
                 <div className="wishlist-card-image-wrapper">
                     <Card.Img
                         variant="top"
-                        src={product.ImageURL || product.imageUrl || '/placeholder-product.jpg'}
-                        alt={product.ProductName || product.name}
+                        src={(product.imageUrl ?? product.ImageURL) || '/placeholder-product.jpg'}
+                        alt={product.productName ?? product.ProductName ?? product.name}
                         className="wishlist-card-image"
-                        onClick={() => navigate(`/products/${product.ProductID || product.id}`)}
+                        onClick={() => navigate(`/products/${product.productId ?? product.ProductID ?? product.id}`)}
                     />
                     <Button
                         variant="danger"
@@ -74,19 +74,19 @@ const WishlistCard = ({ item }) => {
                 <Card.Body className="d-flex flex-column">
                     <Card.Title
                         className="wishlist-card-title"
-                        onClick={() => navigate(`/products/${product.ProductID || product.id}`)}
+                        onClick={() => navigate(`/products/${product.productId ?? product.ProductID ?? product.id}`)}
                     >
-                        {product.ProductName || product.name}
+                        {product.productName ?? product.ProductName ?? product.name}
                     </Card.Title>
 
                     <div className="mt-auto">
                         <div className="d-flex align-items-center justify-content-between mb-3">
                             <h5 className="text-primary mb-0">
-                                {(product.Price || product.price)?.toLocaleString('vi-VN')} ₫
+                                {(product.price ?? product.Price)?.toLocaleString('vi-VN')} ₫
                             </h5>
-                            {product.OriginalPrice && product.OriginalPrice > product.Price && (
+                            {(product.originalPrice ?? product.OriginalPrice) && (product.originalPrice ?? product.OriginalPrice) > (product.price ?? product.Price) && (
                                 <small className="text-muted text-decoration-line-through">
-                                    {product.OriginalPrice.toLocaleString('vi-VN')} ₫
+                                    {(product.originalPrice ?? product.OriginalPrice).toLocaleString('vi-VN')} ₫
                                 </small>
                             )}
                         </div>
@@ -96,7 +96,7 @@ const WishlistCard = ({ item }) => {
                                 variant="outline-primary"
                                 size="sm"
                                 className="flex-grow-1"
-                                onClick={() => navigate(`/products/${product.ProductID || product.id}`)}
+                                onClick={() => navigate(`/products/${product.productId ?? product.ProductID ?? product.id}`)}
                             >
                                 <FaEye className="me-1" />
                                 Xem

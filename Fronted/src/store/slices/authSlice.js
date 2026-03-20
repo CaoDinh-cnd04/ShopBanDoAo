@@ -103,10 +103,10 @@ export const updateProfile = createAsyncThunk(
 
 export const changePassword = createAsyncThunk(
   'auth/changePassword',
-  async ({ currentPassword, newPassword }, { rejectWithValue }) => {
+  async ({ currentPassword, newPassword, oldPassword }, { rejectWithValue }) => {
     try {
       const response = await api.put('/auth/change-password', {
-        currentPassword,
+        oldPassword: oldPassword ?? currentPassword,
         newPassword,
       });
       return response.data;

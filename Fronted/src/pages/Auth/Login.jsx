@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,9 +19,21 @@ const loginSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
+const safeReturnPath = (raw) => {
+  if (!raw || typeof raw !== 'string') return null;
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (!decoded.startsWith('/') || decoded.startsWith('//')) return null;
+    return decoded;
+  } catch {
+    return null;
+  }
+};
+
 const Login = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
   const { isLoading, error } = useSelector((state) => state.auth);
 
@@ -40,7 +52,12 @@ const Login = () => {
     if (login.fulfilled.match(result)) {
       toast.success('Login successful!');
       const role = result.payload?.user?.role;
-      navigate(role === 'Admin' ? '/admin' : '/');
+      const back = safeReturnPath(searchParams.get('returnUrl'));
+      if (back) {
+        navigate(back);
+      } else {
+        navigate(role === 'Admin' ? '/admin' : '/');
+      }
     } else {
       toast.error(result.payload || 'Login failed');
     }
@@ -58,7 +75,12 @@ const Login = () => {
       if (firebaseLogin.fulfilled.match(result)) {
         toast.success('Login with Google successful!');
         const role = result.payload?.user?.role;
-        navigate(role === 'Admin' ? '/admin' : '/');
+        const back = safeReturnPath(searchParams.get('returnUrl'));
+        if (back) {
+          navigate(back);
+        } else {
+          navigate(role === 'Admin' ? '/admin' : '/');
+        }
       } else {
         toast.error(result.payload || 'Google login failed');
       }
@@ -89,6 +111,7 @@ const Login = () => {
                   <Form.Label>{t('auth.email')}</Form.Label>
                   <Form.Control
                     type="email"
+                    data-testid="login-email"
                     {...register('email')}
                     placeholder="Enter your email"
                   />
@@ -101,6 +124,7 @@ const Login = () => {
                   <Form.Label>{t('auth.password')}</Form.Label>
                   <Form.Control
                     type="password"
+                    data-testid="login-password"
                     {...register('password')}
                     placeholder="Enter your password"
                   />
@@ -124,6 +148,7 @@ const Login = () => {
                   variant="primary"
                   size="lg"
                   className="w-100 mb-3"
+                  data-testid="login-submit"
                   disabled={isLoading || isGoogleLoading}
                 >
                   {isLoading ? <Loading /> : (

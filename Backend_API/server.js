@@ -7,36 +7,16 @@ require('dotenv').config();
 const validateEnv = require('./middleware/validateEnv');
 validateEnv();
 
-// Import routes
-const authRoutes = require('./routes/authRoutes');
-const productRoutes = require('./routes/productRoutes');
-const categoryRoutes = require('./routes/categoryRoutes');
-const orderRoutes = require('./routes/orderRoutes');
-const cartRoutes = require('./routes/cartRoutes');
-const bookingRoutes = require('./routes/bookingRoutes');
-const courtRoutes = require('./routes/courtRoutes');
-const addressRoutes = require('./routes/addressRoutes');
-const reviewRoutes = require('./routes/reviewRoutes');
-const voucherRoutes = require('./routes/voucherRoutes');
-const wishlistRoutes = require('./routes/wishlistRoutes');
-const notificationRoutes = require('./routes/notificationRoutes');
-
-// Admin routes
-const adminUserRoutes = require('./routes/adminUserRoutes');
-const adminOrderRoutes = require('./routes/adminOrderRoutes');
-const adminBookingRoutes = require('./routes/adminBookingRoutes');
-const adminCategoryRoutes = require('./routes/adminCategoryRoutes');
-const adminCourtRoutes = require('./routes/adminCourtRoutes');
-const adminVoucherRoutes = require('./routes/adminVoucherRoutes');
-const adminReviewRoutes = require('./routes/adminReviewRoutes');
-const uploadRoutes = require('./routes/uploadRoutes');
+// Import routes - OOP structure (user/ và admin/)
+const userRoutes = require('./routes/user');
+const adminRoutes = require('./routes/admin');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
 const { logger, logError } = require('./middleware/logger');
 const { helmetConfig, sanitizeInput, xssProtection } = require('./middleware/security');
 const { apiRateLimiter, authRateLimiter } = require('./middleware/rateLimiter');
-const { getPool, closePool } = require('./config/database');
+const { connectMongo, closeMongo } = require('./config/database.mongodb');
 
 // Initialize Express app
 const app = express();
@@ -92,28 +72,29 @@ app.get('/health', (req, res) => {
     });
 });
 
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/cart', cartRoutes);
-app.use('/api/bookings', bookingRoutes);
-app.use('/api/courts', courtRoutes);
-app.use('/api/addresses', addressRoutes);
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/vouchers', voucherRoutes);
-app.use('/api/wishlist', wishlistRoutes);
-app.use('/api/notifications', notificationRoutes);
+// API Routes - User
+app.use('/api/auth', userRoutes.authRoutes);
+app.use('/api/products', userRoutes.productRoutes);
+app.use('/api/categories', userRoutes.categoryRoutes);
+app.use('/api/orders', userRoutes.orderRoutes);
+app.use('/api/cart', userRoutes.cartRoutes);
+app.use('/api/bookings', userRoutes.bookingRoutes);
+app.use('/api/courts', userRoutes.courtRoutes);
+app.use('/api/addresses', userRoutes.addressRoutes);
+app.use('/api/reviews', userRoutes.reviewRoutes);
+app.use('/api/vouchers', userRoutes.voucherRoutes);
+app.use('/api/wishlist', userRoutes.wishlistRoutes);
+app.use('/api/notifications', userRoutes.notificationRoutes);
 
-// Admin Routes
-app.use('/api/admin/users', adminUserRoutes);
-app.use('/api/admin/orders', adminOrderRoutes);
-app.use('/api/admin/bookings', adminBookingRoutes);
-app.use('/api/admin/categories', adminCategoryRoutes);
-app.use('/api/admin/courts', adminCourtRoutes);
-app.use('/api/admin/vouchers', adminVoucherRoutes);
-app.use('/api/admin/reviews', adminReviewRoutes);
+// API Routes - Admin
+app.use('/api/admin/users', adminRoutes.userRoutes);
+app.use('/api/admin/orders', adminRoutes.orderRoutes);
+app.use('/api/admin/bookings', adminRoutes.bookingRoutes);
+app.use('/api/admin/categories', adminRoutes.categoryRoutes);
+app.use('/api/admin/products', adminRoutes.productRoutes);
+app.use('/api/admin/courts', adminRoutes.courtRoutes);
+app.use('/api/admin/vouchers', adminRoutes.voucherRoutes);
+app.use('/api/admin/reviews', adminRoutes.reviewRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -131,8 +112,8 @@ const PORT = process.env.PORT || 3000;
 
 const startServer = async () => {
     try {
-        // Test database connection
-        await getPool();
+        // Test database connection (MongoDB)
+        await connectMongo();
 
         app.listen(PORT, () => {
             console.log(`🚀 Server is running on port ${PORT}`);
@@ -149,13 +130,13 @@ const startServer = async () => {
 // Graceful shutdown
 process.on('SIGTERM', async () => {
     console.log('SIGTERM signal received: closing HTTP server');
-    await closePool();
+    await closeMongo();
     process.exit(0);
 });
 
 process.on('SIGINT', async () => {
     console.log('SIGINT signal received: closing HTTP server');
-    await closePool();
+    await closeMongo();
     process.exit(0);
 });
 

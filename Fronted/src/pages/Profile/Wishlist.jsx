@@ -26,7 +26,7 @@ const Wishlist = () => {
     <div className="wishlist-page">
       <Row className="g-4">
         {Array.isArray(items) && items.map((item) => (
-          <Col lg={3} md={4} sm={6} key={item.WishlistItemID || item.id}>
+          <Col lg={3} md={4} sm={6} key={item.wishlistItemId ?? item.WishlistItemID ?? item.id}>
             <WishlistCard item={item} />
           </Col>
         ))}

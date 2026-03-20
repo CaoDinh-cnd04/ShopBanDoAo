@@ -11,7 +11,10 @@ import {
   FiLogOut,
   FiHome,
   FiMenu,
-  FiX
+  FiX,
+  FiLayers,
+  FiMapPin,
+  FiTag
 } from 'react-icons/fi';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
@@ -33,8 +36,11 @@ const AdminLayout = () => {
     () => [
       { to: '/admin', end: true, icon: FiBarChart2, label: 'Tổng quan' },
       { to: '/admin/products', end: false, icon: FiPackage, label: 'Sản phẩm' },
+      { to: '/admin/categories', end: false, icon: FiLayers, label: 'Danh mục & thương hiệu' },
       { to: '/admin/orders', end: false, icon: FiShoppingCart, label: 'Đơn hàng' },
       { to: '/admin/bookings', end: false, icon: FiCalendar, label: 'Đặt sân' },
+      { to: '/admin/courts', end: false, icon: FiMapPin, label: 'Sân' },
+      { to: '/admin/vouchers', end: false, icon: FiTag, label: 'Voucher' },
       { to: '/admin/users', end: false, icon: FiUsers, label: 'Người dùng' },
       { to: '/admin/reviews', end: false, icon: FiStar, label: 'Đánh giá' },
     ],
