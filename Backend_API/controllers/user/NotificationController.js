@@ -1,7 +1,10 @@
+const express = require('express');
+const router = express.Router();
 const BaseController = require('../base/BaseController');
 const { successResponse, errorResponse, paginationResponse } = require('../../utils/responseFormatter');
 const { HTTP_STATUS } = require('../../utils/constants');
 const { getUserNotifications: getFirestoreNotifications, markNotificationAsRead: markFirestoreNotificationAsRead } = require('../../services/firestoreService');
+const { authenticate } = require('../../middleware/auth');
 
 class NotificationController extends BaseController {
     async getNotifications(req, res, next) {
@@ -120,4 +123,11 @@ class NotificationController extends BaseController {
     }
 }
 
-module.exports = new NotificationController();
+const notificationController = new NotificationController();
+
+router.get('/', authenticate, (req, res, next) => notificationController.getNotifications(req, res, next));
+router.get('/unread-count', authenticate, (req, res, next) => notificationController.getUnreadCount(req, res, next));
+router.put('/:id/read', authenticate, (req, res, next) => notificationController.markAsRead(req, res, next));
+router.put('/read-all', authenticate, (req, res, next) => notificationController.markAllAsRead(req, res, next));
+
+module.exports = router;

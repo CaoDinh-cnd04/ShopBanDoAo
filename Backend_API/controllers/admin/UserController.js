@@ -1,5 +1,8 @@
+const express = require('express');
+const router = express.Router();
 const BaseController = require('../base/BaseController');
 const { successResponse, errorResponse } = require('../../utils/responseFormatter');
+const { authenticate, authorize } = require('../../middleware/auth');
 
 class AdminUserController extends BaseController {
     async getAllUsers(req, res, next) {
@@ -172,4 +175,17 @@ class AdminUserController extends BaseController {
     }
 }
 
-module.exports = new AdminUserController();
+const adminUserController = new AdminUserController();
+
+router.use(authenticate);
+router.use(authorize('Admin'));
+
+router.get('/', (req, res, next) => adminUserController.getAllUsers(req, res, next));
+router.get('/stats', (req, res, next) => adminUserController.getUserStats(req, res, next));
+router.get('/roles', (req, res, next) => adminUserController.getRolesList(req, res, next));
+router.get('/:id', (req, res, next) => adminUserController.getUserById(req, res, next));
+router.put('/:id/status', (req, res, next) => adminUserController.toggleUserStatus(req, res, next));
+router.put('/:id', (req, res, next) => adminUserController.updateUser(req, res, next));
+router.delete('/:id', (req, res, next) => adminUserController.deleteUser(req, res, next));
+
+module.exports = router;

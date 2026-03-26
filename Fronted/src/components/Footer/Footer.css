@@ -1,5 +1,5 @@
 .footer-custom {
-  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  background: var(--bg-secondary);
   color: var(--text-primary);
   margin-top: auto;
   border-top: 2px solid var(--border-light);
@@ -13,7 +13,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: var(--bg-gradient);
+  background: var(--primary-color);
 }
 
 .footer-custom a {
@@ -28,7 +28,7 @@
   left: 0;
   width: 0;
   height: 2px;
-  background: var(--bg-gradient);
+  background: var(--primary-color);
   transition: width 0.3s ease;
 }
 

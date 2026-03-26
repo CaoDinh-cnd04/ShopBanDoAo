@@ -7,9 +7,9 @@ require('dotenv').config();
 const validateEnv = require('./middleware/validateEnv');
 validateEnv();
 
-// Import routes - OOP structure (user/ và admin/)
-const userRoutes = require('./routes/user');
-const adminRoutes = require('./routes/admin');
+const userRoutes = require('./controllers/user');
+const adminRoutes = require('./controllers/admin');
+const uploadRoutes = require('./controllers/upload/UploadController');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -95,6 +95,9 @@ app.use('/api/admin/products', adminRoutes.productRoutes);
 app.use('/api/admin/courts', adminRoutes.courtRoutes);
 app.use('/api/admin/vouchers', adminRoutes.voucherRoutes);
 app.use('/api/admin/reviews', adminRoutes.reviewRoutes);
+
+// API Routes - Upload
+app.use('/api/uploads', uploadRoutes);
 
 // 404 handler
 app.use((req, res) => {

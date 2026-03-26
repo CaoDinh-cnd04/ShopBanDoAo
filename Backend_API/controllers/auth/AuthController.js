@@ -1,11 +1,14 @@
+const express = require('express');
+const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { validationResult } = require('express-validator');
+const { body, validationResult } = require('express-validator');
 const { verifyIdToken } = require('../../config/firebase');
 const { saveActivityLog } = require('../../services/firestoreService');
 const { successResponse, errorResponse } = require('../../utils/responseFormatter');
 const { HTTP_STATUS, MESSAGES } = require('../../utils/constants');
 const BaseController = require('../base/BaseController');
+const { authenticate } = require('../../middleware/auth');
 
 class AuthController extends BaseController {
     async register(req, res, next) {
@@ -397,4 +400,41 @@ class AuthController extends BaseController {
     }
 }
 
-module.exports = new AuthController();
+const authController = new AuthController();
+
+// Validation Rules
+const registerValidation = [
+    body('username').trim().isLength({ min: 3, max: 50 }).withMessage('Username phải từ 3-50 ký tự'),
+    body('email').isEmail().withMessage('Email không hợp lệ'),
+    body('password').isLength({ min: 6 }).withMessage('Mật khẩu phải có ít nhất 6 ký tự'),
+    body('fullName').trim().notEmpty().withMessage('Họ tên không được để trống')
+];
+
+const loginValidation = [
+    body('password').notEmpty().withMessage('Mật khẩu không được để trống'),
+    body().custom((value, { req }) => {
+        const username = req.body?.username?.trim?.();
+        const email = req.body?.email?.trim?.();
+        if (!username && !email) {
+            throw new Error('Username hoặc Email không được để trống');
+        }
+        return true;
+    })
+];
+
+const changePasswordValidation = [
+    body('oldPassword').notEmpty().withMessage('Mật khẩu cũ không được để trống'),
+    body('newPassword').isLength({ min: 6 }).withMessage('Mật khẩu mới phải có ít nhất 6 ký tự')
+];
+
+// Routes
+router.post('/register', registerValidation, (req, res, next) => authController.register(req, res, next));
+router.post('/login', loginValidation, (req, res, next) => authController.login(req, res, next));
+router.post('/firebase-login', [
+    body('idToken').notEmpty().withMessage('Firebase ID token không được để trống')
+], (req, res, next) => authController.firebaseLogin(req, res, next));
+router.get('/profile', authenticate, (req, res, next) => authController.getProfile(req, res, next));
+router.put('/profile', authenticate, (req, res, next) => authController.updateProfile(req, res, next));
+router.put('/change-password', authenticate, changePasswordValidation, (req, res, next) => authController.changePassword(req, res, next));
+
+module.exports = router;

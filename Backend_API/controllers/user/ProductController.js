@@ -1,3 +1,5 @@
+const express = require('express');
+const router = express.Router();
 const BaseController = require('../base/BaseController');
 
 class ProductController extends BaseController {
@@ -264,4 +266,9 @@ class ProductController extends BaseController {
     }
 }
 
-module.exports = new ProductController();
+const userProductController = new ProductController();
+
+router.get('/', (req, res, next) => userProductController.getProducts(req, res, next));
+router.get('/:id', (req, res, next) => userProductController.getProductById(req, res, next));
+
+module.exports = router;

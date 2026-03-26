@@ -98,7 +98,7 @@ const Cart = () => {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      whileHover={{ backgroundColor: 'rgba(99, 102, 241, 0.05)' }}
+                      whileHover={{ backgroundColor: 'rgba(13, 148, 136, 0.08)' }}
                     >
                       <td>
                         <div className="d-flex align-items-center">

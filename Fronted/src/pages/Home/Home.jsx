@@ -9,7 +9,44 @@ import { fetchCategories } from '../../store/slices/categorySlice';
 import { fetchCourts } from '../../store/slices/courtSlice';
 import ProductCard from '../../components/ProductCard/ProductCard';
 import Loading from '../../components/Loading/Loading';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 import './Home.css';
+
+const PLACEHOLDER_CATEGORY = '/placeholder-category.svg';
+
+function CategoryImage({ src, alt }) {
+  return (
+    <img
+      src={src || PLACEHOLDER_CATEGORY}
+      alt={alt}
+      className="img-fluid"
+      style={{ height: '100px', objectFit: 'contain' }}
+      loading="lazy"
+      decoding="async"
+      onError={(e) => {
+        if (e.currentTarget.src.endsWith(PLACEHOLDER_CATEGORY)) return;
+        e.currentTarget.src = PLACEHOLDER_CATEGORY;
+      }}
+    />
+  );
+}
+
+function CourtImage({ src, alt, className, style }) {
+  return (
+    <img
+      src={resolveMediaUrl(src) || PLACEHOLDER_CATEGORY}
+      alt={alt}
+      className={className}
+      style={style}
+      loading="lazy"
+      decoding="async"
+      onError={(e) => {
+        if (e.currentTarget.src.endsWith(PLACEHOLDER_CATEGORY)) return;
+        e.currentTarget.src = PLACEHOLDER_CATEGORY;
+      }}
+    />
+  );
+}
 
 const Home = () => {
   const { t } = useTranslation();
@@ -20,10 +57,29 @@ const Home = () => {
   const { courts } = useSelector((state) => state.courts);
 
   useEffect(() => {
-    // Fetch featured products
     dispatch(fetchProducts({ isFeatured: 1, limit: 8 }));
     dispatch(fetchCategories());
-    dispatch(fetchCourts({ limit: 3 }));
+  }, [dispatch]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = () => {
+      if (!cancelled) dispatch(fetchCourts({ limit: 3 }));
+    };
+    let id;
+    if (typeof requestIdleCallback !== 'undefined') {
+      id = requestIdleCallback(run);
+    } else {
+      id = setTimeout(run, 1);
+    }
+    return () => {
+      cancelled = true;
+      if (typeof requestIdleCallback !== 'undefined') {
+        cancelIdleCallback(id);
+      } else {
+        clearTimeout(id);
+      }
+    };
   }, [dispatch]);
 
   const featuredProducts = products.slice(0, 8);
@@ -33,7 +89,7 @@ const Home = () => {
       {/* Hero Section */}
       <section className="hero-section">
         <Container>
-          <Row className="align-items-center min-vh-50">
+          <Row className="align-items-center hero-row g-4">
             <Col lg={6}>
               <motion.div
                 initial={{ opacity: 0, x: -50 }}
@@ -44,13 +100,9 @@ const Home = () => {
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="display-1 fw-bold mb-4"
+                  className="display-1 fw-bold mb-4 text-white"
                   style={{
-                    background: 'linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                    textShadow: '0 4px 20px rgba(255, 255, 255, 0.3)',
+                    textShadow: '0 2px 12px rgba(0, 0, 0, 0.25)',
                   }}
                 >
                   {t('home.hero.title')}
@@ -59,8 +111,8 @@ const Home = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.4 }}
-                  className="lead mb-4 text-white"
-                  style={{ fontSize: '1.3rem', textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}
+                  className="mb-3 text-white hero-subtitle"
+                  style={{ textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}
                 >
                   {t('home.hero.subtitle')}
                 </motion.p>
@@ -72,8 +124,7 @@ const Home = () => {
                   whileTap={{ scale: 0.95 }}
                 >
                   <Button
-                    size="lg"
-                    className="px-5 py-3"
+                    className="px-4 py-2 hero-cta"
                     onClick={() => navigate('/products')}
                   >
                     {t('home.hero.cta')}
@@ -89,9 +140,13 @@ const Home = () => {
               >
                 <div className="hero-image">
                   <img
-                    src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800"
-                    alt="Hero"
+                    src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=480&q=80&auto=format&fit=crop"
+                    alt={t('home.hero.title')}
+                    width={480}
+                    height={320}
                     className="img-fluid rounded"
+                    fetchPriority="high"
+                    decoding="async"
                   />
                 </div>
               </motion.div>
@@ -121,31 +176,31 @@ const Home = () => {
             </div>
           ) : (
             <Row>
-              {categories.slice(0, 4).map((category, index) => (
-                <Col md={3} key={`category-${category.id || index}`} className="mb-4">
+              {categories.slice(0, 4).map((category, index) => {
+                const catId = category.categoryId || category.id || category._id;
+                return (
+                <Col md={3} key={`category-${catId || index}`} className="mb-4">
                 <motion.div
-                  key={`category-motion-${category.id || index}`}
                   initial={{ opacity: 0, y: 50 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                   whileHover={{ scale: 1.05, y: -10 }}
                   className="category-card text-center p-4 rounded"
-                  onClick={() => navigate(`/products?category=${category.id}`)}
+                  onClick={() => navigate(`/products?category=${catId}`)}
                   style={{ cursor: 'pointer' }}
                 >
                   <div className="category-icon mb-3">
-                    <img
-                      src={category.imageUrl || '/placeholder.jpg'}
-                      alt={category.categoryName}
-                      className="img-fluid"
-                      style={{ height: '100px', objectFit: 'contain' }}
+                    <CategoryImage
+                      src={resolveMediaUrl(category.imageUrl)}
+                      alt={category.categoryName || ''}
                     />
                   </div>
                   <h5 className="fw-bold">{category.categoryName}</h5>
                 </motion.div>
               </Col>
-              ))}
+              );
+              })}
             </Row>
           )}
         </Container>
@@ -240,14 +295,14 @@ const Home = () => {
                   onClick={() => navigate(`/courts/${court.id}`)}
                   style={{ cursor: 'pointer' }}
                 >
-                  <motion.img
-                    src={court.imageUrl || '/placeholder.jpg'}
-                    alt={court.courtName}
-                    className="card-img-top"
-                    style={{ height: '200px', objectFit: 'cover' }}
-                    whileHover={{ scale: 1.1 }}
-                    transition={{ duration: 0.3 }}
-                  />
+                  <motion.div whileHover={{ scale: 1.03 }} transition={{ duration: 0.3 }}>
+                    <CourtImage
+                      src={court.imageUrl}
+                      alt={court.courtName || ''}
+                      className="card-img-top"
+                      style={{ height: '200px', objectFit: 'cover' }}
+                    />
+                  </motion.div>
                   <div className="card-body">
                     <h5 className="card-title fw-bold">{court.courtName}</h5>
                     <p className="card-text text-muted">{court.courtType?.typeName}</p>

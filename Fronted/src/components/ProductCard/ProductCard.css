@@ -14,7 +14,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: var(--bg-gradient);
+  background: var(--primary-color);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -34,7 +34,7 @@
 .product-image-wrapper {
   overflow: hidden;
   height: 300px;
-  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+  background: var(--bg-secondary);
   position: relative;
 }
 
@@ -45,7 +45,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(180deg, transparent 0%, rgba(99, 102, 241, 0.1) 100%);
+  background: linear-gradient(180deg, transparent 0%, rgba(13, 148, 136, 0.12) 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -91,12 +91,9 @@
   transform: scale(0.9);
 }
 
-/* Price Animation */
+/* Giá — cùng màu thương hiệu */
 .product-card .fw-bold {
-  background: var(--bg-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--primary-color);
   transition: var(--transition);
 }
 

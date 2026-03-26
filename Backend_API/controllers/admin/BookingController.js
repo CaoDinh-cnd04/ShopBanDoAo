@@ -1,5 +1,8 @@
+const express = require('express');
+const router = express.Router();
 const BaseController = require('../base/BaseController');
 const { successResponse, errorResponse } = require('../../utils/responseFormatter');
+const { authenticate, authorize } = require('../../middleware/auth');
 
 class AdminBookingController extends BaseController {
     async getAllBookings(req, res, next) {
@@ -156,4 +159,15 @@ class AdminBookingController extends BaseController {
     }
 }
 
-module.exports = new AdminBookingController();
+const adminBookingController = new AdminBookingController();
+
+router.use(authenticate);
+router.use(authorize('Admin'));
+
+router.get('/', (req, res, next) => adminBookingController.getAllBookings(req, res, next));
+router.get('/stats', (req, res, next) => adminBookingController.getBookingStats(req, res, next));
+router.get('/:id', (req, res, next) => adminBookingController.getBookingById(req, res, next));
+router.put('/:id/status', (req, res, next) => adminBookingController.updateBookingStatus(req, res, next));
+router.put('/:id/cancel', (req, res, next) => adminBookingController.cancelBooking(req, res, next));
+
+module.exports = router;

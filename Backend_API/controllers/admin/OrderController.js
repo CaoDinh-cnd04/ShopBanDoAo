@@ -1,5 +1,8 @@
+const express = require('express');
+const router = express.Router();
 const BaseController = require('../base/BaseController');
 const { successResponse, errorResponse } = require('../../utils/responseFormatter');
+const { authenticate, authorize } = require('../../middleware/auth');
 
 class AdminOrderController extends BaseController {
     async getAllOrders(req, res, next) {
@@ -210,4 +213,16 @@ class AdminOrderController extends BaseController {
     }
 }
 
-module.exports = new AdminOrderController();
+const adminOrderController = new AdminOrderController();
+
+router.use(authenticate);
+router.use(authorize('Admin'));
+
+// Phải đặt /stats lên trước /:id để tránh nhầm ID
+router.get('/', (req, res, next) => adminOrderController.getAllOrders(req, res, next));
+router.get('/stats', (req, res, next) => adminOrderController.getOrderStats(req, res, next));
+router.get('/:id', (req, res, next) => adminOrderController.getOrderById(req, res, next));
+router.put('/:id/status', (req, res, next) => adminOrderController.updateOrderStatus(req, res, next));
+router.put('/:id/cancel', (req, res, next) => adminOrderController.cancelOrder(req, res, next));
+
+module.exports = router;

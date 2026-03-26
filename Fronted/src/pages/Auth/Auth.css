@@ -14,9 +14,7 @@
   left: 0;
   right: 0;
   height: 5px;
-  background: var(--bg-gradient);
-  background-size: 200% 100%;
-  animation: gradient 3s ease infinite;
+  background: var(--primary-color);
 }
 
 .divider {
@@ -32,8 +30,8 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--bg-gradient);
-  opacity: 0.3;
+  background: var(--primary-color);
+  opacity: 0.25;
 }
 
 .divider-text {

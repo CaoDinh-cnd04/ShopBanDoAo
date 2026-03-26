@@ -1,5 +1,8 @@
+const express = require('express');
+const router = express.Router();
 const BaseController = require('../base/BaseController');
 const { successResponse, errorResponse } = require('../../utils/responseFormatter');
+const { authenticate, authorize } = require('../../middleware/auth');
 
 class AdminReviewController extends BaseController {
     async getAllReviews(req, res, next) {
@@ -116,4 +119,14 @@ class AdminReviewController extends BaseController {
     }
 }
 
-module.exports = new AdminReviewController();
+const adminReviewController = new AdminReviewController();
+
+router.use(authenticate);
+router.use(authorize('Admin'));
+
+router.get('/', (req, res, next) => adminReviewController.getAllReviews(req, res, next));
+router.get('/stats', (req, res, next) => adminReviewController.getReviewStats(req, res, next));
+router.put('/:id/status', (req, res, next) => adminReviewController.updateReviewStatus(req, res, next));
+router.delete('/:id', (req, res, next) => adminReviewController.deleteReview(req, res, next));
+
+module.exports = router;

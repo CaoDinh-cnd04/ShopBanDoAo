@@ -1,6 +1,10 @@
+const express = require('express');
+const router = express.Router();
 const BaseController = require('../base/BaseController');
+const { body } = require('express-validator');
 const { successResponse, errorResponse } = require('../../utils/responseFormatter');
 const { HTTP_STATUS, MESSAGES } = require('../../utils/constants');
+const { authenticate } = require('../../middleware/auth');
 
 class WishlistController extends BaseController {
     async getWishlist(req, res, next) {
@@ -132,4 +136,10 @@ class WishlistController extends BaseController {
     }
 }
 
-module.exports = new WishlistController();
+const wishlistController = new WishlistController();
+
+router.get('/', authenticate, (req, res, next) => wishlistController.getWishlist(req, res, next));
+router.post('/', authenticate, body('productId').notEmpty().withMessage('Product ID không hợp lệ'), (req, res, next) => wishlistController.addToWishlist(req, res, next));
+router.delete('/:id', authenticate, (req, res, next) => wishlistController.removeFromWishlist(req, res, next));
+
+module.exports = router;

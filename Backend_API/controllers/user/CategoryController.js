@@ -1,3 +1,5 @@
+const express = require('express');
+const router = express.Router();
 const BaseController = require('../base/BaseController');
 
 class CategoryController extends BaseController {
@@ -90,4 +92,10 @@ class CategoryController extends BaseController {
     }
 }
 
-module.exports = new CategoryController();
+const categoryController = new CategoryController();
+
+router.get('/', (req, res, next) => categoryController.getCategories(req, res, next));
+router.get('/brands', (req, res, next) => categoryController.getBrands(req, res, next));
+router.get('/:id', (req, res, next) => categoryController.getCategoryById(req, res, next));
+
+module.exports = router;

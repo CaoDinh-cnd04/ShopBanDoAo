@@ -1,13 +1,13 @@
 :root {
-  /* Vibrant Color Palette */
-  --primary-color: #6366f1;
-  --primary-dark: #4f46e5;
-  --primary-light: #818cf8;
+  /* Một màu thương hiệu (teal); hover chỉ đậm hơn cùng tone */
+  --primary-color: #0d9488;
+  --primary-dark: #0f766e;
+  --primary-light: #5eead4;
   --secondary-color: #ffffff;
-  --accent-color: #f59e0b;
-  --accent-2: #ef4444;
-  --accent-3: #10b981;
-  --accent-4: #3b82f6;
+  --accent-color: #0d9488;
+  --accent-2: #0d9488;
+  --accent-3: #0d9488;
+  --accent-4: #0d9488;
   
   /* Text Colors */
   --text-primary: #1f2937;
@@ -18,17 +18,18 @@
   --bg-primary: #ffffff;
   --bg-secondary: #f9fafb;
   --bg-tertiary: #f3f4f6;
-  --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --bg-gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  --bg-gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  /* Giữ tên biến cũ; giá trị là màu đặc (không gradient) */
+  --bg-gradient: #0d9488;
+  --bg-gradient-2: #0f766e;
+  --bg-gradient-3: #0d9488;
   
   /* Border & Shadow */
   --border-color: #e5e7eb;
   --border-light: #f3f4f6;
-  --shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
-  --shadow-lg: 0 8px 24px rgba(99, 102, 241, 0.15);
-  --shadow-xl: 0 12px 32px rgba(99, 102, 241, 0.2);
-  --shadow-colored: 0 8px 24px rgba(99, 102, 241, 0.3);
+  --shadow: 0 2px 8px rgba(15, 118, 110, 0.12);
+  --shadow-lg: 0 8px 24px rgba(15, 118, 110, 0.16);
+  --shadow-xl: 0 12px 32px rgba(15, 118, 110, 0.2);
+  --shadow-colored: 0 8px 24px rgba(20, 184, 166, 0.35);
   
   /* Status Colors */
   --success-color: #10b981;
@@ -43,14 +44,14 @@
 }
 
 [data-theme='dark'] {
-  --primary-color: #818cf8;
-  --primary-dark: #6366f1;
-  --primary-light: #a5b4fc;
+  --primary-color: #2dd4bf;
+  --primary-dark: #14b8a6;
+  --primary-light: #5eead4;
   --secondary-color: #1f2937;
-  --accent-color: #fbbf24;
-  --accent-2: #f87171;
-  --accent-3: #34d399;
-  --accent-4: #60a5fa;
+  --accent-color: #2dd4bf;
+  --accent-2: #2dd4bf;
+  --accent-3: #2dd4bf;
+  --accent-4: #2dd4bf;
   
   --text-primary: #f9fafb;
   --text-secondary: #d1d5db;
@@ -59,16 +60,16 @@
   --bg-primary: #111827;
   --bg-secondary: #1f2937;
   --bg-tertiary: #374151;
-  --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --bg-gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  --bg-gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --bg-gradient: #14b8a6;
+  --bg-gradient-2: #0d9488;
+  --bg-gradient-3: #14b8a6;
   
   --border-color: #374151;
   --border-light: #4b5563;
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
   --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.6);
-  --shadow-colored: 0 8px 24px rgba(129, 140, 248, 0.3);
+  --shadow-colored: 0 8px 24px rgba(45, 212, 191, 0.25);
 }
 
 * {
@@ -178,8 +179,8 @@ code {
 }
 
 .btn-outline-primary:hover {
-  border-color: var(--primary-color);
-  color: var(--secondary-color);
+  border-color: var(--primary-dark);
+  color: #ffffff;
   transform: translateY(-3px);
   box-shadow: var(--shadow-lg);
 }
@@ -228,7 +229,7 @@ code {
 .form-control:focus,
 .form-select:focus {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 0 0.2rem rgba(13, 148, 136, 0.2);
 }
 
 /* Custom Scrollbar */
@@ -391,14 +392,9 @@ code {
   animation: pulse 2s ease-in-out infinite;
 }
 
-/* Gradient Text */
+/* Tiêu đề nhấn — một màu đặc */
 .gradient-text {
-  background: var(--bg-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  background-size: 200% auto;
-  animation: gradient 3s linear infinite;
+  color: var(--primary-color);
 }
 
 /* Floating Animation */
@@ -433,12 +429,12 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Utilities */
 .text-accent {
-  color: var(--accent-color);
+  color: var(--primary-color);
 }
 
 .bg-accent {
-  background: var(--bg-gradient);
-  color: white;
+  background: var(--primary-color);
+  color: #ffffff;
 }
 
 .bg-gradient {
@@ -488,7 +484,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .hover-glow:hover {
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 20px rgba(13, 148, 136, 0.45);
 }
 
 /* Gradient Borders */

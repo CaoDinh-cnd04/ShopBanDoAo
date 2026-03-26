@@ -64,18 +64,12 @@
   color: rgba(239, 68, 68, 0.95);
 }
 
-/* Tonal variants */
-.admin-kpi-indigo {
-  border-color: rgba(99, 102, 241, 0.35) !important;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(255, 255, 255, 0.05)) !important;
-}
-.admin-kpi-green {
-  border-color: rgba(34, 197, 94, 0.32) !important;
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(255, 255, 255, 0.05)) !important;
-}
+/* Biến thể cùng một tone (chỉ khác độ trong suốt) */
+.admin-kpi-indigo,
+.admin-kpi-green,
 .admin-kpi-amber {
-  border-color: rgba(245, 158, 11, 0.32) !important;
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(255, 255, 255, 0.05)) !important;
+  border-color: rgba(20, 184, 166, 0.35) !important;
+  background: rgba(20, 184, 166, 0.12) !important;
 }
 .admin-kpi-surface {
   border-color: rgba(255, 255, 255, 0.1) !important;

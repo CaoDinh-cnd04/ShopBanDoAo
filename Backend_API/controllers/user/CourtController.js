@@ -1,3 +1,5 @@
+const express = require('express');
+const router = express.Router();
 const BaseController = require('../base/BaseController');
 
 class CourtController extends BaseController {
@@ -134,4 +136,10 @@ class CourtController extends BaseController {
     }
 }
 
-module.exports = new CourtController();
+const courtController = new CourtController();
+
+router.get('/', (req, res, next) => courtController.getCourts(req, res, next));
+router.get('/types', (req, res, next) => courtController.getCourtTypes(req, res, next));
+router.get('/:id', (req, res, next) => courtController.getCourtById(req, res, next));
+
+module.exports = router;

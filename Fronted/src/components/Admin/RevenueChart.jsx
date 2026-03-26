@@ -48,7 +48,7 @@ const RevenueChart = ({ data }) => {
                   <Line
                     type="monotone"
                     dataKey="Revenue"
-                    stroke="#6366f1"
+                    stroke="#14b8a6"
                     strokeWidth={2.5}
                     name="Doanh thu"
                     dot={false}

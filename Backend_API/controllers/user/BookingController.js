@@ -1,5 +1,8 @@
+const express = require('express');
+const router = express.Router();
 const BaseController = require('../base/BaseController');
-const { validationResult } = require('express-validator');
+const { body, validationResult } = require('express-validator');
+const { authenticate } = require('../../middleware/auth');
 
 class BookingController extends BaseController {
     generateBookingCode() {
@@ -334,4 +337,18 @@ class BookingController extends BaseController {
     }
 }
 
-module.exports = new BookingController();
+const bookingController = new BookingController();
+
+const createBookingValidation = [
+    body('courtId').notEmpty().withMessage('Court ID không hợp lệ'),
+    body('bookingDate').notEmpty().withMessage('Ngày đặt không được để trống'),
+    body('timeSlotIds').isArray({ min: 1 }).withMessage('Vui lòng chọn ít nhất một khung giờ')
+];
+
+router.get('/available-slots', (req, res, next) => bookingController.getAvailableTimeSlots(req, res, next));
+router.post('/', authenticate, createBookingValidation, (req, res, next) => bookingController.createBooking(req, res, next));
+router.get('/', authenticate, (req, res, next) => bookingController.getUserBookings(req, res, next));
+router.get('/:id', authenticate, (req, res, next) => bookingController.getBookingById(req, res, next));
+router.put('/:id/cancel', authenticate, (req, res, next) => bookingController.cancelBooking(req, res, next));
+
+module.exports = router;

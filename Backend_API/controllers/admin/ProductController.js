@@ -1,6 +1,9 @@
+const express = require('express');
+const router = express.Router();
 const BaseController = require('../base/BaseController');
-const { validationResult } = require('express-validator');
+const { body, validationResult } = require('express-validator');
 const { successResponse, errorResponse } = require('../../utils/responseFormatter');
+const { authenticate, authorize } = require('../../middleware/auth');
 
 class AdminProductController extends BaseController {
     /** Chi tiết sản phẩm cho admin (kể cả isActive: false), không tăng viewCount */
@@ -160,4 +163,23 @@ class AdminProductController extends BaseController {
     }
 }
 
-module.exports = new AdminProductController();
+const adminProductController = new AdminProductController();
+
+router.use(authenticate);
+router.use(authorize('Admin'));
+
+router.get('/:id', (req, res, next) => adminProductController.getProductById(req, res, next));
+
+router.post('/', [
+    body('productCode').trim().notEmpty().withMessage('Mã sản phẩm không được để trống'),
+    body('productName').trim().notEmpty().withMessage('Tên sản phẩm không được để trống'),
+    body('productSlug').trim().notEmpty().withMessage('Slug không được để trống'),
+    body('subCategoryId').notEmpty().withMessage('Danh mục con không hợp lệ'),
+    body('brandId').notEmpty().withMessage('Thương hiệu không hợp lệ')
+], (req, res, next) => adminProductController.createProduct(req, res, next));
+
+router.put('/:id', (req, res, next) => adminProductController.updateProduct(req, res, next));
+
+router.delete('/:id', (req, res, next) => adminProductController.deleteProduct(req, res, next));
+
+module.exports = router;

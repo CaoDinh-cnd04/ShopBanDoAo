@@ -1,7 +1,10 @@
+const express = require('express');
+const router = express.Router();
 const BaseController = require('../base/BaseController');
-const { validationResult } = require('express-validator');
+const { body, validationResult } = require('express-validator');
 const { successResponse, errorResponse } = require('../../utils/responseFormatter');
 const { HTTP_STATUS, MESSAGES } = require('../../utils/constants');
+const { authenticate } = require('../../middleware/auth');
 
 class ReviewController extends BaseController {
     async createProductReview(req, res, next) {
@@ -160,4 +163,20 @@ class ReviewController extends BaseController {
     }
 }
 
-module.exports = new ReviewController();
+const reviewController = new ReviewController();
+
+const productReviewValidation = [
+    body('productId').notEmpty().withMessage('Product ID không hợp lệ'),
+    body('rating').isInt({ min: 1, max: 5 }).withMessage('Rating phải từ 1-5')
+];
+
+const courtReviewValidation = [
+    body('courtId').notEmpty().withMessage('Court ID không hợp lệ'),
+    body('rating').isInt({ min: 1, max: 5 }).withMessage('Rating phải từ 1-5')
+];
+
+router.post('/products', authenticate, productReviewValidation, (req, res, next) => reviewController.createProductReview(req, res, next));
+router.post('/courts', authenticate, courtReviewValidation, (req, res, next) => reviewController.createCourtReview(req, res, next));
+router.get('/products/:productId', (req, res, next) => reviewController.getProductReviews(req, res, next));
+
+module.exports = router;

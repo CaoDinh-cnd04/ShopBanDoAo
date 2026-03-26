@@ -16,10 +16,7 @@
 }
 
 .navbar-custom .navbar-brand {
-  background: var(--bg-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--primary-color);
   font-weight: 800;
   letter-spacing: 3px;
   font-size: 1.8rem;
@@ -34,7 +31,7 @@
   left: 0;
   width: 0;
   height: 3px;
-  background: var(--bg-gradient);
+  background: var(--primary-color);
   transition: width 0.3s ease;
 }
 
@@ -63,7 +60,7 @@
   left: 50%;
   width: 0;
   height: 3px;
-  background: var(--bg-gradient);
+  background: var(--primary-color);
   transform: translateX(-50%);
   transition: width 0.3s ease;
   border-radius: 2px;
@@ -75,6 +72,6 @@
 
 .navbar-custom .nav-link:hover {
   color: var(--primary-color) !important;
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(13, 148, 136, 0.1);
   transform: translateY(-2px);
 }
