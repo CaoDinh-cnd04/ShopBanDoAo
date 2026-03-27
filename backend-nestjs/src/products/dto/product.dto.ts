@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsBoolean, IsMongoId } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  IsBoolean,
+  IsMongoId,
+} from 'class-validator';
 
 export class CreateProductDto {
   @IsString() @IsNotEmpty() productName: string;
@@ -31,4 +38,7 @@ export class QueryProductDto {
   @IsOptional() @IsString() search?: string;
   @IsOptional() @IsMongoId() categoryId?: string;
   @IsOptional() @IsString() isActive?: string;
+  @IsOptional() @IsString() isFeatured?: string;
+  @IsOptional() @IsString() sortBy?: string;
+  @IsOptional() @IsString() sortOrder?: string;
 }

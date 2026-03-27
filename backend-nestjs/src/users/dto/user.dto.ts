@@ -10,8 +10,9 @@ export class QueryUserDto {
 
 export class UpdateUserDto {
   @IsOptional() @IsString() fullName?: string;
-  @IsOptional() @IsString() phoneNumber?: string;
+  @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() dateOfBirth?: string;
   @IsOptional() @IsString() gender?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
+  @IsOptional() @IsString() role?: string;
 }

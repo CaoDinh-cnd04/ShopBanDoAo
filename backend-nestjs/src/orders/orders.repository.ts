@@ -5,10 +5,22 @@ import { Order, OrderDocument } from './schemas/order.schema';
 
 @Injectable()
 export class OrderRepository {
-  constructor(@InjectModel(Order.name) private orderModel: Model<OrderDocument>) {}
+  constructor(
+    @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
+  ) {}
 
-  async findAll(match: any, skip: number, limit: number): Promise<OrderDocument[]> {
-    return this.orderModel.find(match).skip(skip).limit(limit).populate('userId', 'fullName email').populate('items.productId', 'productName defaultPrice').exec();
+  async findAll(
+    match: any,
+    skip: number,
+    limit: number,
+  ): Promise<OrderDocument[]> {
+    return this.orderModel
+      .find(match)
+      .skip(skip)
+      .limit(limit)
+      .populate('userId', 'fullName email')
+      .populate('items.productId', 'productName defaultPrice')
+      .exec();
   }
 
   async count(match: any): Promise<number> {
@@ -16,7 +28,11 @@ export class OrderRepository {
   }
 
   async findById(id: string): Promise<OrderDocument | null> {
-    return this.orderModel.findById(id).populate('userId', 'fullName email').populate('items.productId', 'productName defaultPrice').exec();
+    return this.orderModel
+      .findById(id)
+      .populate('userId', 'fullName email')
+      .populate('items.productId', 'productName defaultPrice')
+      .exec();
   }
 
   async create(data: Partial<Order>): Promise<OrderDocument> {
@@ -24,11 +40,20 @@ export class OrderRepository {
     return newOrder.save();
   }
 
-  async update(id: string, updateData: Partial<Order>): Promise<OrderDocument | null> {
-    return this.orderModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+  async update(
+    id: string,
+    updateData: Partial<Order>,
+  ): Promise<OrderDocument | null> {
+    return this.orderModel
+      .findByIdAndUpdate(id, updateData, { new: true })
+      .exec();
   }
 
   async delete(id: string): Promise<OrderDocument | null> {
     return this.orderModel.findByIdAndDelete(id).exec();
+  }
+
+  async aggregate(pipeline: any[]): Promise<any[]> {
+    return this.orderModel.aggregate(pipeline).exec();
   }
 }

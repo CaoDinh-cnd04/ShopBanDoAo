@@ -8,13 +8,17 @@ export class CartRepository {
   constructor(@InjectModel(Cart.name) private cartModel: Model<CartDocument>) {}
 
   async findByUserId(userId: string): Promise<CartDocument | null> {
-    return this.cartModel.findOne({ userId: new Types.ObjectId(userId) })
+    return this.cartModel
+      .findOne({ userId: new Types.ObjectId(userId) })
       .populate('items.productId', 'productName defaultPrice image')
       .exec();
   }
 
   async create(userId: string): Promise<CartDocument> {
-    const newCart = new this.cartModel({ userId: new Types.ObjectId(userId), items: [] });
+    const newCart = new this.cartModel({
+      userId: new Types.ObjectId(userId),
+      items: [],
+    });
     return newCart.save();
   }
 
@@ -23,6 +27,8 @@ export class CartRepository {
   }
 
   async clearCart(userId: string): Promise<void> {
-    await this.cartModel.findOneAndUpdate({ userId: new Types.ObjectId(userId) }, { items: [] }).exec();
+    await this.cartModel
+      .findOneAndUpdate({ userId: new Types.ObjectId(userId) }, { items: [] })
+      .exec();
   }
 }

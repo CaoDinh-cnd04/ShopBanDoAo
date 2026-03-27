@@ -6,7 +6,9 @@ export const fetchCourts = createAsyncThunk(
   async (params = {}, { rejectWithValue }) => {
     try {
       const response = await api.get('/courts', { params });
-      return response.data.data;
+      // Backend trả về { data: { courts: [...], pagination: {} } }
+      const payload = response.data?.data;
+      return Array.isArray(payload) ? payload : (payload?.courts || []);
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to fetch courts'

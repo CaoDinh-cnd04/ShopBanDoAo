@@ -18,7 +18,7 @@ export class UploadService {
     if (!files || files.length === 0) {
       return { message: 'Không có file nào được tải lên!', success: false };
     }
-    const urls = files.map(file => `/uploads/${file.filename}`);
+    const urls = files.map((file) => `/uploads/${file.filename}`);
     return {
       message: 'Tải các ảnh thành công',
       success: true,

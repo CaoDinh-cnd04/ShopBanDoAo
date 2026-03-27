@@ -1,7 +1,12 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 
-/** Chuẩn hóa user từ API: backend trả về roles (mảng), frontend dùng role (chuỗi) cho Navbar/AdminRoute */
+/**
+ * Backend (NestJS + TransformInterceptor) trả về:
+ *   { success, message, data: <service_return> }
+ * Đọc: response.data.data = giá trị từ service
+ */
+
 const normalizeUser = (user) => {
   if (!user) return user;
   const u = { ...user };
@@ -9,28 +14,28 @@ const normalizeUser = (user) => {
   const roles = u.roles;
   if (Array.isArray(roles) && roles.length) {
     const hasAdmin = roles.some((r) => r === 'Admin' || (r && r.RoleName === 'Admin'));
-    u.role = hasAdmin ? 'Admin' : (typeof roles[0] === 'string' ? roles[0] : roles[0]?.RoleName) || 'Customer';
+    u.role = hasAdmin ? 'Admin' : (typeof roles[0] === 'string' ? roles[0] : roles[0]?.RoleName) || 'User';
   } else {
-    u.role = 'Customer';
+    u.role = 'User';
   }
   return u;
 };
 
-// Async thunks
+// ─── Async thunks ───────────────────────────────────────────────────────────
+
 export const login = createAsyncThunk(
   'auth/login',
   async ({ email, password }, { rejectWithValue }) => {
     try {
       const response = await api.post('/auth/login', { email, password });
+      // TransformInterceptor: response.data = { success, message, data: { token, user } }
       const { token, user } = response.data.data;
       const normalized = normalizeUser(user);
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(normalized));
       return { token, user: normalized };
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Login failed'
-      );
+      return rejectWithValue(error.response?.data?.message || 'Đăng nhập thất bại');
     }
   }
 );
@@ -46,27 +51,30 @@ export const register = createAsyncThunk(
       localStorage.setItem('user', JSON.stringify(normalized));
       return { token, user: normalized };
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Registration failed'
-      );
+      return rejectWithValue(error.response?.data?.message || 'Đăng ký thất bại');
     }
   }
 );
 
-export const firebaseLogin = createAsyncThunk(
-  'auth/firebaseLogin',
-  async (idToken, { rejectWithValue }) => {
+/**
+ * Google OAuth2: gửi access_token → backend xác thực qua Google UserInfo API.
+ * Trả về:
+ *   { isNewUser: false, token, user }  – đăng nhập bình thường
+ *   { isNewUser: true, email, fullName } – chuyển sang trang đăng ký bổ sung
+ */
+export const googleLogin = createAsyncThunk(
+  'auth/googleLogin',
+  async (accessToken, { rejectWithValue }) => {
     try {
-      const response = await api.post('/auth/firebase-login', { idToken });
+      const response = await api.post('/auth/google-login', { accessToken });
+      // Backend luôn trả { token, user } — tự tạo user nếu chưa tồn tại
       const { token, user } = response.data.data;
       const normalized = normalizeUser(user);
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(normalized));
       return { token, user: normalized };
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Firebase login failed'
-      );
+      return rejectWithValue(error.response?.data?.message || 'Đăng nhập Google thất bại');
     }
   }
 );
@@ -78,9 +86,7 @@ export const getProfile = createAsyncThunk(
       const response = await api.get('/auth/profile');
       return response.data.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Failed to get profile'
-      );
+      return rejectWithValue(error.response?.data?.message || 'Failed to get profile');
     }
   }
 );
@@ -94,9 +100,7 @@ export const updateProfile = createAsyncThunk(
       localStorage.setItem('user', JSON.stringify(user));
       return user;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Failed to update profile'
-      );
+      return rejectWithValue(error.response?.data?.message || 'Failed to update profile');
     }
   }
 );
@@ -111,9 +115,7 @@ export const changePassword = createAsyncThunk(
       });
       return response.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Failed to change password'
-      );
+      return rejectWithValue(error.response?.data?.message || 'Failed to change password');
     }
   }
 );
@@ -121,57 +123,50 @@ export const changePassword = createAsyncThunk(
 export const checkAuth = createAsyncThunk('auth/checkAuth', async (_, { rejectWithValue }) => {
   const token = localStorage.getItem('token');
   const userStr = localStorage.getItem('user');
-  
-  if (token && userStr) {
-    try {
-      let user = JSON.parse(userStr);
-      const profileRes = await api.get('/auth/profile');
-      const profile = profileRes.data?.data;
-      if (profile) {
-        user = normalizeUser({ ...user, ...profile, roles: profile.roles || [] });
-      } else if (!user.role) {
-        user = normalizeUser(user);
-      }
-      localStorage.setItem('user', JSON.stringify(user));
-      return { token, user };
-    } catch (error) {
-      // Token invalid, clear storage
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      return null;
-    }
+
+  if (!token || token === 'undefined' || !userStr || userStr === 'undefined') {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    return null;
   }
-  return null;
+
+  try {
+    let user = JSON.parse(userStr);
+    const profileRes = await api.get('/auth/profile');
+    const profile = profileRes.data?.data;
+    if (profile) {
+      user = normalizeUser({ ...user, ...profile });
+    } else if (!user.role) {
+      user = normalizeUser(user);
+    }
+    localStorage.setItem('user', JSON.stringify(user));
+    return { token, user };
+  } catch {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    return null;
+  }
 });
 
-/** Khôi phục auth từ localStorage ngay khi load trang (F5) để AdminRoute/ProtectedRoute không redirect về login trước khi checkAuth chạy xong */
+// ─── Initial state từ localStorage (sync, để AdminRoute/ProtectedRoute không flicker) ──
+
 const getInitialAuthState = () => {
   try {
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
-    if (token && userStr) {
+    if (token && token !== 'undefined' && userStr && userStr !== 'undefined') {
       const user = normalizeUser(JSON.parse(userStr));
-      return {
-        user,
-        token,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      };
+      return { user, token, isAuthenticated: true, isLoading: false, error: null };
     }
-  } catch (e) {
-    // JSON parse lỗi hoặc localStorage lỗi -> bỏ qua
+  } catch {
+    // ignore
   }
-  return {
-    user: null,
-    token: null,
-    isAuthenticated: false,
-    isLoading: false,
-    error: null,
-  };
+  return { user: null, token: null, isAuthenticated: false, isLoading: false, error: null };
 };
 
 const initialState = getInitialAuthState();
+
+// ─── Slice ───────────────────────────────────────────────────────────────────
 
 const authSlice = createSlice({
   name: 'auth',
@@ -191,10 +186,7 @@ const authSlice = createSlice({
   extraReducers: (builder) => {
     builder
       // Login
-      .addCase(login.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
+      .addCase(login.pending, (state) => { state.isLoading = true; state.error = null; })
       .addCase(login.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
@@ -202,15 +194,10 @@ const authSlice = createSlice({
         state.token = action.payload.token;
         state.error = null;
       })
-      .addCase(login.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-      })
+      .addCase(login.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
+
       // Register
-      .addCase(register.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
+      .addCase(register.pending, (state) => { state.isLoading = true; state.error = null; })
       .addCase(register.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
@@ -218,26 +205,19 @@ const authSlice = createSlice({
         state.token = action.payload.token;
         state.error = null;
       })
-      .addCase(register.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-      })
-      // Firebase Login
-      .addCase(firebaseLogin.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(firebaseLogin.fulfilled, (state, action) => {
+      .addCase(register.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
+
+      // Google Login — backend luôn tạo/đăng nhập user, trả { token, user }
+      .addCase(googleLogin.pending, (state) => { state.isLoading = true; state.error = null; })
+      .addCase(googleLogin.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
         state.user = action.payload.user;
         state.token = action.payload.token;
         state.error = null;
       })
-      .addCase(firebaseLogin.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-      })
+      .addCase(googleLogin.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
+
       // Check Auth
       .addCase(checkAuth.fulfilled, (state, action) => {
         if (action.payload) {
@@ -250,28 +230,21 @@ const authSlice = createSlice({
           state.token = null;
         }
       })
+
       // Get Profile
       .addCase(getProfile.fulfilled, (state, action) => {
-        const normalized = normalizeUser({ ...state.user, ...action.payload, roles: action.payload.roles });
+        const normalized = normalizeUser({ ...state.user, ...action.payload });
         state.user = normalized;
         localStorage.setItem('user', JSON.stringify(normalized));
       })
+
       // Update Profile
-      .addCase(updateProfile.fulfilled, (state, action) => {
-        state.user = action.payload;
-      })
+      .addCase(updateProfile.fulfilled, (state, action) => { state.user = action.payload; })
+
       // Change Password
-      .addCase(changePassword.pending, (state) => {
-        state.isLoading = true;
-      })
-      .addCase(changePassword.fulfilled, (state) => {
-        state.isLoading = false;
-        state.error = null;
-      })
-      .addCase(changePassword.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-      });
+      .addCase(changePassword.pending, (state) => { state.isLoading = true; })
+      .addCase(changePassword.fulfilled, (state) => { state.isLoading = false; state.error = null; })
+      .addCase(changePassword.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; });
   },
 });
 

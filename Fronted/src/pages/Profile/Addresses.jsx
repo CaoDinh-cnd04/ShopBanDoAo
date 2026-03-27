@@ -1,259 +1,193 @@
 import { useEffect, useState } from 'react';
-import { Card, Table, Button, Modal, Form, Row, Col, Alert } from 'react-bootstrap';
+import { useDispatch, useSelector } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useTranslation } from 'react-i18next';
-import { useDispatch, useSelector } from 'react-redux';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  fetchAddresses,
-  createAddress,
-  updateAddress,
-  deleteAddress,
+  FiMapPin, FiPlus, FiEdit2, FiTrash2, FiX,
+  FiUser, FiPhone, FiHome, FiCheck,
+} from 'react-icons/fi';
+import {
+  fetchAddresses, createAddress, updateAddress, deleteAddress,
 } from '../../store/slices/addressSlice';
-import { FiEdit, FiTrash2, FiPlus } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import Loading from '../../components/Loading/Loading';
 
-const addressSchema = z.object({
-  fullName: z.string().min(1, 'Full name is required'),
-  phone: z.string().min(10, 'Valid phone number is required'),
-  address: z.string().min(1, 'Address is required'),
-  city: z.string().min(1, 'City is required'),
-  district: z.string().min(1, 'District is required'),
-  ward: z.string().min(1, 'Ward is required'),
+const schema = z.object({
+  fullName: z.string().min(2, 'Họ tên tối thiểu 2 ký tự'),
+  phone: z.string().regex(/^(0|\+84)[3-9]\d{8}$/, 'Số điện thoại không hợp lệ'),
+  address: z.string().min(5, 'Vui lòng nhập địa chỉ cụ thể'),
+  ward: z.string().min(1, 'Vui lòng nhập phường/xã'),
+  district: z.string().min(1, 'Vui lòng nhập quận/huyện'),
+  city: z.string().min(1, 'Vui lòng nhập tỉnh/thành phố'),
   isDefault: z.boolean().optional(),
 });
 
-const Addresses = () => {
-  const { t } = useTranslation();
-  const dispatch = useDispatch();
-  const { addresses, isLoading } = useSelector((state) => state.addresses);
-  const [showModal, setShowModal] = useState(false);
-  const [editingAddress, setEditingAddress] = useState(null);
+const Field = ({ label, icon: Icon, name, placeholder, register, errors, type = 'text' }) => (
+  <div className="profile-field">
+    <label className="profile-field-label"><Icon size={14} /> {label}</label>
+    <input
+      type={type}
+      className={`profile-field-input ${errors[name] ? 'error' : ''}`}
+      placeholder={placeholder}
+      {...register(name)}
+    />
+    {errors[name] && <span className="profile-field-error">{errors[name].message}</span>}
+  </div>
+);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-  } = useForm({
-    resolver: zodResolver(addressSchema),
+const AddressModal = ({ editing, onClose, onSaved }) => {
+  const dispatch = useDispatch();
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: editing || { fullName: '', phone: '', address: '', ward: '', district: '', city: '', isDefault: false },
   });
 
-  useEffect(() => {
-    dispatch(fetchAddresses());
-  }, [dispatch]);
-
-  const handleOpenModal = (address = null) => {
-    setEditingAddress(address);
-    if (address) {
-      reset({
-        fullName: address.fullName,
-        phone: address.phone,
-        address: address.address,
-        city: address.city,
-        district: address.district,
-        ward: address.ward,
-        isDefault: address.isDefault || false,
-      });
-    } else {
-      reset({
-        fullName: '',
-        phone: '',
-        address: '',
-        city: '',
-        district: '',
-        ward: '',
-        isDefault: false,
-      });
-    }
-    setShowModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setEditingAddress(null);
-    reset();
-  };
-
   const onSubmit = async (data) => {
-    try {
-      if (editingAddress) {
-        await dispatch(updateAddress({ id: editingAddress.id, addressData: data }));
-        toast.success('Address updated successfully!');
-      } else {
-        await dispatch(createAddress(data));
-        toast.success('Address created successfully!');
-      }
-      handleCloseModal();
-      dispatch(fetchAddresses());
-    } catch (error) {
-      toast.error('Failed to save address');
+    const action = editing
+      ? updateAddress({ id: editing._id || editing.id, addressData: data })
+      : createAddress(data);
+    const result = await dispatch(action);
+    if ((editing ? updateAddress : createAddress).fulfilled.match(result)) {
+      toast.success(editing ? 'Cập nhật địa chỉ thành công' : 'Thêm địa chỉ thành công');
+      onSaved();
+    } else {
+      toast.error('Không thể lưu địa chỉ');
     }
   };
+
+  return (
+    <motion.div
+      className="pf-modal-overlay"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onClick={onClose}
+    >
+      <motion.div
+        className="pf-modal wide"
+        initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="pf-modal-head">
+          <h3>{editing ? 'Chỉnh sửa địa chỉ' : 'Thêm địa chỉ mới'}</h3>
+          <button className="pf-modal-close" onClick={onClose}><FiX size={18} /></button>
+        </div>
+
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <div className="addr-form-grid">
+            <Field label="Họ và tên" icon={FiUser} name="fullName" placeholder="Nguyễn Văn A" register={register} errors={errors} />
+            <Field label="Số điện thoại" icon={FiPhone} name="phone" placeholder="0901234567" register={register} errors={errors} />
+          </div>
+          <Field label="Địa chỉ (số nhà, tên đường)" icon={FiHome} name="address" placeholder="123 Đường Lê Lợi" register={register} errors={errors} />
+          <div className="addr-form-grid addr-form-grid-3">
+            <Field label="Phường / Xã" icon={FiMapPin} name="ward" placeholder="Phường Bến Nghé" register={register} errors={errors} />
+            <Field label="Quận / Huyện" icon={FiMapPin} name="district" placeholder="Quận 1" register={register} errors={errors} />
+            <Field label="Tỉnh / Thành phố" icon={FiMapPin} name="city" placeholder="TP. Hồ Chí Minh" register={register} errors={errors} />
+          </div>
+
+          <label className="addr-default-check">
+            <input type="checkbox" {...register('isDefault')} />
+            <span>Đặt làm địa chỉ mặc định</span>
+          </label>
+
+          <div className="pf-modal-actions">
+            <button type="button" className="profile-btn-secondary" onClick={onClose}>Hủy</button>
+            <button type="submit" className="profile-btn-primary">
+              <FiCheck size={15} /> {editing ? 'Cập nhật' : 'Thêm địa chỉ'}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const Addresses = () => {
+  const dispatch = useDispatch();
+  const { addresses: rawAddresses, isLoading } = useSelector((s) => s.addresses);
+  const addresses = Array.isArray(rawAddresses) ? rawAddresses : [];
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState(null);
+
+  useEffect(() => { dispatch(fetchAddresses()); }, [dispatch]);
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this address?')) {
-      try {
-        await dispatch(deleteAddress(id));
-        toast.success('Address deleted successfully!');
-        dispatch(fetchAddresses());
-      } catch (error) {
-        toast.error('Failed to delete address');
-      }
+    if (!window.confirm('Xóa địa chỉ này?')) return;
+    const result = await dispatch(deleteAddress(id));
+    if (deleteAddress.fulfilled.match(result)) {
+      toast.success('Đã xóa địa chỉ');
+    } else {
+      toast.error('Không thể xóa địa chỉ');
     }
   };
+
+  const openAdd = () => { setEditing(null); setShowModal(true); };
+  const openEdit = (addr) => { setEditing(addr); setShowModal(true); };
+  const handleSaved = () => { setShowModal(false); dispatch(fetchAddresses()); };
 
   if (isLoading) return <Loading />;
 
   return (
-    <>
-      <Card>
-        <Card.Header className="d-flex justify-content-between align-items-center">
-          <h5 className="mb-0">{t('profile.addresses')}</h5>
-          <Button variant="primary" onClick={() => handleOpenModal()}>
-            <FiPlus className="me-2" />
-            Add Address
-          </Button>
-        </Card.Header>
-        <Card.Body>
-          {addresses.length === 0 ? (
-            <Alert variant="info">No addresses found. Add your first address!</Alert>
-          ) : (
-            <Table responsive>
-              <thead>
-                <tr>
-                  <th>Full Name</th>
-                  <th>Phone</th>
-                  <th>Address</th>
-                  <th>City</th>
-                  <th>Default</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {addresses.map((address) => (
-                  <tr key={address.id}>
-                    <td>{address.fullName}</td>
-                    <td>{address.phone}</td>
-                    <td>
-                      {address.address}, {address.ward}, {address.district}
-                    </td>
-                    <td>{address.city}</td>
-                    <td>
-                      {address.isDefault && (
-                        <span className="badge bg-success">Default</span>
-                      )}
-                    </td>
-                    <td>
-                      <Button
-                        variant="link"
-                        size="sm"
-                        onClick={() => handleOpenModal(address)}
-                      >
-                        <FiEdit />
-                      </Button>
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="text-danger"
-                        onClick={() => handleDelete(address.id)}
-                      >
-                        <FiTrash2 />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
-        </Card.Body>
-      </Card>
+    <div className="profile-section-card">
+      <div className="profile-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div className="profile-section-title-row">
+            <FiMapPin size={20} />
+            <h2 className="profile-section-title">Địa chỉ giao hàng</h2>
+          </div>
+          <p className="profile-section-sub">{addresses?.length || 0} địa chỉ đã lưu</p>
+        </div>
+        <button className="profile-btn-primary" onClick={openAdd}>
+          <FiPlus size={15} /> Thêm địa chỉ
+        </button>
+      </div>
 
-      <Modal show={showModal} onHide={handleCloseModal} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>
-            {editingAddress ? 'Edit Address' : 'Add New Address'}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handleSubmit(onSubmit)}>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Full Name *</Form.Label>
-                  <Form.Control {...register('fullName')} />
-                  {errors.fullName && (
-                    <Form.Text className="text-danger">{errors.fullName.message}</Form.Text>
-                  )}
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Phone *</Form.Label>
-                  <Form.Control {...register('phone')} />
-                  {errors.phone && (
-                    <Form.Text className="text-danger">{errors.phone.message}</Form.Text>
-                  )}
-                </Form.Group>
-              </Col>
-            </Row>
-            <Form.Group className="mb-3">
-              <Form.Label>Address *</Form.Label>
-              <Form.Control {...register('address')} />
-              {errors.address && (
-                <Form.Text className="text-danger">{errors.address.message}</Form.Text>
+      {(!addresses || addresses.length === 0) ? (
+        <div className="profile-empty-state">
+          <FiMapPin size={48} />
+          <p>Bạn chưa có địa chỉ nào. Thêm địa chỉ để đặt hàng nhanh hơn!</p>
+          <button className="profile-btn-primary" onClick={openAdd}>
+            <FiPlus size={15} /> Thêm địa chỉ đầu tiên
+          </button>
+        </div>
+      ) : (
+        <div className="addr-list">
+          {addresses.map((addr) => (
+            <motion.div
+              key={addr._id || addr.id}
+              className="addr-card"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              {addr.isDefault && (
+                <span className="addr-default-badge"><FiCheck size={11} /> Mặc định</span>
               )}
-            </Form.Group>
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>City *</Form.Label>
-                  <Form.Control {...register('city')} />
-                  {errors.city && (
-                    <Form.Text className="text-danger">{errors.city.message}</Form.Text>
-                  )}
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>District *</Form.Label>
-                  <Form.Control {...register('district')} />
-                  {errors.district && (
-                    <Form.Text className="text-danger">{errors.district.message}</Form.Text>
-                  )}
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Ward *</Form.Label>
-                  <Form.Control {...register('ward')} />
-                  {errors.ward && (
-                    <Form.Text className="text-danger">{errors.ward.message}</Form.Text>
-                  )}
-                </Form.Group>
-              </Col>
-            </Row>
-            <Form.Group className="mb-3">
-              <Form.Check
-                type="checkbox"
-                label="Set as default address"
-                {...register('isDefault')}
-              />
-            </Form.Group>
-            <div className="d-flex gap-2">
-              <Button type="submit" variant="primary">
-                {editingAddress ? 'Update' : 'Create'}
-              </Button>
-              <Button type="button" variant="secondary" onClick={handleCloseModal}>
-                Cancel
-              </Button>
-            </div>
-          </Form>
-        </Modal.Body>
-      </Modal>
-    </>
+              <div className="addr-card-body">
+                <div className="addr-name">{addr.fullName}</div>
+                <div className="addr-phone">{addr.phone}</div>
+                <div className="addr-text">
+                  {addr.address}, {addr.ward}, {addr.district}, {addr.city}
+                </div>
+              </div>
+              <div className="addr-card-actions">
+                <button className="addr-btn edit" onClick={() => openEdit(addr)}>
+                  <FiEdit2 size={14} /> Sửa
+                </button>
+                <button className="addr-btn delete" onClick={() => handleDelete(addr._id || addr.id)}>
+                  <FiTrash2 size={14} /> Xóa
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      <AnimatePresence>
+        {showModal && (
+          <AddressModal editing={editing} onClose={() => setShowModal(false)} onSaved={handleSaved} />
+        )}
+      </AnimatePresence>
+    </div>
   );
 };
 

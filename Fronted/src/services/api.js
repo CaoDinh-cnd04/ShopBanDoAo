@@ -25,19 +25,24 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor — 401: logout, redirect login kèm returnUrl (tránh lặp khi đang ở /login)
+// Response interceptor — 401: logout + redirect (skip auth routes to avoid loop)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      store.dispatch(logout());
-      const path = `${window.location.pathname}${window.location.search}`;
-      const onLogin = path.startsWith('/login');
-      if (onLogin) {
-        window.location.href = '/login';
-      } else {
-        const returnUrl = encodeURIComponent(path);
-        window.location.href = `/login?returnUrl=${returnUrl}`;
+      const url = error.config?.url || '';
+      const isAuthRoute =
+        url.includes('/auth/login') ||
+        url.includes('/auth/register') ||
+        url.includes('/auth/google-login');
+      if (!isAuthRoute) {
+        store.dispatch(logout());
+        const path = `${window.location.pathname}${window.location.search}`;
+        const onLogin = path.startsWith('/login');
+        if (!onLogin) {
+          const returnUrl = encodeURIComponent(path);
+          window.location.href = `/login?returnUrl=${returnUrl}`;
+        }
       }
     }
     return Promise.reject(error);

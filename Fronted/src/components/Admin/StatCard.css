@@ -1,19 +1,18 @@
-/* New Admin KPI card styles (work with AdminLayout.css theme) */
+/* KPI cards — enterprise light surface (Admin shell) */
 .admin-kpi {
-  border-radius: 16px !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  background: rgba(255, 255, 255, 0.06) !important;
-  backdrop-filter: blur(10px);
-  color: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+  border-radius: var(--admin-radius-lg, 14px) !important;
+  border: 1px solid var(--admin-border, #e2e8f0) !important;
+  background: var(--admin-surface, #ffffff) !important;
+  color: var(--admin-text, #0f172a);
+  box-shadow: var(--admin-shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.06));
   height: 100%;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 .admin-kpi:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
-  background: rgba(255, 255, 255, 0.075) !important;
+  box-shadow: var(--admin-shadow-md, 0 4px 12px rgba(15, 23, 42, 0.08));
+  border-color: var(--admin-border-strong, #cbd5e1) !important;
 }
 
 .admin-kpi-body {
@@ -30,7 +29,7 @@
 .admin-kpi-title {
   font-size: 0.95rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.68);
+  color: var(--admin-text-muted, #64748b);
 }
 
 .admin-kpi-value {
@@ -38,6 +37,7 @@
   font-weight: 900;
   letter-spacing: 0.2px;
   margin-top: 0.25rem;
+  color: var(--admin-text, #0f172a);
 }
 
 .admin-kpi-icon {
@@ -47,30 +47,33 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--admin-border, #e2e8f0);
+  background: var(--admin-canvas, #f1f5f9);
+  color: var(--admin-accent-hover, #0f766e);
 }
 
 .admin-kpi-sub {
   margin-top: 0.75rem;
   font-size: 0.9rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.68);
-}
-.admin-kpi-sub.is-up {
-  color: rgba(34, 197, 94, 0.95);
-}
-.admin-kpi-sub.is-down {
-  color: rgba(239, 68, 68, 0.95);
+  color: var(--admin-text-muted, #64748b);
 }
 
-/* Biến thể cùng một tone (chỉ khác độ trong suốt) */
+.admin-kpi-sub.is-up {
+  color: var(--admin-success, #059669);
+}
+
+.admin-kpi-sub.is-down {
+  color: var(--admin-danger, #dc2626);
+}
+
 .admin-kpi-indigo,
 .admin-kpi-green,
 .admin-kpi-amber {
-  border-color: rgba(20, 184, 166, 0.35) !important;
-  background: rgba(20, 184, 166, 0.12) !important;
+  border-color: var(--admin-accent-border, rgba(13, 148, 136, 0.35)) !important;
+  background: linear-gradient(180deg, var(--admin-accent-muted, rgba(13, 148, 136, 0.12)) 0%, var(--admin-surface, #fff) 55%) !important;
 }
+
 .admin-kpi-surface {
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: var(--admin-border, #e2e8f0) !important;
 }

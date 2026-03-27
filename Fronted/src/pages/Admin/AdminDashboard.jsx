@@ -128,7 +128,7 @@ const AdminDashboard = () => {
       {loading ? (
         <div className="admin-panel" style={{ padding: 24, textAlign: 'center' }}>
           <Spinner animation="border" />
-          <div style={{ marginTop: 12, color: 'rgba(255,255,255,0.62)' }}>Đang tải dữ liệu…</div>
+          <div className="admin-loading-hint">Đang tải dữ liệu…</div>
         </div>
       ) : error ? (
         <Alert variant="danger" className="mb-0">
@@ -215,9 +215,7 @@ const AdminDashboard = () => {
           <Card className="admin-panel mb-3">
             <Card.Body className="admin-panel-body">
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                <div className="fw-bold" style={{ color: 'rgba(255,255,255,0.88)' }}>
-                  Truy cập nhanh
-                </div>
+                <div className="fw-bold text-dark">Truy cập nhanh</div>
               </div>
               <div className="d-flex flex-wrap gap-2">
                 {quickLinks.map(({ to, label, icon: Icon }) => (

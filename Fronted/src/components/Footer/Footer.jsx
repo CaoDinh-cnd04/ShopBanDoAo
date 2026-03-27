@@ -1,92 +1,144 @@
-import { Container, Row, Col } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+import { Container, Row, Col } from 'react-bootstrap';
 import { motion } from 'framer-motion';
-import { useTranslation } from 'react-i18next';
-import { FiFacebook, FiInstagram, FiTwitter, FiYoutube } from 'react-icons/fi';
+import {
+  FiFacebook, FiInstagram, FiTwitter, FiYoutube,
+  FiMail, FiPhone, FiMapPin, FiArrowRight
+} from 'react-icons/fi';
 import './Footer.css';
 
-const Footer = () => {
-  const { t } = useTranslation();
+const SHOP_LINKS = [
+  { to: '/products', label: 'Tất cả sản phẩm' },
+  { to: '/products?category=ao', label: 'Áo thể thao' },
+  { to: '/products?category=giay', label: 'Giày thể thao' },
+  { to: '/products?isFeatured=1', label: 'Sản phẩm nổi bật' },
+];
+const COURT_LINKS = [
+  { to: '/courts', label: 'Tất cả sân' },
+  { to: '/courts?type=tennis', label: 'Sân Tennis' },
+  { to: '/courts?type=badminton', label: 'Sân Cầu lông' },
+  { to: '/courts?type=football', label: 'Sân Bóng đá' },
+];
+const SUPPORT_LINKS = [
+  { to: '/faq', label: 'Câu hỏi thường gặp' },
+  { to: '/contact', label: 'Liên hệ' },
+  { to: '/shipping', label: 'Vận chuyển & Đổi trả' },
+  { to: '/privacy', label: 'Chính sách bảo mật' },
+  { to: '/terms', label: 'Điều khoản sử dụng' },
+];
 
+const SOCIALS = [
+  { icon: FiFacebook, href: '#', label: 'Facebook' },
+  { icon: FiInstagram, href: '#', label: 'Instagram' },
+  { icon: FiTwitter, href: '#', label: 'Twitter' },
+  { icon: FiYoutube, href: '#', label: 'YouTube' },
+];
+
+const Footer = () => {
   return (
-    <footer className="footer-custom mt-5">
-      <Container>
-        <Row className="py-5">
-          <Col md={3} className="mb-4">
-            <motion.h5
-              className="fw-bold mb-3 gradient-text"
-              whileHover={{ scale: 1.05 }}
-            >
-              SPORTS
-            </motion.h5>
-            <p className="text-muted">
-              Your ultimate destination for sports gear and court bookings.
-            </p>
-            <div className="d-flex gap-3">
-              {[
-                { icon: FiFacebook, color: '#1877f2' },
-                { icon: FiInstagram, color: '#e4405f' },
-                { icon: FiTwitter, color: '#1da1f2' },
-                { icon: FiYoutube, color: '#ff0000' },
-              ].map((social, index) => {
-                const Icon = social.icon;
-                return (
-                  <motion.a
-                    key={index}
-                    href="#"
-                    className="text-dark"
-                    whileHover={{ scale: 1.3, rotate: 360, color: social.color }}
-                    whileTap={{ scale: 0.9 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <Icon size={20} />
-                  </motion.a>
-                );
-              })}
+    <footer className="footer-premium">
+      {/* Wave divider */}
+      <div className="footer-wave" aria-hidden="true">
+        <svg viewBox="0 0 1440 60" preserveAspectRatio="none">
+          <path
+            d="M0,0 C360,60 1080,60 1440,0 L1440,60 L0,60 Z"
+            fill="currentColor"
+          />
+        </svg>
+      </div>
+
+      <div className="footer-body">
+        <Container>
+          <Row className="gy-5">
+            {/* Brand column */}
+            <Col lg={4} md={12}>
+              <div className="footer-brand">
+                <Link to="/" className="footer-logo">
+                  ⚡ <span>SPORTS</span>
+                </Link>
+                <p className="footer-tagline">
+                  Hệ thống mua sắm & đặt sân thể thao hàng đầu Việt Nam — chất lượng cao, dịch vụ tốt.
+                </p>
+                {/* Social */}
+                <div className="footer-socials">
+                  {SOCIALS.map(({ icon: Icon, href, label }) => (
+                    <motion.a
+                      key={label}
+                      href={href}
+                      className="social-btn"
+                      whileHover={{ scale: 1.15, y: -3 }}
+                      whileTap={{ scale: 0.92 }}
+                      aria-label={label}
+                      rel="noopener noreferrer"
+                    >
+                      <Icon size={18} />
+                    </motion.a>
+                  ))}
+                </div>
+              </div>
+            </Col>
+
+            {/* Links columns */}
+            <Col lg={2} sm={6}>
+              <FooterLinkGroup title="Mua sắm" links={SHOP_LINKS} />
+            </Col>
+            <Col lg={2} sm={6}>
+              <FooterLinkGroup title="Đặt sân" links={COURT_LINKS} />
+            </Col>
+            <Col lg={2} sm={6}>
+              <FooterLinkGroup title="Hỗ trợ" links={SUPPORT_LINKS} />
+            </Col>
+
+            {/* Contact column */}
+            <Col lg={2} sm={6}>
+              <h6 className="footer-heading">Liên hệ</h6>
+              <ul className="footer-contact-list">
+                <li>
+                  <FiMapPin size={14} />
+                  <span>123 Đường ABC, Q.1, TP.HCM</span>
+                </li>
+                <li>
+                  <FiPhone size={14} />
+                  <a href="tel:0123456789">0123 456 789</a>
+                </li>
+                <li>
+                  <FiMail size={14} />
+                  <a href="mailto:support@sports.vn">support@sports.vn</a>
+                </li>
+              </ul>
+            </Col>
+          </Row>
+
+          <hr className="footer-divider" />
+
+          <div className="footer-bottom">
+            <p>© {new Date().getFullYear()} Sports E-Commerce. All rights reserved.</p>
+            <div className="footer-bottom-links">
+              <Link to="/privacy">Bảo mật</Link>
+              <Link to="/terms">Điều khoản</Link>
+              <Link to="/sitemap">Sitemap</Link>
             </div>
-          </Col>
-          <Col md={3} className="mb-4">
-            <h6 className="fw-bold mb-3">{t('footer.shop.title')}</h6>
-            <ul className="list-unstyled">
-              <li><Link to="/products" className="text-muted text-decoration-none">{t('footer.shop.allProducts')}</Link></li>
-              <li><Link to="/products?category=shoes" className="text-muted text-decoration-none">{t('footer.shop.shoes')}</Link></li>
-              <li><Link to="/products?category=apparel" className="text-muted text-decoration-none">{t('footer.shop.apparel')}</Link></li>
-              <li><Link to="/products?category=equipment" className="text-muted text-decoration-none">{t('footer.shop.equipment')}</Link></li>
-            </ul>
-          </Col>
-          <Col md={3} className="mb-4">
-            <h6 className="fw-bold mb-3">{t('footer.support.title')}</h6>
-            <ul className="list-unstyled">
-              <li><Link to="/about" className="text-muted text-decoration-none">{t('footer.support.about')}</Link></li>
-              <li><Link to="/contact" className="text-muted text-decoration-none">{t('footer.support.contact')}</Link></li>
-              <li><Link to="/faq" className="text-muted text-decoration-none">{t('footer.support.faq')}</Link></li>
-              <li><Link to="/shipping" className="text-muted text-decoration-none">{t('footer.support.shipping')}</Link></li>
-            </ul>
-          </Col>
-          <Col md={3} className="mb-4">
-            <h6 className="fw-bold mb-3">{t('footer.bookings.title')}</h6>
-            <ul className="list-unstyled">
-              <li><Link to="/courts" className="text-muted text-decoration-none">{t('footer.bookings.findCourts')}</Link></li>
-              <li><Link to="/courts?type=football" className="text-muted text-decoration-none">{t('footer.bookings.football')}</Link></li>
-              <li><Link to="/courts?type=basketball" className="text-muted text-decoration-none">{t('footer.bookings.basketball')}</Link></li>
-              <li><Link to="/courts?type=tennis" className="text-muted text-decoration-none">{t('footer.bookings.tennis')}</Link></li>
-            </ul>
-          </Col>
-        </Row>
-        <Row className="py-3 border-top">
-          <Col md={6}>
-            <p className="text-muted mb-0">
-              &copy; {new Date().getFullYear()} {t('footer.copyright')}
-            </p>
-          </Col>
-          <Col md={6} className="text-end">
-            <Link to="/privacy" className="text-muted text-decoration-none me-3">{t('footer.privacy')}</Link>
-            <Link to="/terms" className="text-muted text-decoration-none">{t('footer.terms')}</Link>
-          </Col>
-        </Row>
-      </Container>
+          </div>
+        </Container>
+      </div>
     </footer>
   );
 };
+
+const FooterLinkGroup = ({ title, links }) => (
+  <div>
+    <h6 className="footer-heading">{title}</h6>
+    <ul className="footer-links">
+      {links.map(({ to, label }) => (
+        <li key={to}>
+          <Link to={to} className="footer-link">
+            <FiArrowRight size={12} />
+            {label}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  </div>
+);
 
 export default Footer;

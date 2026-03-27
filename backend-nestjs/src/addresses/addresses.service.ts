@@ -16,7 +16,7 @@ export class AddressesService {
     if (createDto.isDefault) {
       await this.addressRepository.unsetDefaultAddress(userId);
     }
-    
+
     // Đảm bảo là nếu chưa có thì gán default luôn
     const existing = await this.addressRepository.findAllByUser(userId);
     if (existing.length === 0) {

@@ -20,35 +20,36 @@ const RevenueChart = ({ data }) => {
             ) : (
               <ResponsiveContainer width="100%" height={320}>
                 <LineChart data={data}>
-                  <CartesianGrid stroke="rgba(255,255,255,0.10)" strokeDasharray="4 4" />
+                  <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" />
                   <XAxis
                     dataKey="Date"
-                    tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.70)' }}
+                    tick={{ fontSize: 12, fill: '#64748b' }}
                     tickFormatter={(value) =>
                       new Date(value).toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' })
                     }
                   />
                   <YAxis
-                    tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.70)' }}
+                    tick={{ fontSize: 12, fill: '#64748b' }}
                     tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
                   />
                   <Tooltip
                     contentStyle={{
-                      background: 'rgba(15, 26, 46, 0.95)',
-                      border: '1px solid rgba(255,255,255,0.12)',
-                      borderRadius: 12,
-                      color: 'rgba(255,255,255,0.92)',
+                      background: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 10,
+                      color: '#0f172a',
+                      boxShadow: '0 4px 12px rgba(15, 23, 42, 0.08)',
                     }}
                     formatter={(value) =>
                       new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
                     }
                     labelFormatter={(label) => new Date(label).toLocaleDateString('vi-VN')}
                   />
-                  <Legend wrapperStyle={{ color: 'rgba(255,255,255,0.70)' }} />
+                  <Legend wrapperStyle={{ color: '#64748b' }} />
                   <Line
                     type="monotone"
                     dataKey="Revenue"
-                    stroke="#14b8a6"
+                    stroke="#0d9488"
                     strokeWidth={2.5}
                     name="Doanh thu"
                     dot={false}

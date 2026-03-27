@@ -1,188 +1,224 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Card, Button, Form, Badge } from 'react-bootstrap';
-import { motion } from 'framer-motion';
+import { Container, Row, Col } from 'react-bootstrap';
+import { motion, AnimatePresence } from 'framer-motion';
 import DatePicker from 'react-datepicker';
-import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
+import { FiCalendar, FiClock, FiCheck, FiMapPin, FiArrowLeft } from 'react-icons/fi';
 import { fetchCourtById } from '../../store/slices/courtSlice';
 import { fetchAvailableSlots, createBooking } from '../../store/slices/bookingSlice';
 import { toast } from 'react-toastify';
 import Loading from '../../components/Loading/Loading';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 import './Booking.css';
+import 'react-datepicker/dist/react-datepicker.css';
+
+const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
 
 const Booking = () => {
   const { courtId } = useParams();
   const navigate = useNavigate();
-  const { t } = useTranslation();
   const dispatch = useDispatch();
-  const { court } = useSelector((state) => state.courts);
-  const { availableSlots, isLoading } = useSelector((state) => state.bookings);
+  const { court } = useSelector((s) => s.courts);
+  const { availableSlots, isLoading } = useSelector((s) => s.bookings);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedSlots, setSelectedSlots] = useState([]);
 
-  useEffect(() => {
-    dispatch(fetchCourtById(courtId));
-  }, [courtId, dispatch]);
+  useEffect(() => { dispatch(fetchCourtById(courtId)); }, [courtId, dispatch]);
 
   useEffect(() => {
     if (selectedDate) {
-      dispatch(fetchAvailableSlots({ courtId, date: selectedDate.toISOString().split('T')[0] }));
+      dispatch(fetchAvailableSlots({
+        courtId,
+        date: selectedDate.toISOString().split('T')[0],
+      }));
+      setSelectedSlots([]); // reset khi đổi ngày
     }
   }, [selectedDate, courtId, dispatch]);
 
-  const handleSlotToggle = (slotId) => {
-    setSelectedSlots((prev) =>
-      prev.includes(slotId)
-        ? prev.filter((id) => id !== slotId)
-        : [...prev, slotId]
+  const toggleSlot = (slotId) => {
+    setSelectedSlots(prev =>
+      prev.includes(slotId) ? prev.filter(id => id !== slotId) : [...prev, slotId]
     );
   };
 
-  const handleSubmit = async () => {
-    if (selectedSlots.length === 0) {
-      toast.error('Please select at least one time slot');
-      return;
-    }
+  const totalPrice = (court?.pricePerHour || 0) * selectedSlots.length;
 
-    const bookingData = {
+  const handleSubmit = async () => {
+    if (selectedSlots.length === 0) { toast.error('Vui lòng chọn ít nhất 1 khung giờ'); return; }
+    const res = await dispatch(createBooking({
       courtId: parseInt(courtId),
       bookingDate: selectedDate.toISOString().split('T')[0],
       timeSlotIds: selectedSlots,
-    };
-
-    const result = await dispatch(createBooking(bookingData));
-    if (createBooking.fulfilled.match(result)) {
-      toast.success('Booking created successfully!');
+    }));
+    if (createBooking.fulfilled.match(res)) {
+      toast.success('Đặt sân thành công! 🎉');
       navigate('/profile/bookings');
     } else {
-      toast.error(result.payload || 'Failed to create booking');
+      toast.error(res.payload || 'Đặt sân thất bại');
     }
   };
 
-  if (isLoading) return <Loading />;
+  if (isLoading && !court) return <Loading />;
 
   return (
-    <Container className="py-5">
-      <motion.h2
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="fw-bold mb-4 gradient-text"
-        style={{ fontSize: '2.5rem' }}
-      >
-        {t('courts.book')}
-      </motion.h2>
-      <Row>
-        <Col md={6}>
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <Card className="mb-4">
-              <Card.Body>
-                <h4 className="fw-bold mb-3">{court?.courtName}</h4>
-                <p className="text-muted">{court?.courtType?.typeName}</p>
-                <p className="fw-bold gradient-text fs-4">
-                  {court?.pricePerHour?.toLocaleString('vi-VN')} ₫/hour
-                </p>
-              </Card.Body>
-            </Card>
+    <div className="booking-page">
+      <Container>
+        {/* Header */}
+        <div className="booking-header">
+          <button className="booking-back-btn" onClick={() => navigate(`/courts/${courtId}`)}>
+            <FiArrowLeft size={16} /> Quay lại
+          </button>
+          <h1 className="booking-title">Đặt sân</h1>
+        </div>
 
-            <Card>
-              <Card.Header>
-                <h5 className="mb-0">{t('courts.selectDate')}</h5>
-              </Card.Header>
-              <Card.Body>
+        <Row className="g-4">
+          {/* Court info + Calendar */}
+          <Col lg={8}>
+            {/* Court info card */}
+            {court && (
+              <div className="booking-court-card">
+                <img
+                  src={resolveMediaUrl(court.imageUrl || court.image) || '/placeholder.jpg'}
+                  alt={court.courtName}
+                  className="bcc-img"
+                  onError={(e) => { e.currentTarget.src = '/placeholder.jpg'; }}
+                />
+                <div className="bcc-info">
+                  <span className="bcc-type">{court.courtType?.typeName}</span>
+                  <h2 className="bcc-name">{court.courtName}</h2>
+                  {court.address && (
+                    <p className="bcc-address"><FiMapPin size={13} /> {court.address}</p>
+                  )}
+                </div>
+                <div className="bcc-price">
+                  <span className="bcc-price-num">{fmt(court.pricePerHour)}</span>
+                  <span className="bcc-price-unit">/giờ</span>
+                </div>
+              </div>
+            )}
+
+            {/* Date picker */}
+            <div className="booking-section">
+              <h3 className="booking-section-title"><FiCalendar size={18} /> Chọn ngày</h3>
+              <div className="booking-datepicker-wrap">
                 <DatePicker
                   selected={selectedDate}
-                  onChange={(date) => setSelectedDate(date)}
+                  onChange={(d) => setSelectedDate(d)}
                   minDate={new Date()}
-                  className="form-control"
+                  inline
                   dateFormat="yyyy-MM-dd"
                 />
-              </Card.Body>
-            </Card>
-          </motion.div>
-        </Col>
+              </div>
+            </div>
 
-        <Col md={6}>
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <Card>
-              <Card.Header>
-                <h5 className="mb-0">{t('courts.selectTime')}</h5>
-              </Card.Header>
-              <Card.Body>
-                {availableSlots.length === 0 ? (
-                  <p className="text-muted">No available slots for this date</p>
-                ) : (
-                  <div className="d-flex flex-wrap gap-2">
-                    {availableSlots.map((slot, index) => (
-                      <motion.div
-                        key={slot.id}
-                        initial={{ opacity: 0, scale: 0.8 }}
+            {/* Time slots */}
+            <div className="booking-section">
+              <h3 className="booking-section-title">
+                <FiClock size={18} /> Chọn khung giờ
+                <span className="booking-date-label">
+                  {selectedDate.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' })}
+                </span>
+              </h3>
+
+              {isLoading ? (
+                <Loading />
+              ) : !availableSlots || availableSlots.length === 0 ? (
+                <div className="booking-no-slots">
+                  <span>😔</span>
+                  <p>Không còn khung giờ trống cho ngày này</p>
+                </div>
+              ) : (
+                <div className="booking-slots">
+                  {availableSlots.map((slot, i) => {
+                    const sid = slot.id || slot._id;
+                    const isBooked = slot.isBooked || slot.status === 'booked';
+                    const isSelected = selectedSlots.includes(sid);
+                    return (
+                      <motion.button
+                        key={sid}
+                        className={`time-slot ${isSelected ? 'selected' : ''} ${isBooked ? 'booked' : ''}`}
+                        onClick={() => !isBooked && toggleSlot(sid)}
+                        disabled={isBooked}
+                        initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: index * 0.05 }}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
+                        transition={{ delay: i * 0.03 }}
+                        whileTap={!isBooked ? { scale: 0.95 } : {}}
                       >
-                        <Button
-                          variant={selectedSlots.includes(slot.id) ? 'primary' : 'outline-primary'}
-                          onClick={() => handleSlotToggle(slot.id)}
-                        >
-                          {slot.startTime} - {slot.endTime}
-                        </Button>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </Card.Body>
-            </Card>
+                        {isSelected && <FiCheck size={13} />}
+                        {slot.startTime} – {slot.endTime}
+                        {isBooked && <span className="slot-booked-label">Đã đặt</span>}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </Col>
 
-            {selectedSlots.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
+          {/* Summary card */}
+          <Col lg={4}>
+            <div className="booking-summary-card">
+              <h4 className="bs-title">Tóm tắt đặt sân</h4>
+
+              <div className="bs-row">
+                <span>Ngày</span>
+                <span>{selectedDate.toLocaleDateString('vi-VN')}</span>
+              </div>
+              <div className="bs-row">
+                <span>Số khung giờ</span>
+                <span>{selectedSlots.length}</span>
+              </div>
+              <div className="bs-row">
+                <span>Giá/giờ</span>
+                <span>{fmt(court?.pricePerHour)}</span>
+              </div>
+
+              <hr className="bs-divider" />
+
+              <div className="bs-row bs-total">
+                <span>Tổng tiền</span>
+                <span className="bs-total-amount">{fmt(totalPrice)}</span>
+              </div>
+
+              {/* Selected slots */}
+              <AnimatePresence>
+                {selectedSlots.length > 0 && (
+                  <motion.div
+                    className="bs-slots-list"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                  >
+                    {availableSlots
+                      .filter(s => selectedSlots.includes(s.id || s._id))
+                      .map(s => (
+                        <span key={s.id || s._id} className="bs-slot-chip">
+                          {s.startTime} – {s.endTime}
+                        </span>
+                      ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <motion.button
+                className="bs-confirm-btn"
+                onClick={handleSubmit}
+                disabled={isLoading || selectedSlots.length === 0}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
               >
-                <Card className="mt-4 border-primary">
-                  <Card.Body>
-                    <h5 className="mb-3 gradient-text">Booking Summary</h5>
-                    <p>Date: {selectedDate.toLocaleDateString()}</p>
-                    <p>Time Slots: {selectedSlots.length}</p>
-                    <motion.p
-                      className="fw-bold gradient-text fs-4"
-                      animate={{ scale: [1, 1.05, 1] }}
-                      transition={{ duration: 1, repeat: Infinity }}
-                    >
-                      Total: {(court?.pricePerHour * selectedSlots.length).toLocaleString('vi-VN')} ₫
-                    </motion.p>
-                    <motion.div
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <Button
-                        variant="primary"
-                        size="lg"
-                        className="w-100"
-                        onClick={handleSubmit}
-                        disabled={isLoading}
-                      >
-                        Confirm Booking
-                      </Button>
-                    </motion.div>
-                  </Card.Body>
-                </Card>
-              </motion.div>
-            )}
-          </motion.div>
-        </Col>
-      </Row>
-    </Container>
+                {isLoading ? <span className="auth-spinner" /> : (
+                  <><FiCheck size={16} /> Xác nhận đặt sân</>
+                )}
+              </motion.button>
+
+              <p className="bs-note">Bạn sẽ được xác nhận qua email sau khi đặt thành công</p>
+            </div>
+          </Col>
+        </Row>
+      </Container>
+    </div>
   );
 };
 

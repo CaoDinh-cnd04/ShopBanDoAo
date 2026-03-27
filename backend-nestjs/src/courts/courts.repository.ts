@@ -5,9 +5,15 @@ import { Court, CourtDocument } from './schemas/court.schema';
 
 @Injectable()
 export class CourtRepository {
-  constructor(@InjectModel(Court.name) private courtModel: Model<CourtDocument>) {}
+  constructor(
+    @InjectModel(Court.name) private courtModel: Model<CourtDocument>,
+  ) {}
 
-  async findAll(match: any, skip: number, limit: number): Promise<CourtDocument[]> {
+  async findAll(
+    match: any,
+    skip: number,
+    limit: number,
+  ): Promise<CourtDocument[]> {
     return this.courtModel.find(match).skip(skip).limit(limit).exec();
   }
 
@@ -24,8 +30,13 @@ export class CourtRepository {
     return this.courtModel.findById(id).exec();
   }
 
-  async update(id: string, updateData: Partial<Court>): Promise<CourtDocument | null> {
-    return this.courtModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+  async update(
+    id: string,
+    updateData: Partial<Court>,
+  ): Promise<CourtDocument | null> {
+    return this.courtModel
+      .findByIdAndUpdate(id, updateData, { new: true })
+      .exec();
   }
 
   async delete(id: string): Promise<CourtDocument | null> {

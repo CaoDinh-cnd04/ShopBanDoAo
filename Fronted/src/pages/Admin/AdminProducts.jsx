@@ -243,7 +243,7 @@ const AdminProducts = () => {
                     })
                   ) : (
                     <tr>
-                      <td colSpan="8" className="text-center" style={{ color: 'rgba(255,255,255,0.62)' }}>
+                      <td colSpan="8" className="text-center text-muted">
                         Không có sản phẩm nào
                       </td>
                     </tr>

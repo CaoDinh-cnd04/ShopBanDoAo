@@ -8,7 +8,7 @@ export class CategoriesService {
 
   async getAllCategories() {
     const categories = await this.categoryRepository.findAll();
-    return { categories };
+    return categories; // Trả về array trực tiếp, không wrap { categories: [...] }
   }
 
   async getCategoryById(id: string) {

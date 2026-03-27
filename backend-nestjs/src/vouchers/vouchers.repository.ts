@@ -5,9 +5,15 @@ import { Voucher, VoucherDocument } from './schemas/voucher.schema';
 
 @Injectable()
 export class VoucherRepository {
-  constructor(@InjectModel(Voucher.name) private voucherModel: Model<VoucherDocument>) {}
+  constructor(
+    @InjectModel(Voucher.name) private voucherModel: Model<VoucherDocument>,
+  ) {}
 
-  async findAll(match: any, skip: number, limit: number): Promise<VoucherDocument[]> {
+  async findAll(
+    match: any,
+    skip: number,
+    limit: number,
+  ): Promise<VoucherDocument[]> {
     return this.voucherModel.find(match).skip(skip).limit(limit).exec();
   }
 
@@ -28,8 +34,13 @@ export class VoucherRepository {
     return newVoucher.save();
   }
 
-  async update(id: string, updateData: Partial<Voucher>): Promise<VoucherDocument | null> {
-    return this.voucherModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+  async update(
+    id: string,
+    updateData: Partial<Voucher>,
+  ): Promise<VoucherDocument | null> {
+    return this.voucherModel
+      .findByIdAndUpdate(id, updateData, { new: true })
+      .exec();
   }
 
   async delete(id: string): Promise<VoucherDocument | null> {

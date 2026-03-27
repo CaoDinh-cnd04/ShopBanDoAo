@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
+import { FiArrowRight, FiShoppingBag, FiCalendar, FiStar, FiUsers, FiPackage } from 'react-icons/fi';
 import { fetchProducts } from '../../store/slices/productSlice';
 import { fetchCategories } from '../../store/slices/categorySlice';
 import { fetchCourts } from '../../store/slices/courtSlice';
@@ -12,49 +13,21 @@ import Loading from '../../components/Loading/Loading';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import './Home.css';
 
-const PLACEHOLDER_CATEGORY = '/placeholder-category.svg';
+const PLACEHOLDER = '/placeholder-category.svg';
 
-function CategoryImage({ src, alt }) {
-  return (
-    <img
-      src={src || PLACEHOLDER_CATEGORY}
-      alt={alt}
-      className="img-fluid"
-      style={{ height: '100px', objectFit: 'contain' }}
-      loading="lazy"
-      decoding="async"
-      onError={(e) => {
-        if (e.currentTarget.src.endsWith(PLACEHOLDER_CATEGORY)) return;
-        e.currentTarget.src = PLACEHOLDER_CATEGORY;
-      }}
-    />
-  );
-}
-
-function CourtImage({ src, alt, className, style }) {
-  return (
-    <img
-      src={resolveMediaUrl(src) || PLACEHOLDER_CATEGORY}
-      alt={alt}
-      className={className}
-      style={style}
-      loading="lazy"
-      decoding="async"
-      onError={(e) => {
-        if (e.currentTarget.src.endsWith(PLACEHOLDER_CATEGORY)) return;
-        e.currentTarget.src = PLACEHOLDER_CATEGORY;
-      }}
-    />
-  );
-}
+const fadeUp = {
+  hidden: { opacity: 0, y: 32 },
+  show: (i = 0) => ({ opacity: 1, y: 0, transition: { delay: i * 0.1, duration: 0.5, ease: 'easeOut' } }),
+};
 
 const Home = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { products, isLoading } = useSelector((state) => state.products);
-  const { categories } = useSelector((state) => state.categories);
-  const { courts } = useSelector((state) => state.courts);
+
+  const { products, isLoading } = useSelector((s) => s.products);
+  const { categories } = useSelector((s) => s.categories);
+  const { courts } = useSelector((s) => s.courts);
 
   useEffect(() => {
     dispatch(fetchProducts({ isFeatured: 1, limit: 8 }));
@@ -62,193 +35,186 @@ const Home = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    let cancelled = false;
-    const run = () => {
-      if (!cancelled) dispatch(fetchCourts({ limit: 3 }));
-    };
     let id;
-    if (typeof requestIdleCallback !== 'undefined') {
-      id = requestIdleCallback(run);
-    } else {
-      id = setTimeout(run, 1);
-    }
-    return () => {
-      cancelled = true;
-      if (typeof requestIdleCallback !== 'undefined') {
-        cancelIdleCallback(id);
-      } else {
-        clearTimeout(id);
-      }
-    };
+    const run = () => dispatch(fetchCourts({ limit: 3 }));
+    id = typeof requestIdleCallback !== 'undefined' ? requestIdleCallback(run) : setTimeout(run, 1);
+    return () => (typeof requestIdleCallback !== 'undefined' ? cancelIdleCallback(id) : clearTimeout(id));
   }, [dispatch]);
 
-  const featuredProducts = products.slice(0, 8);
+  const featuredProducts = Array.isArray(products) ? products.slice(0, 8) : [];
+  const displayCategories = Array.isArray(categories) ? categories.slice(0, 6) : [];
+  const displayCourts = Array.isArray(courts) ? courts.slice(0, 3) : [];
 
   return (
     <div className="home-page">
-      {/* Hero Section */}
+      {/* ══════════════ HERO ══════════════ */}
       <section className="hero-section">
-        <Container>
-          <Row className="align-items-center hero-row g-4">
+        {/* Background decorations */}
+        <div className="hero-bg-blob hero-blob-1" aria-hidden />
+        <div className="hero-bg-blob hero-blob-2" aria-hidden />
+
+        <Container className="hero-container">
+          <Row className="align-items-center g-4">
             <Col lg={6}>
-              <motion.div
-                initial={{ opacity: 0, x: -50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6 }}
-              >
-                <motion.h1
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="display-1 fw-bold mb-4 text-white"
-                  style={{
-                    textShadow: '0 2px 12px rgba(0, 0, 0, 0.25)',
-                  }}
-                >
-                  {t('home.hero.title')}
-                </motion.h1>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                  className="mb-3 text-white hero-subtitle"
-                  style={{ textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}
-                >
-                  {t('home.hero.subtitle')}
-                </motion.p>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Button
-                    className="px-4 py-2 hero-cta"
-                    onClick={() => navigate('/products')}
-                  >
-                    {t('home.hero.cta')}
-                  </Button>
-                </motion.div>
+              <motion.div initial="hidden" animate="show" variants={fadeUp}>
+                <span className="section-eyebrow">⚡ Sports E-Commerce</span>
+                <h1 className="hero-title">
+                  Trang bị tốt nhất,<br />
+                  <span className="gradient-text">chinh phục mọi sân</span>
+                </h1>
+                <p className="hero-subtitle">
+                  Hàng nghìn sản phẩm thể thao chính hãng cùng hệ thống đặt sân hiện đại —
+                  tất cả trong một nền tảng.
+                </p>
+                <div className="hero-ctas">
+                  <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
+                    <Button className="btn-primary hero-cta-main" onClick={() => navigate('/products')}>
+                      <FiShoppingBag size={18} /> Mua sắm ngay
+                    </Button>
+                  </motion.div>
+                  <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
+                    <Button className="btn-outline hero-cta-secondary" onClick={() => navigate('/courts')}>
+                      <FiCalendar size={18} /> Đặt sân thể thao
+                    </Button>
+                  </motion.div>
+                </div>
               </motion.div>
             </Col>
             <Col lg={6}>
               <motion.div
+                className="hero-image-wrap"
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
+                transition={{ duration: 0.7, delay: 0.2 }}
               >
-                <div className="hero-image">
-                  <img
-                    src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=480&q=80&auto=format&fit=crop"
-                    alt={t('home.hero.title')}
-                    width={480}
-                    height={320}
-                    className="img-fluid rounded"
-                    fetchPriority="high"
-                    decoding="async"
-                  />
-                </div>
+                <div className="hero-image-glow" aria-hidden />
+                <img
+                  src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&q=80&auto=format&fit=crop"
+                  alt="Sports"
+                  className="hero-image"
+                  fetchPriority="high"
+                  decoding="async"
+                />
+                {/* Floating badge */}
+                <motion.div
+                  className="hero-float-badge"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.8, type: 'spring' }}
+                >
+                  <FiStar fill="#F59E0B" color="#F59E0B" size={16} />
+                  <span>10,000+ khách hàng</span>
+                </motion.div>
               </motion.div>
             </Col>
           </Row>
         </Container>
       </section>
 
-      {/* Categories Section */}
-      <section className="categories-section py-5">
+      {/* ══════════════ STATS ══════════════ */}
+      <section className="stats-section">
         <Container>
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-5 fw-bold gradient-text"
-            style={{ fontSize: '2.5rem' }}
-          >
-            {t('home.categories')}
-          </motion.h2>
-          {categories.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-muted">
-                {t('common.noCategories') || 'Chưa có danh mục'}
-              </p>
-            </div>
-          ) : (
-            <Row>
-              {categories.slice(0, 4).map((category, index) => {
-                const catId = category.categoryId || category.id || category._id;
-                return (
-                <Col md={3} key={`category-${catId || index}`} className="mb-4">
-                <motion.div
-                  initial={{ opacity: 0, y: 50 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  whileHover={{ scale: 1.05, y: -10 }}
-                  className="category-card text-center p-4 rounded"
-                  onClick={() => navigate(`/products?category=${catId}`)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="category-icon mb-3">
-                    <CategoryImage
-                      src={resolveMediaUrl(category.imageUrl)}
-                      alt={category.categoryName || ''}
-                    />
-                  </div>
-                  <h5 className="fw-bold">{category.categoryName}</h5>
-                </motion.div>
-              </Col>
-              );
-              })}
-            </Row>
-          )}
+          <div className="stats-grid">
+            {[
+              { icon: FiUsers, value: '10K+', label: 'Khách hàng tin dùng' },
+              { icon: FiPackage, value: '500+', label: 'Sản phẩm chính hãng' },
+              { icon: FiCalendar, value: '50+', label: 'Sân thể thao' },
+              { icon: FiStar, value: '4.9★', label: 'Đánh giá trung bình' },
+            ].map(({ icon: Icon, value, label }, i) => (
+              <motion.div
+                key={label}
+                className="stat-item"
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="show"
+                custom={i}
+                viewport={{ once: true }}
+              >
+                <div className="stat-icon"><Icon size={22} /></div>
+                <div className="stat-value">{value}</div>
+                <div className="stat-label">{label}</div>
+              </motion.div>
+            ))}
+          </div>
         </Container>
       </section>
 
-      {/* Featured Products */}
-      <section className="featured-section py-5 bg-light">
+      {/* ══════════════ CATEGORIES ══════════════ */}
+      {displayCategories.length > 0 && (
+        <section className="categories-section section-py">
+          <Container>
+            <div className="section-header">
+              <div>
+                <span className="section-eyebrow">Danh mục</span>
+                <h2 className="section-title">Khám phá thể loại</h2>
+              </div>
+              <button className="see-all-btn" onClick={() => navigate('/products')}>
+                Xem tất cả <FiArrowRight size={15} />
+              </button>
+            </div>
+            <Row className="g-3">
+              {displayCategories.map((cat, i) => {
+                const id = cat.categoryId || cat._id || cat.id;
+                return (
+                  <Col xs={6} sm={4} md={2} key={id || i}>
+                    <motion.div
+                      className="category-card"
+                      variants={fadeUp}
+                      initial="hidden"
+                      whileInView="show"
+                      custom={i}
+                      viewport={{ once: true }}
+                      whileHover={{ scale: 1.05, y: -6 }}
+                      onClick={() => navigate(`/products?category=${id}`)}
+                    >
+                      <div className="cat-icon-wrap">
+                        <img
+                          src={resolveMediaUrl(cat.imageUrl) || PLACEHOLDER}
+                          alt={cat.categoryName}
+                          onError={(e) => { e.currentTarget.src = PLACEHOLDER; }}
+                        />
+                      </div>
+                      <span className="cat-name">{cat.categoryName}</span>
+                    </motion.div>
+                  </Col>
+                );
+              })}
+            </Row>
+          </Container>
+        </section>
+      )}
+
+      {/* ══════════════ FEATURED PRODUCTS ══════════════ */}
+      <section className="products-section section-py">
         <Container>
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="d-flex justify-content-between align-items-center mb-5"
-          >
-            <h2 className="fw-bold gradient-text" style={{ fontSize: '2.5rem' }}>
-              {t('home.featured')}
-            </h2>
-            <motion.div
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Button variant="outline-primary" onClick={() => navigate('/products')}>
-                {t('common.viewAll')}
-              </Button>
-            </motion.div>
-          </motion.div>
+          <div className="section-header">
+            <div>
+              <span className="section-eyebrow">Nổi bật</span>
+              <h2 className="section-title">Sản phẩm hot nhất</h2>
+            </div>
+            <button className="see-all-btn" onClick={() => navigate('/products')}>
+              Xem tất cả <FiArrowRight size={15} />
+            </button>
+          </div>
+
           {isLoading ? (
             <Loading />
           ) : featuredProducts.length === 0 ? (
-            <div className="text-center py-5">
-              <p className="text-muted fs-5 mb-3">
-                {t('common.noProducts') || 'Chưa có sản phẩm nổi bật'}
-              </p>
-              <Button variant="outline-primary" onClick={() => navigate('/products')}>
-                {t('common.viewAll') || 'Xem tất cả sản phẩm'}
-              </Button>
+            <div className="empty-state">
+              <p>Chưa có sản phẩm nổi bật</p>
+              <Button className="btn-primary" onClick={() => navigate('/products')}>Xem tất cả sản phẩm</Button>
             </div>
           ) : (
-            <Row>
-              {featuredProducts.map((product, index) => (
-                <Col md={3} key={product.id} className="mb-4">
+            <Row className="g-4">
+              {featuredProducts.map((product, i) => (
+                <Col xl={3} lg={4} md={6} key={product.id || product._id}>
                   <motion.div
-                    initial={{ opacity: 0, y: 50 }}
-                    whileInView={{ opacity: 1, y: 0 }}
+                    variants={fadeUp}
+                    initial="hidden"
+                    whileInView="show"
+                    custom={i % 4}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                    whileHover={{ y: -10 }}
+                    style={{ height: '100%' }}
                   >
                     <ProductCard product={product} />
                   </motion.div>
@@ -259,80 +225,87 @@ const Home = () => {
         </Container>
       </section>
 
-      {/* Courts Promo Section */}
-      <section className="courts-section py-5">
-        <Container>
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-5 fw-bold gradient-text"
-            style={{ fontSize: '2.5rem' }}
-          >
-            {t('home.courts')}
-          </motion.h2>
-          {courts.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-muted mb-4">
-                {t('common.noCourts') || 'Chưa có sân bóng'}
-              </p>
-              <Button variant="outline-primary" onClick={() => navigate('/courts')}>
-                {t('common.viewAll') || 'Xem tất cả sân bóng'}
-              </Button>
+      {/* ══════════════ COURTS ══════════════ */}
+      {displayCourts.length > 0 && (
+        <section className="courts-section section-py">
+          <Container>
+            <div className="section-header">
+              <div>
+                <span className="section-eyebrow">Đặt sân</span>
+                <h2 className="section-title">Sân thể thao nổi bật</h2>
+              </div>
+              <button className="see-all-btn" onClick={() => navigate('/courts')}>
+                Xem tất cả <FiArrowRight size={15} />
+              </button>
             </div>
-          ) : (
-            <Row>
-              {courts.slice(0, 3).map((court, index) => (
-                <Col md={4} key={court.id} className="mb-4">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.15 }}
-                  whileHover={{ scale: 1.05, y: -10 }}
-                  className="court-card card h-100"
-                  onClick={() => navigate(`/courts/${court.id}`)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <motion.div whileHover={{ scale: 1.03 }} transition={{ duration: 0.3 }}>
-                    <CourtImage
-                      src={court.imageUrl}
-                      alt={court.courtName || ''}
-                      className="card-img-top"
-                      style={{ height: '200px', objectFit: 'cover' }}
-                    />
-                  </motion.div>
-                  <div className="card-body">
-                    <h5 className="card-title fw-bold">{court.courtName}</h5>
-                    <p className="card-text text-muted">{court.courtType?.typeName}</p>
-                    <p className="fw-bold gradient-text fs-5">
-                      {court.pricePerHour?.toLocaleString('vi-VN')} ₫/hour
-                    </p>
-                  </div>
-                </motion.div>
-              </Col>
-              ))}
+            <Row className="g-4">
+              {displayCourts.map((court, i) => {
+                const id = court.id || court._id;
+                return (
+                  <Col lg={4} md={6} key={id}>
+                    <motion.div
+                      className="court-card"
+                      variants={fadeUp}
+                      initial="hidden"
+                      whileInView="show"
+                      custom={i}
+                      viewport={{ once: true }}
+                      whileHover={{ y: -8 }}
+                      onClick={() => navigate(`/courts/${id}`)}
+                    >
+                      <div className="court-img-wrap">
+                        <img
+                          src={resolveMediaUrl(court.imageUrl || court.image) || PLACEHOLDER}
+                          alt={court.courtName}
+                          onError={(e) => { e.currentTarget.src = PLACEHOLDER; }}
+                        />
+                        <div className="court-type-badge">
+                          {court.courtType?.typeName || court.courtType}
+                        </div>
+                      </div>
+                      <div className="court-body">
+                        <h3 className="court-name">{court.courtName}</h3>
+                        <div className="court-price">
+                          <span>{(court.pricePerHour || 0).toLocaleString('vi-VN')} ₫</span>
+                          <span className="court-price-unit">/giờ</span>
+                        </div>
+                        <button className="court-book-btn">
+                          <FiCalendar size={14} /> Đặt ngay
+                        </button>
+                      </div>
+                    </motion.div>
+                  </Col>
+                );
+              })}
             </Row>
-          )}
-          {courts.length > 0 && (
-            <motion.div
-              className="text-center mt-4"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.5 }}
-            >
-              <motion.div
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button size="lg" onClick={() => navigate('/courts')}>
-                  {t('common.viewAll')}
+          </Container>
+        </section>
+      )}
+
+      {/* ══════════════ CTA BANNER ══════════════ */}
+      <section className="cta-section">
+        <Container>
+          <motion.div
+            className="cta-card"
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="cta-blob" aria-hidden />
+            <div className="cta-content">
+              <h2>Bắt đầu hành trình thể thao của bạn</h2>
+              <p>Đăng ký ngay để nhận ưu đãi 15% cho đơn đầu tiên!</p>
+              <div className="cta-actions">
+                <Button className="btn-primary" onClick={() => navigate('/register')}>
+                  Đăng ký miễn phí
                 </Button>
-              </motion.div>
-            </motion.div>
-          )}
+                <Button className="btn-ghost" onClick={() => navigate('/products')}>
+                  Khám phá sản phẩm
+                </Button>
+              </div>
+            </div>
+          </motion.div>
         </Container>
       </section>
     </div>

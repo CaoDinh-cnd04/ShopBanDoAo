@@ -5,7 +5,9 @@ import { Category, CategoryDocument } from './schemas/category.schema';
 
 @Injectable()
 export class CategoryRepository {
-  constructor(@InjectModel(Category.name) private categoryModel: Model<CategoryDocument>) {}
+  constructor(
+    @InjectModel(Category.name) private categoryModel: Model<CategoryDocument>,
+  ) {}
 
   async findAll(): Promise<CategoryDocument[]> {
     return this.categoryModel.find({ isActive: true }).exec();
@@ -20,11 +22,18 @@ export class CategoryRepository {
     return newCategory.save();
   }
 
-  async update(id: string, updateData: Partial<Category>): Promise<CategoryDocument | null> {
-    return this.categoryModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+  async update(
+    id: string,
+    updateData: Partial<Category>,
+  ): Promise<CategoryDocument | null> {
+    return this.categoryModel
+      .findByIdAndUpdate(id, updateData, { new: true })
+      .exec();
   }
 
   async softDelete(id: string): Promise<CategoryDocument | null> {
-    return this.categoryModel.findByIdAndUpdate(id, { isActive: false }, { new: true }).exec();
+    return this.categoryModel
+      .findByIdAndUpdate(id, { isActive: false }, { new: true })
+      .exec();
   }
 }

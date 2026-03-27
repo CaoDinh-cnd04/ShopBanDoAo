@@ -1,13 +1,157 @@
-.contact-page {
-  min-height: 80vh;
+/* ================================================================
+   CONTACT PAGE
+   ================================================================ */
+.contact-page { min-height: 80vh; padding-bottom: 4rem; }
+
+/* ── Hero ── */
+.contact-hero {
+  background: #2563EB;
+  padding: 3.5rem 0 3rem;
+  overflow: hidden;
+  position: relative;
+}
+.contact-hero-blob {
+  position: absolute;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(255,255,255,0.10) 0%, transparent 70%);
+  top: -80px; right: -40px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.contact-hero-content { position: relative; z-index: 1; }
+.contact-hero-title {
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.75rem;
+  line-height: 1.15;
+}
+.contact-hero-sub {
+  font-size: 1rem;
+  color: rgba(255,255,255,0.75);
+  line-height: 1.65;
+  max-width: 480px;
 }
 
-.contact-icon {
-  min-width: 40px;
-  height: 40px;
+/* ── Main layout ── */
+.contact-main { padding-top: 2.5rem; }
+
+/* ── Form card ── */
+.contact-form-card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: 20px;
+  padding: 2rem;
+}
+.contact-form-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1.5rem;
+}
+.contact-form-title svg { color: #2563EB; }
+
+.contact-form { display: flex; flex-direction: column; gap: 0; }
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.cf-full { grid-column: 1 / -1; }
+
+.cf-field { display: flex; flex-direction: column; gap: 5px; }
+.cf-label { font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); }
+.cf-input {
+  padding: 10px 14px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: all 0.2s;
+  resize: none;
+}
+.cf-input:focus { border-color: #2563EB; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); background: var(--bg-primary); }
+.cf-input.error { border-color: #F43F5E; }
+.cf-error { font-size: 0.75rem; color: #F43F5E; font-weight: 500; }
+
+.cf-submit-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(138, 43, 226, 0.1);
-  border-radius: 50%;
+  gap: 8px;
+  padding: 13px 28px;
+  background: linear-gradient(135deg, #2563EB, #1D4ED8);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(37,99,235,0.40);
+  transition: all 0.2s;
+  align-self: flex-start;
+}
+.cf-submit-btn:hover:not(:disabled) { box-shadow: 0 8px 24px rgba(37,99,235,0.50); }
+.cf-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Info card ── */
+.contact-info-card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: 20px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+.ci-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 1.25rem;
+}
+.ci-items { display: flex; flex-direction: column; gap: 1.1rem; }
+.ci-item { display: flex; align-items: flex-start; gap: 12px; }
+.ci-icon {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: rgba(37,99,235,0.10);
+  color: #2563EB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ci-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); margin: 0 0 2px; }
+.ci-value { font-size: 0.875rem; font-weight: 600; color: var(--text-primary); margin: 0; white-space: pre-line; }
+
+/* Map placeholder */
+.contact-map-placeholder {
+  background: var(--bg-secondary);
+  border: 1.5px dashed var(--border-color);
+  border-radius: 16px;
+  height: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+}
+.contact-map-placeholder svg { color: #2563EB; opacity: 0.7; }
+.contact-map-placeholder p { font-weight: 700; margin: 0; font-size: 0.9rem; }
+.contact-map-placeholder span { font-size: 0.78rem; }
+
+/* Responsive */
+@media (max-width: 576px) {
+  .contact-grid { grid-template-columns: 1fr; }
+  .cf-full { grid-column: 1; }
+  .cf-submit-btn { width: 100%; }
 }

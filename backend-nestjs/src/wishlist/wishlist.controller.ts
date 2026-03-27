@@ -1,4 +1,11 @@
-import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { WishlistService } from './wishlist.service';
 import { ToggleWishlistDto } from './dto/wishlist.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -14,7 +21,10 @@ export class WishlistController {
   }
 
   @Post('toggle')
-  async toggleWishlist(@Request() req: any, @Body() toggleDto: ToggleWishlistDto) {
+  async toggleWishlist(
+    @Request() req: any,
+    @Body() toggleDto: ToggleWishlistDto,
+  ) {
     return this.wishlistService.toggleWishlist(req.user.userId, toggleDto);
   }
 }

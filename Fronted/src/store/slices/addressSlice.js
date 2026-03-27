@@ -1,12 +1,15 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 
+const normalizeList = (data) =>
+  Array.isArray(data) ? data : (data?.addresses ?? []);
+
 export const fetchAddresses = createAsyncThunk(
   'addresses/fetchAddresses',
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get('/addresses');
-      return response.data.data;
+      return normalizeList(response.data.data);
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to fetch addresses'
@@ -78,23 +81,30 @@ const addressSlice = createSlice({
       })
       .addCase(fetchAddresses.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.addresses = action.payload;
+        state.addresses = normalizeList(action.payload);
       })
       .addCase(fetchAddresses.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })
       .addCase(createAddress.fulfilled, (state, action) => {
-        state.addresses.push(action.payload);
+        const addr = action.payload?.address ?? action.payload;
+        if (addr) state.addresses.push(addr);
       })
       .addCase(updateAddress.fulfilled, (state, action) => {
-        const index = state.addresses.findIndex((a) => a.id === action.payload.id);
-        if (index !== -1) {
-          state.addresses[index] = action.payload;
-        }
+        const updated = action.payload?.address ?? action.payload;
+        if (!updated) return;
+        const uid = updated._id?.toString() || updated.id?.toString();
+        const index = state.addresses.findIndex(
+          (a) => (a._id || a.id)?.toString() === uid
+        );
+        if (index !== -1) state.addresses[index] = updated;
       })
       .addCase(deleteAddress.fulfilled, (state, action) => {
-        state.addresses = state.addresses.filter((a) => a.id !== action.payload);
+        const id = action.payload?.toString();
+        state.addresses = state.addresses.filter(
+          (a) => (a._id || a.id)?.toString() !== id
+        );
       });
   },
 });

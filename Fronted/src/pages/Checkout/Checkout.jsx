@@ -1,324 +1,220 @@
-import { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
+import { useState } from 'react';
+import { Container, Row, Col } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useTranslation } from 'react-i18next';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
+import { useForm } from 'react-hook-form';
+import { FiCheck, FiMapPin, FiTruck, FiCreditCard, FiArrowRight, FiArrowLeft } from 'react-icons/fi';
 import { createOrder } from '../../store/slices/orderSlice';
-import { fetchCart, clearCart } from '../../store/slices/cartSlice';
-import { fetchUserVouchers } from '../../store/slices/voucherSlice';
-import { fetchAddresses } from '../../store/slices/addressSlice';
-import api from '../../services/api';
+import { clearCart } from '../../store/slices/cartSlice';
 import { toast } from 'react-toastify';
-import Loading from '../../components/Loading/Loading';
 import './Checkout.css';
 
-const addressSchema = z.object({
-  fullName: z.string().min(1, 'Full name is required'),
-  phone: z.string().min(10, 'Valid phone number is required'),
-  address: z.string().min(1, 'Address is required'),
-  city: z.string().min(1, 'City is required'),
-  district: z.string().min(1, 'District is required'),
-  ward: z.string().min(1, 'Ward is required'),
-});
+const STEPS = [
+  { id: 1, label: 'Địa chỉ', icon: FiMapPin },
+  { id: 2, label: 'Vận chuyển', icon: FiTruck },
+  { id: 3, label: 'Thanh toán', icon: FiCreditCard },
+];
+
+const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
 
 const Checkout = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { items, subtotal } = useSelector((state) => state.cart);
-  const { user } = useSelector((state) => state.auth);
-  const { isLoading } = useSelector((state) => state.orders);
-  const { addresses } = useSelector((state) => state.addresses);
-  const { userVouchers } = useSelector((state) => state.vouchers);
-  const [selectedAddressId, setSelectedAddressId] = useState(null);
-  const [selectedVoucherId, setSelectedVoucherId] = useState(null);
-  const [useNewAddress, setUseNewAddress] = useState(false);
+  const { items, subtotal } = useSelector((s) => s.cart);
+  const [step, setStep] = useState(1);
+  const [shippingMethod, setShippingMethod] = useState('standard');
+  const [paymentMethod, setPaymentMethod] = useState('cod');
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm({
-    resolver: zodResolver(addressSchema),
-  });
+  const { register, handleSubmit, formState: { errors }, trigger } = useForm();
 
-  useEffect(() => {
-    dispatch(fetchAddresses());
-    dispatch(fetchUserVouchers());
-  }, [dispatch]);
+  const safeItems = Array.isArray(items) ? items : [];
+  const shipping = shippingMethod === 'express' ? 60000 : (subtotal > 500000 ? 0 : 30000);
+  const total = (subtotal || 0) + shipping;
 
-  useEffect(() => {
-    if (addresses.length > 0) {
-      const defaultAddress = addresses.find((a) => a.isDefault) || addresses[0];
-      setSelectedAddressId(defaultAddress.id);
-    } else {
-      setUseNewAddress(true);
+  const nextStep = async () => {
+    if (step === 1) {
+      const ok = await trigger(['fullName', 'phone', 'address', 'city']);
+      if (!ok) return;
     }
-  }, [addresses]);
+    if (step < 3) setStep(s => s + 1);
+  };
 
   const onSubmit = async (data) => {
-    if (items.length === 0) {
-      toast.error('Your cart is empty');
-      return;
-    }
-
-    const orderData = {
-      addressId: selectedAddressId,
-      shippingMethodId: 1, // Default shipping method
-      items: items.map((item) => ({
-        variantId: item.variantId,
-        quantity: item.quantity,
-      })),
-      ...(useNewAddress && { newAddress: data }),
-      ...(selectedVoucherId && { voucherId: selectedVoucherId }),
-    };
-
     try {
-      const result = await dispatch(createOrder(orderData));
-      if (createOrder.fulfilled.match(result)) {
-        toast.success('Order placed successfully!');
+      const orderData = {
+        shippingAddress: data,
+        shippingMethod,
+        paymentMethod,
+        note: data.note,
+      };
+      const res = await dispatch(createOrder(orderData));
+      if (createOrder.fulfilled.match(res)) {
         dispatch(clearCart());
-        navigate(`/profile/orders`);
+        toast.success('Đặt hàng thành công! 🎉');
+        navigate('/profile/orders');
       } else {
-        toast.error(result.payload || 'Failed to place order');
+        toast.error(res.payload || 'Đặt hàng thất bại');
       }
-    } catch (error) {
-      toast.error('Failed to place order');
+    } catch {
+      toast.error('Có lỗi xảy ra, thử lại sau');
     }
   };
 
-  const shipping = 50000;
-  const tax = subtotal * 0.1;
-  
-  // Calculate voucher discount
-  let voucherDiscount = 0;
-  if (selectedVoucherId) {
-    const selectedVoucher = userVouchers.find(
-      (v) => v.voucher.id === selectedVoucherId && !v.isUsed
-    );
-    if (selectedVoucher) {
-      const voucher = selectedVoucher.voucher;
-      if (voucher.discountType === 'Percentage') {
-        voucherDiscount = (subtotal * voucher.discountValue) / 100;
-      } else {
-        voucherDiscount = voucher.discountValue;
-      }
-    }
-  }
-  
-  const total = subtotal + shipping + tax - voucherDiscount;
-
-  if (items.length === 0) {
-    return (
-      <Container className="py-5 text-center">
-        <Alert variant="warning">Your cart is empty</Alert>
-        <Button onClick={() => navigate('/products')}>Continue Shopping</Button>
-      </Container>
-    );
-  }
-
   return (
-    <Container className="py-5">
-      <motion.h2
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="fw-bold mb-4 gradient-text"
-        style={{ fontSize: '2.5rem' }}
-      >
-        {t('checkout.title')}
-      </motion.h2>
-      <Form onSubmit={handleSubmit(onSubmit)}>
-        <Row>
+    <div className="checkout-page">
+      <Container>
+        {/* Stepper */}
+        <div className="checkout-stepper">
+          {STEPS.map((s, i) => (
+            <div key={s.id} className="stepper-item">
+              <div className={`stepper-circle ${step > s.id ? 'done' : step === s.id ? 'active' : ''}`}>
+                {step > s.id ? <FiCheck size={16} /> : <s.icon size={16} />}
+              </div>
+              <span className={`stepper-label ${step >= s.id ? 'active' : ''}`}>{s.label}</span>
+              {i < STEPS.length - 1 && <div className={`stepper-line ${step > s.id ? 'done' : ''}`} />}
+            </div>
+          ))}
+        </div>
+
+        <Row className="g-4">
+          {/* Form area */}
           <Col lg={8}>
-            <Card className="mb-4">
-              <Card.Header>
-                <h5 className="mb-0">{t('checkout.shipping')}</h5>
-              </Card.Header>
-              <Card.Body>
-                {addresses.length > 0 && !useNewAddress && (
-                  <div className="mb-3">
-                    <Form.Label>Select Address</Form.Label>
-                    {addresses.map((address) => (
-                      <Form.Check
-                        key={address.id}
-                        type="radio"
-                        name="address"
-                        id={`address-${address.id}`}
-                        label={`${address.fullName} - ${address.address}, ${address.ward}, ${address.district}, ${address.city}`}
-                        checked={selectedAddressId === address.id}
-                        onChange={() => setSelectedAddressId(address.id)}
-                      />
-                    ))}
-                    <Button
-                      variant="link"
-                      size="sm"
-                      onClick={() => setUseNewAddress(true)}
-                    >
-                      Use New Address
-                    </Button>
-                  </div>
-                )}
-
-                {useNewAddress && (
-                  <div>
-                    <div className="d-flex justify-content-between align-items-center mb-3">
-                      <h6>New Address</h6>
-                      {addresses.length > 0 && (
-                        <Button
-                          variant="link"
-                          size="sm"
-                          onClick={() => setUseNewAddress(false)}
-                        >
-                          Use Existing Address
-                        </Button>
-                      )}
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <AnimatePresence mode="wait">
+                {/* Step 1 — Address */}
+                {step === 1 && (
+                  <motion.div key="s1" className="checkout-card" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                    <h3 className="checkout-card-title"><FiMapPin size={18} /> Địa chỉ giao hàng</h3>
+                    <div className="co-grid">
+                      <div className="co-field">
+                        <label className="co-label">Họ và tên *</label>
+                        <input className={`co-input ${errors.fullName ? 'error' : ''}`} placeholder="Nguyễn Văn A" {...register('fullName', { required: 'Bắt buộc' })} />
+                        {errors.fullName && <span className="co-error">{errors.fullName.message}</span>}
+                      </div>
+                      <div className="co-field">
+                        <label className="co-label">Số điện thoại *</label>
+                        <input className={`co-input ${errors.phone ? 'error' : ''}`} placeholder="0912 345 678" {...register('phone', { required: 'Bắt buộc' })} />
+                        {errors.phone && <span className="co-error">{errors.phone.message}</span>}
+                      </div>
+                      <div className="co-field co-full">
+                        <label className="co-label">Địa chỉ *</label>
+                        <input className={`co-input ${errors.address ? 'error' : ''}`} placeholder="123 Đường ABC, Phường XYZ" {...register('address', { required: 'Bắt buộc' })} />
+                        {errors.address && <span className="co-error">{errors.address.message}</span>}
+                      </div>
+                      <div className="co-field">
+                        <label className="co-label">Tỉnh / Thành phố *</label>
+                        <input className={`co-input ${errors.city ? 'error' : ''}`} placeholder="Hồ Chí Minh" {...register('city', { required: 'Bắt buộc' })} />
+                        {errors.city && <span className="co-error">{errors.city.message}</span>}
+                      </div>
+                      <div className="co-field">
+                        <label className="co-label">Quận / Huyện</label>
+                        <input className="co-input" placeholder="Quận 1" {...register('district')} />
+                      </div>
+                      <div className="co-field co-full">
+                        <label className="co-label">Ghi chú</label>
+                        <textarea className="co-input" rows={3} placeholder="Ghi chú cho người giao hàng..." {...register('note')} />
+                      </div>
                     </div>
-                    <Row>
-                      <Col md={6}>
-                        <Form.Group className="mb-3">
-                          <Form.Label>Full Name *</Form.Label>
-                          <Form.Control
-                            {...register('fullName')}
-                            defaultValue={user?.firstName + ' ' + user?.lastName}
-                          />
-                          {errors.fullName && (
-                            <Form.Text className="text-danger">{errors.fullName.message}</Form.Text>
-                          )}
-                        </Form.Group>
-                      </Col>
-                      <Col md={6}>
-                        <Form.Group className="mb-3">
-                          <Form.Label>Phone *</Form.Label>
-                          <Form.Control
-                            {...register('phone')}
-                            defaultValue={user?.phone}
-                          />
-                          {errors.phone && (
-                            <Form.Text className="text-danger">{errors.phone.message}</Form.Text>
-                          )}
-                        </Form.Group>
-                      </Col>
-                    </Row>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Address *</Form.Label>
-                      <Form.Control {...register('address')} />
-                      {errors.address && (
-                        <Form.Text className="text-danger">{errors.address.message}</Form.Text>
-                      )}
-                    </Form.Group>
-                    <Row>
-                      <Col md={4}>
-                        <Form.Group className="mb-3">
-                          <Form.Label>City *</Form.Label>
-                          <Form.Control {...register('city')} />
-                          {errors.city && (
-                            <Form.Text className="text-danger">{errors.city.message}</Form.Text>
-                          )}
-                        </Form.Group>
-                      </Col>
-                      <Col md={4}>
-                        <Form.Group className="mb-3">
-                          <Form.Label>District *</Form.Label>
-                          <Form.Control {...register('district')} />
-                          {errors.district && (
-                            <Form.Text className="text-danger">{errors.district.message}</Form.Text>
-                          )}
-                        </Form.Group>
-                      </Col>
-                      <Col md={4}>
-                        <Form.Group className="mb-3">
-                          <Form.Label>Ward *</Form.Label>
-                          <Form.Control {...register('ward')} />
-                          {errors.ward && (
-                            <Form.Text className="text-danger">{errors.ward.message}</Form.Text>
-                          )}
-                        </Form.Group>
-                      </Col>
-                    </Row>
-                  </div>
+                  </motion.div>
                 )}
-              </Card.Body>
-            </Card>
 
-            <Card>
-              <Card.Header>
-                <h5 className="mb-0">{t('checkout.payment')}</h5>
-              </Card.Header>
-              <Card.Body>
-                <Form.Check
-                  type="radio"
-                  name="payment"
-                  id="cod"
-                  label="Cash on Delivery"
-                  defaultChecked
-                />
-                <Form.Check
-                  type="radio"
-                  name="payment"
-                  id="bank"
-                  label="Bank Transfer"
-                  disabled
-                />
-              </Card.Body>
-            </Card>
+                {/* Step 2 — Shipping */}
+                {step === 2 && (
+                  <motion.div key="s2" className="checkout-card" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                    <h3 className="checkout-card-title"><FiTruck size={18} /> Phương thức vận chuyển</h3>
+                    <div className="co-options">
+                      {[
+                        { id: 'standard', label: 'Tiêu chuẩn', desc: '3–5 ngày', price: subtotal > 500000 ? 'Miễn phí' : fmt(30000) },
+                        { id: 'express', label: 'Nhanh', desc: '1–2 ngày', price: fmt(60000) },
+                      ].map(opt => (
+                        <label key={opt.id} className={`co-option ${shippingMethod === opt.id ? 'active' : ''}`}>
+                          <input type="radio" name="shipping" value={opt.id} checked={shippingMethod === opt.id} onChange={() => setShippingMethod(opt.id)} />
+                          <FiTruck size={20} />
+                          <div className="co-option-info">
+                            <span className="co-option-title">{opt.label}</span>
+                            <span className="co-option-desc">{opt.desc}</span>
+                          </div>
+                          <span className="co-option-price">{opt.price}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Step 3 — Payment */}
+                {step === 3 && (
+                  <motion.div key="s3" className="checkout-card" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                    <h3 className="checkout-card-title"><FiCreditCard size={18} /> Phương thức thanh toán</h3>
+                    <div className="co-options">
+                      {[
+                        { id: 'cod', label: 'Thanh toán khi nhận hàng', desc: 'Thanh toán tiền mặt' },
+                        { id: 'banking', label: 'Chuyển khoản ngân hàng', desc: 'Thanh toán qua internet banking' },
+                        { id: 'momo', label: 'Ví MoMo', desc: 'Thanh toán qua MoMo' },
+                      ].map(opt => (
+                        <label key={opt.id} className={`co-option ${paymentMethod === opt.id ? 'active' : ''}`}>
+                          <input type="radio" name="payment" value={opt.id} checked={paymentMethod === opt.id} onChange={() => setPaymentMethod(opt.id)} />
+                          <FiCreditCard size={20} />
+                          <div className="co-option-info">
+                            <span className="co-option-title">{opt.label}</span>
+                            <span className="co-option-desc">{opt.desc}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Nav buttons */}
+              <div className="checkout-nav">
+                {step > 1 && (
+                  <button type="button" className="co-btn-back" onClick={() => setStep(s => s - 1)}>
+                    <FiArrowLeft size={16} /> Quay lại
+                  </button>
+                )}
+                {step < 3 ? (
+                  <button type="button" className="co-btn-next" onClick={nextStep}>
+                    Tiếp theo <FiArrowRight size={16} />
+                  </button>
+                ) : (
+                  <button type="submit" className="co-btn-next">
+                    <FiCheck size={16} /> Đặt hàng
+                  </button>
+                )}
+              </div>
+            </form>
           </Col>
 
+          {/* Order summary */}
           <Col lg={4}>
-            <Card className="sticky-top" style={{ top: '100px' }}>
-              <Card.Header>
-                <h5 className="mb-0">{t('checkout.orderSummary')}</h5>
-              </Card.Header>
-              <Card.Body>
-                {items.map((item) => (
-                  <div key={item.id} className="d-flex justify-content-between mb-2">
-                    <span>
-                      {item.productName} x {item.quantity}
-                    </span>
-                    <span>{(item.price * item.quantity).toLocaleString('vi-VN')} ₫</span>
+            <div className="co-summary-card">
+              <h4 className="co-summary-title">Đơn hàng của bạn</h4>
+              <div className="co-items">
+                {safeItems.slice(0, 3).map((item) => (
+                  <div key={item.id || item._id} className="co-item">
+                    <img src={item.productImage || '/placeholder.jpg'} alt={item.productName} />
+                    <div className="co-item-info">
+                      <span className="co-item-name">{item.productName}</span>
+                      <span className="co-item-qty">x{item.quantity}</span>
+                    </div>
+                    <span className="co-item-price">{fmt(item.price * item.quantity)}</span>
                   </div>
                 ))}
-                <hr />
-                <div className="d-flex justify-content-between mb-2">
-                  <span>{t('cart.subtotal')}</span>
-                  <span>{subtotal.toLocaleString('vi-VN')} ₫</span>
-                </div>
-                <div className="d-flex justify-content-between mb-2">
-                  <span>{t('cart.shipping')}</span>
-                  <span>{shipping.toLocaleString('vi-VN')} ₫</span>
-                </div>
-                <div className="d-flex justify-content-between mb-3">
-                  <span>{t('cart.tax')}</span>
-                  <span>{tax.toLocaleString('vi-VN')} ₫</span>
-                </div>
-                <hr />
-                <div className="d-flex justify-content-between mb-4">
-                  <strong>{t('cart.total')}</strong>
-                  <strong className="text-accent fs-5">{total.toLocaleString('vi-VN')} ₫</strong>
-                </div>
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="lg"
-                    className="w-100"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? <Loading /> : t('checkout.placeOrder')}
-                  </Button>
-                </motion.div>
-              </Card.Body>
-            </Card>
+                {safeItems.length > 3 && <p className="co-items-more">+{safeItems.length - 3} sản phẩm khác</p>}
+              </div>
+              <hr className="co-divider" />
+              <div className="co-rows">
+                <div className="co-row"><span>Tạm tính</span><span>{fmt(subtotal)}</span></div>
+                <div className="co-row"><span>Vận chuyển</span><span className={shipping === 0 ? 'co-free' : ''}>{shipping === 0 ? 'Miễn phí' : fmt(shipping)}</span></div>
+                <hr className="co-divider" />
+                <div className="co-row co-total"><span>Tổng cộng</span><span className="co-total-amount">{fmt(total)}</span></div>
+              </div>
+            </div>
           </Col>
         </Row>
-      </Form>
-    </Container>
+      </Container>
+    </div>
   );
 };
 

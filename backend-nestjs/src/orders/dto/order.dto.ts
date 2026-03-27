@@ -1,4 +1,12 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsMongoId, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  IsMongoId,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class OrderItemDto {
@@ -22,6 +30,8 @@ export class CreateOrderDto {
 export class UpdateOrderStatusDto {
   @IsOptional() @IsString() orderStatus?: string;
   @IsOptional() @IsString() paymentStatus?: string;
+  // Frontend có thể gửi statusName, ánh xạ → orderStatus trong service
+  @IsOptional() @IsString() statusName?: string;
 }
 
 export class QueryOrderDto {

@@ -1,203 +1,136 @@
 import { useState } from 'react';
-import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
-import { FiLogIn } from 'react-icons/fi';
-import { FcGoogle } from 'react-icons/fc';
-import { login, firebaseLogin } from '../../store/slices/authSlice';
-import { signInWithGoogle } from '../../utils/googleAuth';
+import { motion } from 'framer-motion';
+import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight } from 'react-icons/fi';
+import { login } from '../../store/slices/authSlice';
 import { toast } from 'react-toastify';
-import Loading from '../../components/Loading/Loading';
+import { isGoogleAuthConfigured } from '../../config/googleAuth';
+import GoogleLoginButton from '../../components/Auth/GoogleLoginButton';
 import './Auth.css';
 
-const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+const schema = z.object({
+  email:    z.string().email('Email không hợp lệ'),
+  password: z.string().min(6, 'Mật khẩu tối thiểu 6 ký tự'),
 });
 
-const safeReturnPath = (raw) => {
+const safeReturn = (raw) => {
   if (!raw || typeof raw !== 'string') return null;
   try {
-    const decoded = decodeURIComponent(raw);
-    if (!decoded.startsWith('/') || decoded.startsWith('//')) return null;
-    return decoded;
-  } catch {
-    return null;
-  }
+    const d = decodeURIComponent(raw);
+    return d.startsWith('/') && !d.startsWith('//') ? d : null;
+  } catch { return null; }
 };
 
 const Login = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
-  const { isLoading, error } = useSelector((state) => state.auth);
+  const { isLoading } = useSelector((s) => s.auth);
+  const [showPwd, setShowPwd] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm({
-    resolver: zodResolver(loginSchema),
-  });
+  const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(schema) });
 
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const redirect = (role) => {
+    const back = safeReturn(searchParams.get('returnUrl'));
+    navigate(back || (role === 'Admin' ? '/admin' : '/'), { replace: true });
+  };
 
   const onSubmit = async (data) => {
-    const result = await dispatch(login(data));
-    if (login.fulfilled.match(result)) {
-      toast.success('Login successful!');
-      const role = result.payload?.user?.role;
-      const back = safeReturnPath(searchParams.get('returnUrl'));
-      if (back) {
-        navigate(back);
-      } else {
-        navigate(role === 'Admin' ? '/admin' : '/');
-      }
+    const res = await dispatch(login(data));
+    if (login.fulfilled.match(res)) {
+      toast.success('Đăng nhập thành công! 🎉');
+      redirect(res.payload?.user?.role);
     } else {
-      toast.error(result.payload || 'Login failed');
+      toast.error(res.payload || 'Đăng nhập thất bại');
     }
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      setIsGoogleLoading(true);
-      // Sign in with Google using Firebase
-      const idToken = await signInWithGoogle();
-      
-      // Send ID token to backend
-      const result = await dispatch(firebaseLogin(idToken));
-      
-      if (firebaseLogin.fulfilled.match(result)) {
-        toast.success('Login with Google successful!');
-        const role = result.payload?.user?.role;
-        const back = safeReturnPath(searchParams.get('returnUrl'));
-        if (back) {
-          navigate(back);
-        } else {
-          navigate(role === 'Admin' ? '/admin' : '/');
-        }
-      } else {
-        toast.error(result.payload || 'Google login failed');
-      }
-    } catch (error) {
-      console.error('Google login error:', error);
-      if (error.code === 'auth/popup-closed-by-user') {
-        toast.info('Sign in cancelled');
-      } else {
-        toast.error('Failed to sign in with Google. Please try again.');
-      }
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  };
+  const Field = ({ name, label, type = 'text', placeholder, icon: Icon, extra }) => (
+    <div className="auth-field">
+      <label className="auth-label">{label}</label>
+      <div className="auth-input-wrap">
+        {Icon && <Icon className="auth-input-icon" size={16} />}
+        <input
+          type={type}
+          className={`auth-input ${errors[name] ? 'error' : ''}`}
+          placeholder={placeholder}
+          {...register(name)}
+        />
+        {extra}
+      </div>
+      {errors[name] && <span className="auth-error">{errors[name].message}</span>}
+    </div>
+  );
 
   return (
-    <Container className="py-5">
-      <Row className="justify-content-center">
-        <Col md={6} lg={5}>
-          <Card className="auth-card">
-            <Card.Body className="p-5">
-              <h2 className="text-center fw-bold mb-4 gradient-text" style={{ fontSize: '2rem' }}>
-                {t('auth.login')}
-              </h2>
-              {error && <Alert variant="danger">{error}</Alert>}
-              <Form onSubmit={handleSubmit(onSubmit)}>
-                <Form.Group className="mb-3">
-                  <Form.Label>{t('auth.email')}</Form.Label>
-                  <Form.Control
-                    type="email"
-                    data-testid="login-email"
-                    {...register('email')}
-                    placeholder="Enter your email"
-                  />
-                  {errors.email && (
-                    <Form.Text className="text-danger">{errors.email.message}</Form.Text>
-                  )}
-                </Form.Group>
+    <div className="auth-page">
+      {/* Info panel */}
+      <div className="auth-panel-left">
+        <div className="auth-panel-content">
+          <div className="auth-logo">⚡ SPORTS</div>
+          <h2 className="auth-panel-title">Chào mừng trở lại!</h2>
+          <p className="auth-panel-sub">
+            Đăng nhập để tiếp tục mua sắm và đặt sân thể thao.
+          </p>
+          <div className="auth-panel-badges">
+            {['Bảo mật', 'Nhanh chóng', 'Ưu đãi VIP'].map((b) => (
+              <span key={b} className="auth-panel-badge">{b}</span>
+            ))}
+          </div>
+        </div>
+        <div className="auth-blob auth-blob-1" />
+        <div className="auth-blob auth-blob-2" />
+      </div>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>{t('auth.password')}</Form.Label>
-                  <Form.Control
-                    type="password"
-                    data-testid="login-password"
-                    {...register('password')}
-                    placeholder="Enter your password"
-                  />
-                  {errors.password && (
-                    <Form.Text className="text-danger">{errors.password.message}</Form.Text>
-                  )}
-                </Form.Group>
+      {/* Form panel */}
+      <div className="auth-panel-right">
+        <motion.div
+          className="auth-form-card"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45 }}
+        >
+          <h1 className="auth-form-title">Đăng nhập</h1>
+          <p className="auth-form-subtitle">
+            Chưa có tài khoản? <Link to="/register" className="auth-link">Đăng ký →</Link>
+          </p>
 
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <Form.Check
-                    type="checkbox"
-                    label="Remember me"
-                  />
-                  <Link to="/forgot-password" className="text-decoration-none">
-                    {t('auth.forgotPassword')}
-                  </Link>
-                </div>
+          <form onSubmit={handleSubmit(onSubmit)} className="auth-form" noValidate>
+            <Field name="email" label="Email" type="email" placeholder="your@email.com" icon={FiMail} />
+            <Field
+              name="password"
+              label="Mật khẩu"
+              type={showPwd ? 'text' : 'password'}
+              placeholder="••••••••"
+              icon={FiLock}
+              extra={
+                <button type="button" className="auth-eye-btn" onClick={() => setShowPwd((v) => !v)} tabIndex={-1}>
+                  {showPwd ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                </button>
+              }
+            />
 
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="lg"
-                  className="w-100 mb-3"
-                  data-testid="login-submit"
-                  disabled={isLoading || isGoogleLoading}
-                >
-                  {isLoading ? <Loading /> : (
-                    <>
-                      <FiLogIn className="me-2" />
-                      {t('auth.login')}
-                    </>
-                  )}
-                </Button>
+            <button type="submit" className="auth-submit-btn" disabled={isLoading}>
+              {isLoading ? <span className="auth-spinner" /> : <><FiArrowRight size={16} /> Đăng nhập</>}
+            </button>
 
-                {import.meta.env.VITE_FIREBASE_API_KEY && (
-                  <>
-                    <div className="divider mb-3">
-                      <span className="divider-text">OR</span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline-danger"
-                      size="lg"
-                      className="w-100 mb-3 google-btn"
-                      onClick={handleGoogleLogin}
-                      disabled={isLoading || isGoogleLoading}
-                    >
-                      {isGoogleLoading ? (
-                        <Loading />
-                      ) : (
-                        <>
-                          <FcGoogle size={20} className="me-2" />
-                          {t('auth.loginWithGoogle')}
-                        </>
-                      )}
-                    </Button>
-                  </>
-                )}
-
-                <div className="text-center">
-                  <p className="mb-0">
-                    {t('auth.noAccount')}{' '}
-                    <Link to="/register" className="text-decoration-none fw-bold">
-                      {t('auth.register')}
-                    </Link>
-                  </p>
-                </div>
-              </Form>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
+            {isGoogleAuthConfigured && (
+              <>
+                <div className="auth-divider"><span>hoặc</span></div>
+                <GoogleLoginButton
+                  onSuccess={(res) => redirect(res.payload?.user?.role)}
+                  disabled={isLoading}
+                />
+              </>
+            )}
+          </form>
+        </motion.div>
+      </div>
+    </div>
   );
 };
 

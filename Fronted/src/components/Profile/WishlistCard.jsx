@@ -1,143 +1,101 @@
 import PropTypes from 'prop-types';
-import { Card, Button } from 'react-bootstrap';
 import { motion } from 'framer-motion';
-import { FaHeart, FaShoppingCart, FaEye } from 'react-icons/fa';
+import { FiHeart, FiShoppingCart, FiEye } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { removeFromWishlist } from '../../store/slices/wishlistSlice';
+import { toggleWishlist } from '../../store/slices/wishlistSlice';
 import { addToCart } from '../../store/slices/cartSlice';
 import { toast } from 'react-toastify';
 import './WishlistCard.css';
 
 const WishlistCard = ({ item }) => {
-    const navigate = useNavigate();
-    const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-    const product = item.product || item.Product || {};
-    const wishlistItemId = item.wishlistItemId ?? item.WishlistItemID ?? item.id;
+  // Backend populate: item.productId là object { _id, productName, defaultPrice, images, ... }
+  const product = (item.productId && typeof item.productId === 'object')
+    ? item.productId
+    : (item.product || item.Product || {});
 
-    const handleRemove = async () => {
-        const result = await dispatch(removeFromWishlist(wishlistItemId));
-        if (removeFromWishlist.fulfilled.match(result)) {
-            toast.success('Đã xóa khỏi danh sách yêu thích');
-        } else {
-            toast.error('Không thể xóa sản phẩm');
-        }
-    };
+  const productId = product._id?.toString() || product.id?.toString() || item.productId?.toString() || '';
+  const productName = product.productName || product.ProductName || product.name || 'Sản phẩm';
+  const price = product.defaultPrice || product.price || product.Price || 0;
+  const image = Array.isArray(product.images) && product.images.length > 0
+    ? product.images[0]
+    : product.imageUrl || product.ImageURL || null;
 
-    const handleAddToCart = async () => {
-        const result = await dispatch(addToCart({
-            productId: product.productId ?? product.ProductID ?? product.id,
-            quantity: 1,
-        }));
-        if (addToCart.fulfilled.match(result)) {
-            toast.success('Đã thêm vào giỏ hàng');
-        } else {
-            toast.error('Không thể thêm vào giỏ hàng');
-        }
-    };
+  const handleRemove = async () => {
+    if (!productId) return;
+    const result = await dispatch(toggleWishlist(productId));
+    if (toggleWishlist.fulfilled.match(result)) {
+      toast.success('Đã xóa khỏi danh sách yêu thích');
+    } else {
+      toast.error(result.payload || 'Không thể xóa sản phẩm');
+    }
+  };
 
-    const isOutOfStock = (product.Stock || product.stock || 0) === 0;
+  const handleAddToCart = async () => {
+    if (!productId) return;
+    const result = await dispatch(addToCart({ productId, quantity: 1 }));
+    if (addToCart.fulfilled.match(result)) {
+      toast.success('Đã thêm vào giỏ hàng!');
+    } else {
+      toast.error(result.payload || 'Không thể thêm vào giỏ hàng');
+    }
+  };
 
-    return (
-        <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.3 }}
-            whileHover={{ y: -5 }}
-        >
-            <Card className="wishlist-card h-100 shadow-sm">
-                <div className="wishlist-card-image-wrapper">
-                    <Card.Img
-                        variant="top"
-                        src={(product.imageUrl ?? product.ImageURL) || '/placeholder-product.jpg'}
-                        alt={product.productName ?? product.ProductName ?? product.name}
-                        className="wishlist-card-image"
-                        onClick={() => navigate(`/products/${product.productId ?? product.ProductID ?? product.id}`)}
-                    />
-                    <Button
-                        variant="danger"
-                        size="sm"
-                        className="wishlist-remove-btn"
-                        onClick={handleRemove}
-                    >
-                        <FaHeart />
-                    </Button>
-                    {isOutOfStock && (
-                        <div className="out-of-stock-badge">
-                            Hết hàng
-                        </div>
-                    )}
-                </div>
+  return (
+    <motion.div
+      className="wishlist-card-wrap"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.25 }}
+      whileHover={{ y: -3 }}
+    >
+      <div className="wishlist-card">
+        <div className="wishlist-img-wrap">
+          <img
+            src={image || '/placeholder-category.svg'}
+            alt={productName}
+            className="wishlist-img"
+            onClick={() => productId && navigate(`/products/${productId}`)}
+          />
+          <button className="wishlist-remove-btn" onClick={handleRemove} title="Xóa khỏi yêu thích">
+            <FiHeart size={14} />
+          </button>
+        </div>
 
-                <Card.Body className="d-flex flex-column">
-                    <Card.Title
-                        className="wishlist-card-title"
-                        onClick={() => navigate(`/products/${product.productId ?? product.ProductID ?? product.id}`)}
-                    >
-                        {product.productName ?? product.ProductName ?? product.name}
-                    </Card.Title>
-
-                    <div className="mt-auto">
-                        <div className="d-flex align-items-center justify-content-between mb-3">
-                            <h5 className="text-primary mb-0">
-                                {(product.price ?? product.Price)?.toLocaleString('vi-VN')} ₫
-                            </h5>
-                            {(product.originalPrice ?? product.OriginalPrice) && (product.originalPrice ?? product.OriginalPrice) > (product.price ?? product.Price) && (
-                                <small className="text-muted text-decoration-line-through">
-                                    {(product.originalPrice ?? product.OriginalPrice).toLocaleString('vi-VN')} ₫
-                                </small>
-                            )}
-                        </div>
-
-                        <div className="d-flex gap-2">
-                            <Button
-                                variant="outline-primary"
-                                size="sm"
-                                className="flex-grow-1"
-                                onClick={() => navigate(`/products/${product.productId ?? product.ProductID ?? product.id}`)}
-                            >
-                                <FaEye className="me-1" />
-                                Xem
-                            </Button>
-                            <Button
-                                variant="primary"
-                                size="sm"
-                                className="flex-grow-1"
-                                onClick={handleAddToCart}
-                                disabled={isOutOfStock}
-                            >
-                                <FaShoppingCart className="me-1" />
-                                {isOutOfStock ? 'Hết hàng' : 'Mua'}
-                            </Button>
-                        </div>
-                    </div>
-                </Card.Body>
-            </Card>
-        </motion.div>
-    );
+        <div className="wishlist-info">
+          <p
+            className="wishlist-name"
+            onClick={() => productId && navigate(`/products/${productId}`)}
+          >
+            {productName}
+          </p>
+          <p className="wishlist-price">
+            {price > 0
+              ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price)
+              : 'Liên hệ'}
+          </p>
+          <div className="wishlist-actions">
+            <button
+              className="wishlist-btn-view"
+              onClick={() => productId && navigate(`/products/${productId}`)}
+            >
+              <FiEye size={13} /> Xem
+            </button>
+            <button className="wishlist-btn-cart" onClick={handleAddToCart}>
+              <FiShoppingCart size={13} /> Thêm giỏ
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
 };
 
 WishlistCard.propTypes = {
-    item: PropTypes.shape({
-        WishlistItemID: PropTypes.number,
-        id: PropTypes.number,
-        product: PropTypes.shape({
-            ProductID: PropTypes.number,
-            id: PropTypes.number,
-            ProductName: PropTypes.string,
-            name: PropTypes.string,
-            Price: PropTypes.number,
-            price: PropTypes.number,
-            OriginalPrice: PropTypes.number,
-            ImageURL: PropTypes.string,
-            imageUrl: PropTypes.string,
-            Stock: PropTypes.number,
-            stock: PropTypes.number,
-        }),
-        Product: PropTypes.object,
-    }).isRequired,
+  item: PropTypes.object.isRequired,
 };
 
 export default WishlistCard;

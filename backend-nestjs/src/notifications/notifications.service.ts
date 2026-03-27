@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { NotificationRepository } from './notifications.repository';
-import { CreateNotificationDto, QueryNotificationDto } from './dto/notification.dto';
+import {
+  CreateNotificationDto,
+  QueryNotificationDto,
+} from './dto/notification.dto';
 
 @Injectable()
 export class NotificationsService {
@@ -10,7 +13,7 @@ export class NotificationsService {
   async createNotification(createDto: CreateNotificationDto) {
     const payload = {
       ...createDto,
-      userId: new Types.ObjectId(createDto.userId)
+      userId: new Types.ObjectId(createDto.userId),
     };
     const notification = await this.notificationRepository.create(payload);
     return { message: 'Đã gửi thông báo', notification };
@@ -31,12 +34,20 @@ export class NotificationsService {
 
     return {
       notifications,
-      pagination: { currentPage: page, totalPages: Math.ceil(total / limit), totalItems: total, limit },
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        limit,
+      },
     };
   }
 
   async markAsRead(userId: string, id: string) {
-    const notification = await this.notificationRepository.markAsRead(id, userId);
+    const notification = await this.notificationRepository.markAsRead(
+      id,
+      userId,
+    );
     if (!notification) throw new NotFoundException('Không tìm thấy thông báo');
     return { message: 'Đã đánh dấu đọc', notification };
   }

@@ -5,10 +5,22 @@ import { Product, ProductDocument } from './schemas/product.schema';
 
 @Injectable()
 export class ProductRepository {
-  constructor(@InjectModel(Product.name) private productModel: Model<ProductDocument>) {}
+  constructor(
+    @InjectModel(Product.name) private productModel: Model<ProductDocument>,
+  ) {}
 
-  async findAll(match: any, skip: number, limit: number): Promise<ProductDocument[]> {
-    return this.productModel.find(match).skip(skip).limit(limit).exec();
+  async findAll(
+    match: any,
+    skip: number,
+    limit: number,
+  ): Promise<ProductDocument[]> {
+    return this.productModel
+      .find(match)
+      .skip(skip)
+      .limit(limit)
+      .populate('categoryId', 'categoryName categorySlug')
+      .sort({ createdAt: -1 })
+      .exec();
   }
 
   async count(match: any): Promise<number> {
@@ -16,7 +28,10 @@ export class ProductRepository {
   }
 
   async findById(id: string): Promise<ProductDocument | null> {
-    return this.productModel.findById(id).exec();
+    return this.productModel
+      .findById(id)
+      .populate('categoryId', 'categoryName categorySlug')
+      .exec();
   }
 
   async create(data: Partial<Product>): Promise<ProductDocument> {
@@ -24,11 +39,18 @@ export class ProductRepository {
     return newProduct.save();
   }
 
-  async update(id: string, updateData: Partial<Product>): Promise<ProductDocument | null> {
-    return this.productModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+  async update(
+    id: string,
+    updateData: Partial<Product>,
+  ): Promise<ProductDocument | null> {
+    return this.productModel
+      .findByIdAndUpdate(id, updateData, { new: true })
+      .exec();
   }
 
   async softDelete(id: string): Promise<ProductDocument | null> {
-    return this.productModel.findByIdAndUpdate(id, { isActive: false }, { new: true }).exec();
+    return this.productModel
+      .findByIdAndUpdate(id, { isActive: false }, { new: true })
+      .exec();
   }
 }

@@ -1,222 +1,144 @@
 import { useState } from 'react';
-import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
+import { Container, Row, Col } from 'react-bootstrap';
 import { motion } from 'framer-motion';
-import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { FiMail, FiPhone, FiMapPin, FiSend } from 'react-icons/fi';
+import { FiMail, FiPhone, FiMapPin, FiSend, FiClock, FiMessageSquare } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import './Contact.css';
 
-const contactSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email address'),
-  phone: z.string().min(10, 'Valid phone number is required'),
-  subject: z.string().min(1, 'Subject is required'),
-  message: z.string().min(10, 'Message must be at least 10 characters'),
+const schema = z.object({
+  name:    z.string().min(1, 'Bắt buộc'),
+  email:   z.string().email('Email không hợp lệ'),
+  phone:   z.string().min(10, 'Số điện thoại không hợp lệ'),
+  subject: z.string().min(1, 'Bắt buộc'),
+  message: z.string().min(10, 'Tối thiểu 10 ký tự'),
 });
 
+const INFO_ITEMS = [
+  { icon: FiMail,    label: 'Email',          value: 'support@sports.vn' },
+  { icon: FiPhone,   label: 'Điện thoại',     value: '1800 9999 (miễn phí)' },
+  { icon: FiMapPin,  label: 'Địa chỉ',        value: '123 Nguyễn Văn Linh, Q.7, TP.HCM' },
+  { icon: FiClock,   label: 'Giờ làm việc',   value: 'T2–T6: 8:00 – 18:00\nT7: 8:00 – 12:00' },
+];
+
 const Contact = () => {
-  const { t } = useTranslation();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sending, setSending] = useState(false);
+  const { register, handleSubmit, formState: { errors }, reset } = useForm({ resolver: zodResolver(schema) });
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-  } = useForm({
-    resolver: zodResolver(contactSchema),
-  });
-
-  const onSubmit = async (data) => {
-    setIsSubmitting(true);
-    try {
-      // TODO: Integrate with backend API
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success(t('contact.success'));
-      reset();
-    } catch (error) {
-      toast.error(t('contact.error'));
-    } finally {
-      setIsSubmitting(false);
-    }
+  const onSubmit = async () => {
+    setSending(true);
+    await new Promise(r => setTimeout(r, 800));
+    toast.success('Gửi thành công! Chúng tôi sẽ liên hệ lại sớm 📨');
+    reset();
+    setSending(false);
   };
-
-  const contactInfo = [
-    {
-      icon: FiMail,
-      title: t('contact.info.email.title'),
-      content: 'support@sportsecommerce.com',
-    },
-    {
-      icon: FiPhone,
-      title: t('contact.info.phone.title'),
-      content: '+84 123 456 789',
-    },
-    {
-      icon: FiMapPin,
-      title: t('contact.info.address.title'),
-      content: t('contact.info.address.content'),
-    },
-  ];
 
   return (
     <div className="contact-page">
-      <Container className="py-5">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-5"
-        >
-          <h1 className="display-4 fw-bold gradient-text mb-4">
-            {t('contact.title')}
-          </h1>
-          <p className="lead text-muted">
-            {t('contact.subtitle')}
-          </p>
-        </motion.div>
+      {/* Hero */}
+      <section className="contact-hero">
+        <Container>
+          <motion.div
+            className="contact-hero-content"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <span className="section-eyebrow">💬 Liên hệ với chúng tôi</span>
+            <h1 className="contact-hero-title">Chúng tôi luôn<br /><span className="gradient-text">sẵn sàng hỗ trợ</span></h1>
+            <p className="contact-hero-sub">Có câu hỏi về sản phẩm hay dịch vụ? Đội ngũ chúng tôi sẵn sàng giải đáp trong vòng 24 giờ.</p>
+          </motion.div>
+        </Container>
+        <div className="contact-hero-blob" />
+      </section>
 
-        <Row>
-          {/* Contact Form */}
-          <Col lg={8} className="mb-4">
+      <Container className="contact-main">
+        <Row className="g-4">
+          {/* Form */}
+          <Col lg={8}>
             <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              className="contact-form-card"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
             >
-              <Card className="border-0 shadow-sm p-4">
-                <h3 className="fw-bold mb-4">{t('contact.form.title')}</h3>
-                <Form onSubmit={handleSubmit(onSubmit)}>
-                  <Row>
-                    <Col md={6} className="mb-3">
-                      <Form.Label>{t('contact.form.name')}</Form.Label>
-                      <Form.Control
-                        type="text"
-                        {...register('name')}
-                        placeholder={t('contact.form.namePlaceholder')}
-                      />
-                      {errors.name && (
-                        <Form.Text className="text-danger">{errors.name.message}</Form.Text>
-                      )}
-                    </Col>
-                    <Col md={6} className="mb-3">
-                      <Form.Label>{t('contact.form.email')}</Form.Label>
-                      <Form.Control
-                        type="email"
-                        {...register('email')}
-                        placeholder={t('contact.form.emailPlaceholder')}
-                      />
-                      {errors.email && (
-                        <Form.Text className="text-danger">{errors.email.message}</Form.Text>
-                      )}
-                    </Col>
-                  </Row>
-                  <Row>
-                    <Col md={6} className="mb-3">
-                      <Form.Label>{t('contact.form.phone')}</Form.Label>
-                      <Form.Control
-                        type="tel"
-                        {...register('phone')}
-                        placeholder={t('contact.form.phonePlaceholder')}
-                      />
-                      {errors.phone && (
-                        <Form.Text className="text-danger">{errors.phone.message}</Form.Text>
-                      )}
-                    </Col>
-                    <Col md={6} className="mb-3">
-                      <Form.Label>{t('contact.form.subject')}</Form.Label>
-                      <Form.Control
-                        type="text"
-                        {...register('subject')}
-                        placeholder={t('contact.form.subjectPlaceholder')}
-                      />
-                      {errors.subject && (
-                        <Form.Text className="text-danger">{errors.subject.message}</Form.Text>
-                      )}
-                    </Col>
-                  </Row>
-                  <Form.Group className="mb-3">
-                    <Form.Label>{t('contact.form.message')}</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={5}
-                      {...register('message')}
-                      placeholder={t('contact.form.messagePlaceholder')}
-                    />
-                    {errors.message && (
-                      <Form.Text className="text-danger">{errors.message.message}</Form.Text>
-                    )}
-                  </Form.Group>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="lg"
-                    disabled={isSubmitting}
-                    className="w-100"
-                  >
-                    {isSubmitting ? (
-                      t('common.loading')
-                    ) : (
-                      <>
-                        <FiSend className="me-2" />
-                        {t('contact.form.submit')}
-                      </>
-                    )}
-                  </Button>
-                </Form>
-              </Card>
+              <h2 className="contact-form-title"><FiMessageSquare size={20} /> Gửi tin nhắn cho chúng tôi</h2>
+              <form onSubmit={handleSubmit(onSubmit)} className="contact-form" noValidate>
+                <div className="contact-grid">
+                  {/* Name */}
+                  <div className="cf-field">
+                    <label className="cf-label">Họ tên *</label>
+                    <input className={`cf-input ${errors.name ? 'error' : ''}`} placeholder="Nguyễn Văn A" {...register('name')} />
+                    {errors.name && <span className="cf-error">{errors.name.message}</span>}
+                  </div>
+                  {/* Email */}
+                  <div className="cf-field">
+                    <label className="cf-label">Email *</label>
+                    <input type="email" className={`cf-input ${errors.email ? 'error' : ''}`} placeholder="your@email.com" {...register('email')} />
+                    {errors.email && <span className="cf-error">{errors.email.message}</span>}
+                  </div>
+                  {/* Phone */}
+                  <div className="cf-field">
+                    <label className="cf-label">Số điện thoại *</label>
+                    <input type="tel" className={`cf-input ${errors.phone ? 'error' : ''}`} placeholder="0912 345 678" {...register('phone')} />
+                    {errors.phone && <span className="cf-error">{errors.phone.message}</span>}
+                  </div>
+                  {/* Subject */}
+                  <div className="cf-field">
+                    <label className="cf-label">Chủ đề *</label>
+                    <input className={`cf-input ${errors.subject ? 'error' : ''}`} placeholder="Hỏi về sản phẩm..." {...register('subject')} />
+                    {errors.subject && <span className="cf-error">{errors.subject.message}</span>}
+                  </div>
+                  {/* Message */}
+                  <div className="cf-field cf-full">
+                    <label className="cf-label">Nội dung *</label>
+                    <textarea rows={5} className={`cf-input ${errors.message ? 'error' : ''}`} placeholder="Nhập nội dung liên hệ..." {...register('message')} />
+                    {errors.message && <span className="cf-error">{errors.message.message}</span>}
+                  </div>
+                </div>
+                <motion.button
+                  type="submit"
+                  className="cf-submit-btn"
+                  disabled={sending}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  {sending ? <span className="auth-spinner" /> : <><FiSend size={16} /> Gửi tin nhắn</>}
+                </motion.button>
+              </form>
             </motion.div>
           </Col>
 
-          {/* Contact Info */}
+          {/* Info */}
           <Col lg={4}>
             <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
+              transition={{ delay: 0.1 }}
             >
-              <Card className="border-0 shadow-sm p-4 mb-4">
-                <h3 className="fw-bold mb-4">{t('contact.info.title')}</h3>
-                {contactInfo.map((info, index) => {
-                  const Icon = info.icon;
-                  return (
-                    <motion.div
-                      key={index}
-                      className="d-flex align-items-start mb-4"
-                      whileHover={{ x: 10 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="contact-icon me-3">
-                        <Icon size={24} className="text-primary" />
-                      </div>
+              <div className="contact-info-card">
+                <h3 className="ci-title">Thông tin liên hệ</h3>
+                <div className="ci-items">
+                  {INFO_ITEMS.map(({ icon: Icon, label, value }) => (
+                    <div className="ci-item" key={label}>
+                      <div className="ci-icon"><Icon size={18} /></div>
                       <div>
-                        <h6 className="fw-bold mb-1">{info.title}</h6>
-                        <p className="text-muted mb-0">{info.content}</p>
+                        <p className="ci-label">{label}</p>
+                        <p className="ci-value">{value}</p>
                       </div>
-                    </motion.div>
-                  );
-                })}
-              </Card>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-              <Card className="border-0 shadow-sm p-4">
-                <h5 className="fw-bold mb-3">{t('contact.hours.title')}</h5>
-                <p className="mb-2">
-                  <strong>{t('contact.hours.weekdays')}</strong>
-                  <br />
-                  {t('contact.hours.weekdaysTime')}
-                </p>
-                <p className="mb-0">
-                  <strong>{t('contact.hours.weekend')}</strong>
-                  <br />
-                  {t('contact.hours.weekendTime')}
-                </p>
-              </Card>
+              {/* Map placeholder */}
+              <div className="contact-map-placeholder">
+                <FiMapPin size={28} />
+                <p>Bản đồ Google Maps</p>
+                <span>123 Nguyễn Văn Linh, Quận 7, TP.HCM</span>
+              </div>
             </motion.div>
           </Col>
         </Row>

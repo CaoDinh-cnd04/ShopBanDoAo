@@ -1,4 +1,11 @@
-import { Controller, Post, UseInterceptors, UploadedFile, UploadedFiles, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  UseInterceptors,
+  UploadedFile,
+  UploadedFiles,
+  UseGuards,
+} from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -15,16 +22,19 @@ export class UploadController {
   @Post('single')
   @Roles('Admin')
   @UseGuards(RolesGuard)
-  @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: './uploads', // Thư mục lưu ảnh trên server
-      filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const ext = extname(file.originalname);
-        cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-      },
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads', // Thư mục lưu ảnh trên server
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+        },
+      }),
     }),
-  }))
+  )
   uploadSingleFile(@UploadedFile() file: any) {
     return this.uploadService.uploadFile(file);
   }
@@ -32,16 +42,20 @@ export class UploadController {
   @Post('multiple')
   @Roles('Admin')
   @UseGuards(RolesGuard)
-  @UseInterceptors(FilesInterceptor('files', 10, { // Max 10 files
-    storage: diskStorage({
-      destination: './uploads',
-      filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const ext = extname(file.originalname);
-        cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-      },
+  @UseInterceptors(
+    FilesInterceptor('files', 10, {
+      // Max 10 files
+      storage: diskStorage({
+        destination: './uploads',
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+        },
+      }),
     }),
-  }))
+  )
   uploadMultipleFiles(@UploadedFiles() files: any[]) {
     return this.uploadService.uploadMultipleFiles(files);
   }

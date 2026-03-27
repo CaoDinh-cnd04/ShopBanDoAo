@@ -1,6 +1,20 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { VouchersService } from './vouchers.service';
-import { CreateVoucherDto, UpdateVoucherDto, QueryVoucherDto } from './dto/voucher.dto';
+import {
+  CreateVoucherDto,
+  UpdateVoucherDto,
+  QueryVoucherDto,
+} from './dto/voucher.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../core/guards/roles.guard';
 import { Roles } from '../core/decorators/roles.decorator';
@@ -9,10 +23,19 @@ import { Roles } from '../core/decorators/roles.decorator';
 export class VouchersController {
   constructor(private readonly vouchersService: VouchersService) {}
 
-  // PUBLIC/USER ROUTES
+  // PUBLIC ROUTES — không cần đăng nhập
+  @Get('public')
+  async getPublicVouchers() {
+    return this.vouchersService.getPublicVouchers();
+  }
+
+  // USER ROUTES — cần đăng nhập
   @Post('apply')
   @UseGuards(JwtAuthGuard)
-  async applyVoucher(@Body('code') code: string, @Body('orderValue') orderValue: number) {
+  async applyVoucher(
+    @Body('code') code: string,
+    @Body('orderValue') orderValue: number,
+  ) {
     return this.vouchersService.applyVoucher(code, orderValue);
   }
 
@@ -34,7 +57,10 @@ export class VouchersController {
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Admin')
-  async updateVoucher(@Param('id') id: string, @Body() updateDto: UpdateVoucherDto) {
+  async updateVoucher(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateVoucherDto,
+  ) {
     return this.vouchersService.updateVoucher(id, updateDto);
   }
 
@@ -43,5 +69,17 @@ export class VouchersController {
   @Roles('Admin')
   async deleteVoucher(@Param('id') id: string) {
     return this.vouchersService.deleteVoucher(id);
+  }
+}
+
+@Controller('api/admin/vouchers')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('Admin')
+export class AdminVouchersController {
+  constructor(private readonly vouchersService: VouchersService) {}
+
+  @Get('stats')
+  async getVoucherStats() {
+    return this.vouchersService.getVoucherStats();
   }
 }

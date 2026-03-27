@@ -1,7 +1,17 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthRepository } from './auth.repository';
-import { RegisterDto, LoginDto } from './dto/auth.dto';
+import {
+  RegisterDto,
+  LoginDto,
+  UpdateProfileDto,
+  ChangePasswordDto,
+} from './dto/auth.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -12,29 +22,42 @@ export class AuthService {
   ) {}
 
   async register(registerDto: RegisterDto) {
-    const { email, password, fullName } = registerDto;
-    
-    // 1. Business Logic: Check existing user
+    const { email, password, fullName, phone } = registerDto;
+
     const existingUser = await this.authRepository.findByEmail(email);
     if (existingUser) {
       throw new BadRequestException('Email đã được sử dụng');
     }
 
-    // 2. Hash Password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 3. Save via Database Repository
     const user = await this.authRepository.create({
       email,
       fullName,
       passwordHash: hashedPassword,
+      phone: phone?.trim() || undefined,
     });
 
-    return { message: 'Đăng ký thành công', userId: user._id };
+    const payload = {
+      sub: user._id,
+      email: user.email,
+      role: user.role || 'User',
+    };
+    const accessToken = await this.jwtService.signAsync(payload);
+
+    return {
+      token: accessToken,
+      user: {
+        id: user._id,
+        email: user.email,
+        fullName: user.fullName,
+        phone: user.phone || null,
+        role: user.role || 'User',
+      },
+    };
   }
 
   async login(loginDto: LoginDto) {
-    // 1. Logic kiểm tra user
     const user = await this.authRepository.findByEmail(loginDto.email);
     if (!user) {
       throw new UnauthorizedException('Tài khoản không tồn tại');
@@ -45,55 +68,137 @@ export class AuthService {
       throw new UnauthorizedException('Sai mật khẩu');
     }
 
-    // 2. Sign JWT
-    const payload = { sub: user._id, email: user.email, role: user.role };
+    const payload = {
+      sub: user._id,
+      email: user.email,
+      role: user.role || 'User',
+    };
     const accessToken = await this.jwtService.signAsync(payload);
 
-    return { 
-      message: 'Đăng nhập thành công',
-      accessToken, 
-      user: { email: user.email, fullName: user.fullName, role: user.role } 
+    return {
+      token: accessToken,
+      user: {
+        id: user._id,
+        email: user.email,
+        fullName: user.fullName,
+        phone: user.phone || null,
+        role: user.role || 'User',
+      },
     };
   }
 
-  async firebaseLogin(idToken: string) {
-    try {
-      const admin = require('firebase-admin');
-      const path = require('path');
-      
-      // Initialize Firebase Admin SDK lazily
-      if (!admin.apps.length) {
-        const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './config/firebase-service-account.json';
-        const serviceAccount = require(path.resolve(process.cwd(), serviceAccountPath));
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount)
-        });
-      }
-
-      // Verify the token provided by the client (Facebook/Google)
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
-
-      // Link to local MongoDB user
-      let user = await this.authRepository.findByEmail(decodedToken.email);
-      if (!user) {
-        user = await this.authRepository.create({
-          email: decodedToken.email,
-          fullName: decodedToken.name || decodedToken.email.split('@')[0],
-          passwordHash: 'firebase_auth_no_password',
-        });
-      }
-
-      // Assign local JWT
-      const payload = { sub: user._id, email: user.email };
-      const accessToken = await this.jwtService.signAsync(payload);
-
-      return { 
-        message: 'Đăng nhập MXH thành công',
-        accessToken, 
-        user: { email: user.email, fullName: user.fullName } 
-      };
-    } catch (error: any) {
-      throw new UnauthorizedException('Xác thực Firebase thất bại: ' + error.message);
+  /**
+   * Đăng nhập Google qua OAuth2 access_token (frontend: @react-oauth/google useGoogleLogin).
+   * Xác thực bằng Google UserInfo API — không dùng Firebase.
+   */
+  async googleLogin(accessToken: string) {
+    const token = accessToken?.trim();
+    if (!token) {
+      throw new BadRequestException('Access token không được để trống');
     }
+
+    const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      throw new UnauthorizedException(
+        'Google access token không hợp lệ hoặc đã hết hạn',
+      );
+    }
+
+    const profile = (await res.json()) as {
+      email?: string;
+      name?: string;
+      verified_email?: boolean;
+    };
+
+    const email = profile.email?.trim().toLowerCase();
+    if (!email) {
+      throw new UnauthorizedException('Google không cung cấp email');
+    }
+
+    if (profile.verified_email === false) {
+      throw new UnauthorizedException('Email Google chưa được xác minh');
+    }
+
+    let user = await this.authRepository.findByEmail(email);
+
+    // Email chưa tồn tại → tự động tạo tài khoản từ Google profile (chuẩn OAuth2)
+    if (!user) {
+      const fullName = profile.name?.trim() || email.split('@')[0];
+      user = await this.authRepository.create({
+        email,
+        fullName,
+        passwordHash: `GOOGLE_OAUTH_${Date.now()}`,
+        phone: null,
+        role: 'User',
+        isActive: true,
+      } as any);
+    }
+
+    const payload = {
+      sub: user._id,
+      email: user.email,
+      role: user.role || 'User',
+    };
+    const jwt = await this.jwtService.signAsync(payload);
+
+    return {
+      token: jwt,
+      user: {
+        id: user._id,
+        email: user.email,
+        fullName: user.fullName,
+        phone: user.phone || null,
+        role: user.role || 'User',
+      },
+    };
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.authRepository.findById(userId);
+    if (!user) throw new UnauthorizedException('User not found');
+    return {
+      id: user._id,
+      email: user.email,
+      fullName: user.fullName,
+      phone: user.phone || null,
+      role: user.role || 'User',
+    };
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.authRepository.findById(userId);
+    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+
+    if (dto.fullName !== undefined) user.fullName = dto.fullName.trim();
+    if (dto.phone !== undefined)
+      user.phone = (dto.phone.trim() || undefined) as any;
+    await (user as any).save();
+
+    return {
+      id: user._id,
+      email: user.email,
+      fullName: user.fullName,
+      phone: user.phone || null,
+      role: user.role || 'User',
+    };
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.authRepository.findById(userId);
+    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+
+    // Google OAuth users may have placeholder password
+    const isPlaceholder = user.passwordHash?.startsWith('GOOGLE_OAUTH_');
+    if (!isPlaceholder) {
+      const isMatch = await bcrypt.compare(dto.oldPassword, user.passwordHash);
+      if (!isMatch) throw new BadRequestException('Mật khẩu cũ không đúng');
+    }
+
+    user.passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    await (user as any).save();
+    return { message: 'Đổi mật khẩu thành công' };
   }
 }

@@ -36,7 +36,7 @@ const TopProducts = ({ products }) => {
               ))
             ) : (
               <tr>
-                <td colSpan={4} className="text-center" style={{ color: 'rgba(255,255,255,0.62)' }}>
+                <td colSpan={4} className="text-center text-muted">
                   Chưa có dữ liệu
                 </td>
               </tr>

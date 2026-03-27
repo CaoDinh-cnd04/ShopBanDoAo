@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { CourtsService } from './courts.service';
 import { CreateCourtDto, UpdateCourtDto, QueryCourtDto } from './dto/court.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -31,7 +41,10 @@ export class CourtsController {
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Admin')
-  async updateCourt(@Param('id') id: string, @Body() updateDto: UpdateCourtDto) {
+  async updateCourt(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateCourtDto,
+  ) {
     return this.courtsService.updateCourt(id, updateDto);
   }
 
@@ -40,5 +53,17 @@ export class CourtsController {
   @Roles('Admin')
   async deleteCourt(@Param('id') id: string) {
     return this.courtsService.deleteCourt(id);
+  }
+}
+
+@Controller('api/admin/courts')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('Admin')
+export class AdminCourtsController {
+  constructor(private readonly courtsService: CourtsService) {}
+
+  @Get('stats')
+  async getCourtStats() {
+    return this.courtsService.getCourtStats();
   }
 }

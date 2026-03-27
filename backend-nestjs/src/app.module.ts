@@ -27,7 +27,9 @@ import { UploadModule } from './upload/upload.module';
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGO_URI') || 'mongodb://127.0.0.1:27017/webbanhang',
+        uri:
+          configService.get<string>('MONGO_URI') ||
+          'mongodb://127.0.0.1:27017/webbanhang',
       }),
       inject: [ConfigService],
     }),

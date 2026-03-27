@@ -1,192 +1,148 @@
 import { useState } from 'react';
-import { Card, Form, Button, Row, Col, Image } from 'react-bootstrap';
-import { useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { motion } from 'framer-motion';
+import { FiUser, FiMail, FiPhone, FiCamera, FiSave, FiX } from 'react-icons/fi';
 import { updateProfile } from '../../store/slices/authSlice';
 import { toast } from 'react-toastify';
-import { FaUser, FaEnvelope, FaPhone, FaCamera } from 'react-icons/fa';
-import { motion } from 'framer-motion';
-import './ProfileEdit.css';
+
+const schema = z.object({
+  fullName: z.string().min(2, 'Họ tên tối thiểu 2 ký tự'),
+  phone: z
+    .string()
+    .regex(/^(0|\+84)[3-9]\d{8}$/, 'Số điện thoại không hợp lệ')
+    .or(z.literal('')),
+});
 
 const ProfileEdit = () => {
-  const { t } = useTranslation();
   const dispatch = useDispatch();
-  const { user, isLoading } = useSelector((state) => state.auth);
-  const [avatarPreview, setAvatarPreview] = useState(user?.avatar || user?.Avatar || '/default-avatar.png');
-  const [avatarFile, setAvatarFile] = useState(null);
+  const { user, isLoading } = useSelector((s) => s.auth);
+  const [avatarPreview] = useState(null);
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isDirty },
+  } = useForm({
+    resolver: zodResolver(schema),
     defaultValues: {
-      firstName: user?.firstName || user?.FirstName || '',
-      lastName: user?.lastName || user?.LastName || '',
-      email: user?.email || user?.Email || '',
-      phone: user?.phone || user?.Phone || '',
+      fullName: user?.fullName || '',
+      phone: user?.phone || '',
     },
   });
 
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setAvatarFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const onSubmit = async (data) => {
-    const formData = new FormData();
-    formData.append('firstName', data.firstName);
-    formData.append('lastName', data.lastName);
-    formData.append('phone', data.phone);
-    if (avatarFile) {
-      formData.append('avatar', avatarFile);
-    }
-
-    const result = await dispatch(updateProfile(formData));
+    const result = await dispatch(updateProfile(data));
     if (updateProfile.fulfilled.match(result)) {
       toast.success('Cập nhật hồ sơ thành công!');
+      reset(data);
     } else {
-      toast.error('Không thể cập nhật hồ sơ');
+      toast.error(result.payload || 'Không thể cập nhật hồ sơ');
     }
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.3 }}
     >
-      <Card className="profile-edit-card shadow-sm">
-        <Card.Body>
-          <Form onSubmit={handleSubmit(onSubmit)}>
-            <Row>
-              {/* Avatar Section */}
-              <Col md={4} className="text-center mb-4 mb-md-0">
-                <div className="avatar-upload-section">
-                  <div className="avatar-wrapper">
-                    <Image
-                      src={avatarPreview}
-                      roundedCircle
-                      className="profile-avatar"
-                      alt="Avatar"
-                    />
-                    <label htmlFor="avatar-input" className="avatar-upload-btn">
-                      <FaCamera />
-                      <input
-                        id="avatar-input"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarChange}
-                        hidden
-                      />
-                    </label>
-                  </div>
-                  <p className="text-muted mt-3 small">
-                    Click vào icon camera để thay đổi ảnh đại diện
-                  </p>
-                </div>
-              </Col>
+      <div className="profile-section-card">
+        <div className="profile-section-header">
+          <h2 className="profile-section-title">Thông tin cá nhân</h2>
+          <p className="profile-section-sub">Cập nhật thông tin hồ sơ của bạn</p>
+        </div>
 
-              {/* Form Section */}
-              <Col md={8}>
-                <Row>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label className="d-flex align-items-center gap-2">
-                        <FaUser className="text-primary" />
-                        Họ
-                      </Form.Label>
-                      <Form.Control
-                        {...register('firstName', { required: 'Vui lòng nhập họ' })}
-                        isInvalid={!!errors.firstName}
-                        placeholder="Nhập họ của bạn"
-                      />
-                      <Form.Control.Feedback type="invalid">
-                        {errors.firstName?.message}
-                      </Form.Control.Feedback>
-                    </Form.Group>
-                  </Col>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <div className="profile-avatar-row">
+            <div className="profile-avatar-upload">
+              <div className="profile-avatar-circle">
+                {avatarPreview
+                  ? <img src={avatarPreview} alt="avatar" />
+                  : <span>{user?.fullName?.[0]?.toUpperCase() || <FiUser />}</span>}
+                <label className="profile-avatar-overlay" htmlFor="avatar-file">
+                  <FiCamera size={18} />
+                </label>
+                <input id="avatar-file" type="file" accept="image/*" hidden />
+              </div>
+              <p className="profile-avatar-hint">Click vào icon camera để thay đổi ảnh đại diện</p>
+            </div>
 
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label className="d-flex align-items-center gap-2">
-                        <FaUser className="text-primary" />
-                        Tên
-                      </Form.Label>
-                      <Form.Control
-                        {...register('lastName', { required: 'Vui lòng nhập tên' })}
-                        isInvalid={!!errors.lastName}
-                        placeholder="Nhập tên của bạn"
-                      />
-                      <Form.Control.Feedback type="invalid">
-                        {errors.lastName?.message}
-                      </Form.Control.Feedback>
-                    </Form.Group>
-                  </Col>
-                </Row>
+            <div className="profile-form-fields">
+              {/* Họ và tên */}
+              <div className="profile-field">
+                <label className="profile-field-label">
+                  <FiUser size={14} /> Họ và tên
+                </label>
+                <input
+                  type="text"
+                  className={`profile-field-input ${errors.fullName ? 'error' : ''}`}
+                  placeholder="Nguyễn Văn A"
+                  {...register('fullName')}
+                />
+                {errors.fullName && (
+                  <span className="profile-field-error">{errors.fullName.message}</span>
+                )}
+              </div>
 
-                <Form.Group className="mb-3">
-                  <Form.Label className="d-flex align-items-center gap-2">
-                    <FaEnvelope className="text-primary" />
-                    Email
-                  </Form.Label>
-                  <Form.Control
-                    type="email"
-                    {...register('email')}
-                    disabled
-                    className="bg-light"
-                  />
-                  <Form.Text className="text-muted">
-                    Email không thể thay đổi
-                  </Form.Text>
-                </Form.Group>
+              {/* Email (readonly) */}
+              <div className="profile-field">
+                <label className="profile-field-label">
+                  <FiMail size={14} /> Email
+                </label>
+                <input
+                  type="email"
+                  className="profile-field-input readonly"
+                  value={user?.email || ''}
+                  readOnly
+                />
+                <span className="profile-field-hint">Email không thể thay đổi</span>
+              </div>
 
-                <Form.Group className="mb-4">
-                  <Form.Label className="d-flex align-items-center gap-2">
-                    <FaPhone className="text-primary" />
-                    Số điện thoại
-                  </Form.Label>
-                  <Form.Control
-                    {...register('phone', {
-                      pattern: {
-                        value: /^[0-9]{10}$/,
-                        message: 'Số điện thoại không hợp lệ (10 chữ số)',
-                      },
-                    })}
-                    isInvalid={!!errors.phone}
-                    placeholder="Nhập số điện thoại"
-                  />
-                  <Form.Control.Feedback type="invalid">
-                    {errors.phone?.message}
-                  </Form.Control.Feedback>
-                </Form.Group>
+              {/* Số điện thoại */}
+              <div className="profile-field">
+                <label className="profile-field-label">
+                  <FiPhone size={14} /> Số điện thoại
+                </label>
+                <input
+                  type="tel"
+                  className={`profile-field-input ${errors.phone ? 'error' : ''}`}
+                  placeholder="0901234567"
+                  {...register('phone')}
+                />
+                {errors.phone && (
+                  <span className="profile-field-error">{errors.phone.message}</span>
+                )}
+              </div>
 
-                <div className="d-flex gap-2">
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    disabled={isLoading}
-                    className="px-4"
-                  >
-                    {isLoading ? 'Đang lưu...' : 'Lưu thay đổi'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline-secondary"
-                    onClick={() => window.location.reload()}
-                  >
-                    Hủy
-                  </Button>
-                </div>
-              </Col>
-            </Row>
-          </Form>
-        </Card.Body>
-      </Card>
+              <div className="profile-form-actions">
+                <button
+                  type="submit"
+                  className="profile-btn-primary"
+                  disabled={isLoading || !isDirty}
+                >
+                  {isLoading ? (
+                    <span className="profile-spinner" />
+                  ) : (
+                    <><FiSave size={15} /> Lưu thay đổi</>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="profile-btn-secondary"
+                  onClick={() => reset()}
+                  disabled={!isDirty}
+                >
+                  <FiX size={15} /> Hủy
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
     </motion.div>
   );
 };

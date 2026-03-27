@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -12,6 +21,12 @@ export class CategoriesController {
   @Get()
   async getAllCategories() {
     return this.categoriesService.getAllCategories();
+  }
+
+  // Brands chưa có schema riêng – trả mảng rỗng để frontend không bị lỗi
+  @Get('brands')
+  async getAllBrands() {
+    return [];
   }
 
   @Get(':id')
@@ -29,7 +44,10 @@ export class CategoriesController {
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Admin')
-  async updateCategory(@Param('id') id: string, @Body() updateDto: UpdateCategoryDto) {
+  async updateCategory(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateCategoryDto,
+  ) {
     return this.categoriesService.updateCategory(id, updateDto);
   }
 

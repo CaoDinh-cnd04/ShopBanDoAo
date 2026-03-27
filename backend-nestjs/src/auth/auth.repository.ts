@@ -11,6 +11,10 @@ export class AuthRepository {
     return this.userModel.findOne({ email }).exec();
   }
 
+  async findById(id: string): Promise<UserDocument | null> {
+    return this.userModel.findById(id).exec();
+  }
+
   async create(userData: Partial<User>): Promise<UserDocument> {
     const newUser = new this.userModel(userData);
     return newUser.save();

@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Button, Form, Badge, Tabs, Tab } from 'react-bootstrap';
+import { Container, Row, Col } from 'react-bootstrap';
 import { motion } from 'framer-motion';
-import ImageGallery from 'react-image-gallery';
-import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
+import {
+  FiShoppingCart, FiHeart, FiStar, FiZoomIn,
+  FiTruck, FiShield, FiRefreshCw, FiMinus, FiPlus
+} from 'react-icons/fi';
 import { fetchProductById } from '../../store/slices/productSlice';
 import { addToCart } from '../../store/slices/cartSlice';
-import { addToWishlist, removeFromWishlist } from '../../store/slices/wishlistSlice';
+import { toggleWishlist } from '../../store/slices/wishlistSlice';
 import { fetchProductReviews } from '../../store/slices/reviewSlice';
 import ReviewForm from '../../components/Reviews/ReviewForm';
 import ReviewList from '../../components/Reviews/ReviewList';
@@ -15,307 +17,299 @@ import Loading from '../../components/Loading/Loading';
 import { toast } from 'react-toastify';
 import './ProductDetail.css';
 
+const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
+
+const PERKS = [
+  { icon: FiTruck, label: 'Miễn phí vận chuyển\ncho đơn trên 500K' },
+  { icon: FiShield, label: 'Bảo hành chính hãng\n12 tháng' },
+  { icon: FiRefreshCw, label: 'Đổi trả miễn phí\ntrong 30 ngày' },
+];
+
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t } = useTranslation();
   const dispatch = useDispatch();
-  const { product, isLoading } = useSelector((state) => state.products);
-  const { isAuthenticated } = useSelector((state) => state.auth);
-  const { items: wishlistItems } = useSelector((state) => state.wishlist);
-  const { productReviews } = useSelector((state) => state.reviews);
+
+  const { product, isLoading } = useSelector((s) => s.products);
+  const { isAuthenticated } = useSelector((s) => s.auth);
+  const { items: wishlistItems } = useSelector((s) => s.wishlist);
+  const { productReviews } = useSelector((s) => s.reviews);
+
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [activeImg, setActiveImg] = useState(0);
+  const [activeTab, setActiveTab] = useState('desc');
 
   useEffect(() => {
     dispatch(fetchProductById(id));
     dispatch(fetchProductReviews(id));
+    setActiveImg(0);
+    setSelectedVariant(null);
   }, [id, dispatch]);
 
   useEffect(() => {
     if (product?.variants?.length > 0 && !selectedVariant) {
       setSelectedVariant(product.variants[0]);
     }
-  }, [product, selectedVariant]);
+  }, [product]);
 
   if (isLoading) return <Loading />;
-  if (!product) return <div>Product not found</div>;
+  if (!product) return (
+    <div className="pd-not-found">
+      <p>Sản phẩm không tồn tại</p>
+      <button onClick={() => navigate('/products')} className="pd-back-btn">← Quay lại</button>
+    </div>
+  );
 
-  const images = product.images?.map((img) => ({
-    original: img.imageUrl,
-    thumbnail: img.imageUrl,
-  })) || [{ original: '/placeholder.jpg', thumbnail: '/placeholder.jpg' }];
+  const images = product.images?.length > 0
+    ? product.images.map((i) => i.imageUrl)
+    : ['/placeholder.jpg'];
 
-  const isInWishlist = wishlistItems.some((item) => item.productId === product.id);
+  const pid = product.id || product._id;
+  const isInWishlist = wishlistItems?.some((i) => i.productId === pid);
+  const price = selectedVariant?.price || product.variants?.[0]?.price || product.price || 0;
+  const stock = selectedVariant?.stockQuantity ?? 0;
+  const isOutOfStock = !selectedVariant || stock === 0;
+  const rating = product.rating || product.averageRating;
+
+  const availableSizes = [...new Set((product.variants || []).filter(v => v.size).map(v => v.size))];
+  const availableColors = [...new Set((product.variants || []).filter(v => v.color).map(v => v.color))];
 
   const handleAddToCart = () => {
-    if (!isAuthenticated) {
-      toast.info('Please login to add to cart');
-      navigate('/login');
-      return;
-    }
-    if (!selectedVariant) {
-      toast.error('Please select a variant');
-      return;
-    }
-    dispatch(addToCart({ variantId: selectedVariant.id, quantity }));
-    toast.success('Added to cart');
+    if (!isAuthenticated) { toast.info('Vui lòng đăng nhập'); navigate('/login'); return; }
+    const pid = product?._id || product?.id;
+    if (!pid) { toast.error('Không tìm thấy sản phẩm'); return; }
+    dispatch(addToCart({ productId: pid, quantity }));
+    toast.success('Đã thêm vào giỏ hàng 🛒');
   };
 
-  const handleBuyNow = () => {
-    handleAddToCart();
-    navigate('/cart');
-  };
+  const handleBuyNow = () => { handleAddToCart(); navigate('/cart'); };
 
   const handleWishlist = () => {
-    if (!isAuthenticated) {
-      toast.info('Please login to add to wishlist');
-      navigate('/login');
-      return;
-    }
-    if (isInWishlist) {
-      const wishlistItem = wishlistItems.find((item) => item.productId === product.id);
-      dispatch(removeFromWishlist(wishlistItem.id));
-      toast.success('Removed from wishlist');
-    } else {
-      dispatch(addToWishlist(product.id));
-      toast.success('Added to wishlist');
-    }
+    if (!isAuthenticated) { toast.info('Vui lòng đăng nhập'); navigate('/login'); return; }
+    dispatch(toggleWishlist(pid));
+    toast.success(isInWishlist ? 'Đã xoá khỏi yêu thích' : 'Đã thêm vào yêu thích ❤️');
   };
 
-  const availableSizes = [...new Set(product.variants?.map((v) => v.size))];
-  const availableColors = [...new Set(product.variants?.map((v) => v.color))];
-
   return (
-    <Container className="py-5">
-      <Row>
-        <Col md={6}>
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <ImageGallery
-              items={images}
-              showPlayButton={false}
-              showFullscreenButton={true}
-            />
-          </motion.div>
-        </Col>
-        <Col md={6}>
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <motion.h1
-              className="fw-bold mb-3 gradient-text"
-              style={{ fontSize: '2.5rem' }}
-              whileHover={{ scale: 1.02 }}
-            >
-              {product.productName}
-            </motion.h1>
-            <p className="text-muted mb-3 fs-5">{product.brand?.brandName}</p>
-            {product.rating && (
-              <motion.div
-                className="mb-3"
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', stiffness: 200 }}
-              >
-                <Badge bg="warning" className="me-2 fs-6">⭐ {product.rating.toFixed(1)}</Badge>
-                <span className="text-muted">({product.reviewCount || 0} reviews)</span>
-              </motion.div>
-            )}
+    <div className="pd-page">
+      <Container>
+        <Row className="g-5">
+          {/* ── LEFT: Gallery ── */}
+          <Col lg={6}>
             <motion.div
-              className="mb-4"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+              initial={{ opacity: 0, x: -24 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.45 }}
             >
-              <h2 className="fw-bold gradient-text" style={{ fontSize: '2.5rem' }}>
-                {selectedVariant?.price?.toLocaleString('vi-VN') || product.price?.toLocaleString('vi-VN')} ₫
-              </h2>
-            </motion.div>
-
-          {/* Size Selection */}
-          {availableSizes.length > 0 && (
-            <motion.div
-              className="mb-3"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <label className="fw-bold mb-2">{t('product.selectSize')}</label>
-              <div className="d-flex gap-2 flex-wrap">
-                {availableSizes.map((size) => {
-                  const variant = product.variants.find((v) => v.size === size);
-                  return (
-                    <motion.div
-                      key={size}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <Button
-                        variant={selectedVariant?.size === size ? 'primary' : 'outline-primary'}
-                        onClick={() => setSelectedVariant(variant)}
-                        disabled={variant?.stockQuantity === 0}
-                      >
-                        {size}
-                      </Button>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Color Selection */}
-          {availableColors.length > 0 && (
-            <motion.div
-              className="mb-3"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <label className="fw-bold mb-2">{t('product.selectColor')}</label>
-              <div className="d-flex gap-2 flex-wrap">
-                {availableColors.map((color) => {
-                  const variant = product.variants.find((v) => v.color === color);
-                  return (
-                    <motion.div
-                      key={color}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <Button
-                        variant={selectedVariant?.color === color ? 'primary' : 'outline-primary'}
-                        onClick={() => setSelectedVariant(variant)}
-                        disabled={variant?.stockQuantity === 0}
-                      >
-                        {color}
-                      </Button>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Quantity */}
-          <motion.div
-            className="mb-4"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-          >
-            <label className="fw-bold mb-2">{t('product.quantity')}</label>
-            <div className="d-flex align-items-center gap-3">
-              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                <Button
-                  variant="outline-primary"
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                >
-                  -
-                </Button>
-              </motion.div>
-              <motion.span
-                className="fw-bold fs-4"
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 0.3 }}
-                key={quantity}
-              >
-                {quantity}
-              </motion.span>
-              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                <Button
-                  variant="outline-primary"
-                  onClick={() => setQuantity(Math.min(selectedVariant?.stockQuantity || 1, quantity + 1))}
-                >
-                  +
-                </Button>
-              </motion.div>
-              <span className="text-muted">
-                {selectedVariant?.stockQuantity || 0} {t('products.inStock')}
-              </span>
-            </div>
-          </motion.div>
-
-          {/* Actions */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="d-flex gap-3 mb-4"
-          >
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex-grow-1"
-            >
-              <Button
-                variant="primary"
-                size="lg"
-                className="w-100"
-                onClick={handleAddToCart}
-                disabled={!selectedVariant || selectedVariant.stockQuantity === 0}
-              >
-                {t('product.addToCart')}
-              </Button>
-            </motion.div>
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Button
-                variant="outline-primary"
-                size="lg"
-                onClick={handleBuyNow}
-                disabled={!selectedVariant || selectedVariant.stockQuantity === 0}
-              >
-                {t('product.buyNow')}
-              </Button>
-            </motion.div>
-            <motion.div
-              whileHover={{ scale: 1.2, rotate: 360 }}
-              whileTap={{ scale: 0.9 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Button
-                variant="outline-danger"
-                size="lg"
-                onClick={handleWishlist}
-                className="px-3"
-              >
-                ❤️
-              </Button>
-            </motion.div>
-          </motion.div>
-
-          {/* Product Info Tabs */}
-          <Tabs defaultActiveKey="description" className="mb-4">
-            <Tab eventKey="description" title={t('product.description')}>
-              <div className="p-3">
-                <p>{product.description || 'No description available.'}</p>
-              </div>
-            </Tab>
-            <Tab eventKey="reviews" title={t('product.reviews')}>
-              <div className="p-3">
-                <ReviewForm
-                  productId={product.id}
-                  onSuccess={() => dispatch(fetchProductReviews(id))}
+              {/* Main image */}
+              <div className="pd-main-img-wrap">
+                <motion.img
+                  key={activeImg}
+                  src={images[activeImg]}
+                  alt={product.productName}
+                  className="pd-main-img"
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  onError={(e) => { e.currentTarget.src = '/placeholder.jpg'; }}
                 />
-                <div className="mt-4">
-                  <h5 className="mb-3">Customer Reviews</h5>
-                  <ReviewList reviews={productReviews} />
+                <button className="pd-zoom-btn" aria-label="Zoom"><FiZoomIn size={18} /></button>
+                {isOutOfStock && <div className="pd-oos-overlay">Hết hàng</div>}
+              </div>
+
+              {/* Thumbnails */}
+              {images.length > 1 && (
+                <div className="pd-thumbs">
+                  {images.map((src, i) => (
+                    <button
+                      key={i}
+                      className={`pd-thumb ${i === activeImg ? 'active' : ''}`}
+                      onClick={() => setActiveImg(i)}
+                    >
+                      <img src={src} alt="" onError={(e) => { e.currentTarget.src = '/placeholder.jpg'; }} />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </Col>
+
+          {/* ── RIGHT: Detail ── */}
+          <Col lg={6}>
+            <motion.div
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.45, delay: 0.1 }}
+            >
+              {/* Brand & Name */}
+              {product.brand?.brandName && (
+                <span className="pd-brand">{product.brand.brandName}</span>
+              )}
+              <h1 className="pd-name">{product.productName}</h1>
+
+              {/* Rating */}
+              {rating && (
+                <div className="pd-rating">
+                  {[1,2,3,4,5].map(s => (
+                    <FiStar key={s} size={14}
+                      fill={s <= Math.round(rating) ? '#F59E0B' : 'none'}
+                      color={s <= Math.round(rating) ? '#F59E0B' : '#CBD5E1'}
+                    />
+                  ))}
+                  <span className="pd-rating-text">{rating.toFixed(1)}</span>
+                  {product.reviewCount > 0 && <span className="pd-review-count">({product.reviewCount} đánh giá)</span>}
+                </div>
+              )}
+
+              {/* Price */}
+              <div className="pd-price-block">
+                <span className="pd-price">{fmt(price)}</span>
+                {selectedVariant?.stockQuantity > 0 && (
+                  <span className="pd-in-stock">✓ Còn hàng ({stock})</span>
+                )}
+              </div>
+
+              {/* Size picker */}
+              {availableSizes.length > 0 && (
+                <div className="pd-picker-group">
+                  <p className="pd-picker-label">Size</p>
+                  <div className="pd-picker-options">
+                    {availableSizes.map((size) => {
+                      const v = product.variants.find(v => v.size === size);
+                      return (
+                        <button
+                          key={size}
+                          className={`pd-size-btn ${selectedVariant?.size === size ? 'active' : ''}`}
+                          onClick={() => setSelectedVariant(v)}
+                          disabled={v?.stockQuantity === 0}
+                        >{size}</button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Color picker */}
+              {availableColors.length > 0 && (
+                <div className="pd-picker-group">
+                  <p className="pd-picker-label">Màu sắc</p>
+                  <div className="pd-picker-options">
+                    {availableColors.map((color) => {
+                      const v = product.variants.find(v => v.color === color);
+                      return (
+                        <button
+                          key={color}
+                          className={`pd-color-btn ${selectedVariant?.color === color ? 'active' : ''}`}
+                          onClick={() => setSelectedVariant(v)}
+                          disabled={v?.stockQuantity === 0}
+                          title={color}
+                        >
+                          <span>{color}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Quantity */}
+              <div className="pd-picker-group">
+                <p className="pd-picker-label">Số lượng</p>
+                <div className="pd-qty-row">
+                  <div className="pd-qty-ctrl">
+                    <button className="pd-qty-btn" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
+                      <FiMinus size={14} />
+                    </button>
+                    <span className="pd-qty-num">{quantity}</span>
+                    <button className="pd-qty-btn" onClick={() => setQuantity(Math.min(stock || 1, quantity + 1))}>
+                      <FiPlus size={14} />
+                    </button>
+                  </div>
+                  {stock > 0 && <span className="pd-stock-hint">Còn {stock} sản phẩm</span>}
                 </div>
               </div>
-            </Tab>
-          </Tabs>
-          </motion.div>
-        </Col>
-      </Row>
-    </Container>
+
+              {/* Action buttons */}
+              <div className="pd-actions">
+                <motion.button
+                  className="pd-btn-cart"
+                  onClick={handleAddToCart}
+                  disabled={isOutOfStock}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <FiShoppingCart size={18} /> Thêm vào giỏ
+                </motion.button>
+                <motion.button
+                  className="pd-btn-buy"
+                  onClick={handleBuyNow}
+                  disabled={isOutOfStock}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  Mua ngay
+                </motion.button>
+                <motion.button
+                  className={`pd-btn-wish ${isInWishlist ? 'wished' : ''}`}
+                  onClick={handleWishlist}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <FiHeart size={18} fill={isInWishlist ? 'currentColor' : 'none'} />
+                </motion.button>
+              </div>
+
+              {/* Perks */}
+              <div className="pd-perks">
+                {PERKS.map(({ icon: Icon, label }) => (
+                  <div key={label} className="pd-perk">
+                    <Icon size={18} />
+                    <span>{label}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </Col>
+        </Row>
+
+        {/* ── TABS: Description + Reviews ── */}
+        <div className="pd-tabs-section">
+          <div className="pd-tab-nav">
+            {['desc', 'reviews'].map((tab) => (
+              <button
+                key={tab}
+                className={`pd-tab-btn ${activeTab === tab ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab === 'desc' ? 'Mô tả sản phẩm' : `Đánh giá${productReviews?.length ? ` (${productReviews.length})` : ''}`}
+              </button>
+            ))}
+          </div>
+
+          <div className="pd-tab-content">
+            {activeTab === 'desc' && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                className="pd-description"
+              >
+                {product.description || 'Chưa có mô tả cho sản phẩm này.'}
+              </motion.div>
+            )}
+            {activeTab === 'reviews' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <ReviewForm
+                  productId={pid}
+                  onSuccess={() => dispatch(fetchProductReviews(id))}
+                />
+                <div className="pd-reviews-list">
+                  <ReviewList reviews={productReviews} />
+                </div>
+              </motion.div>
+            )}
+          </div>
+        </div>
+      </Container>
+    </div>
   );
 };
 

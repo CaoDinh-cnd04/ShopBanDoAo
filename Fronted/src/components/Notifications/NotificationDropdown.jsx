@@ -11,7 +11,8 @@ const NotificationDropdown = () => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { notifications, unreadCount } = useSelector((state) => state.notifications);
+  const { notifications: rawNotifications, unreadCount } = useSelector((state) => state.notifications);
+  const notifications = Array.isArray(rawNotifications) ? rawNotifications : [];
   const { isAuthenticated } = useSelector((state) => state.auth);
 
   useEffect(() => {

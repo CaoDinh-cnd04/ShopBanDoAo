@@ -1,6 +1,22 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Get, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Put,
+  Body,
+  HttpCode,
+  HttpStatus,
+  Get,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, FirebaseLoginDto } from './dto/auth.dto';
+import {
+  RegisterDto,
+  LoginDto,
+  GoogleLoginDto,
+  UpdateProfileDto,
+  ChangePasswordDto,
+} from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('api/auth')
@@ -19,15 +35,35 @@ export class AuthController {
   }
 
   @HttpCode(HttpStatus.OK)
-  @Post('firebase-login')
-  async firebaseLogin(@Body() fbDto: FirebaseLoginDto) {
-    return this.authService.firebaseLogin(fbDto.idToken);
+  @Post('google-login')
+  async googleLogin(@Body() dto: GoogleLoginDto) {
+    return this.authService.googleLogin(dto.accessToken);
   }
 
-  // Example Protected Route
   @UseGuards(JwtAuthGuard)
   @Get('profile')
-  getProfile(@Request() req: any) {
-    return req.user;
+  async getProfile(@Request() req: any) {
+    return this.authService.getProfile(
+      req.user.sub || req.user.userId || req.user._id,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('profile')
+  async updateProfile(@Request() req: any, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(
+      req.user.sub || req.user.userId || req.user._id,
+      dto,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @Put('change-password')
+  async changePassword(@Request() req: any, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(
+      req.user.sub || req.user.userId || req.user._id,
+      dto,
+    );
   }
 }

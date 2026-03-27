@@ -1,80 +1,195 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Card, Button, Tabs, Tab } from 'react-bootstrap';
-import { useTranslation } from 'react-i18next';
+import { Container, Row, Col } from 'react-bootstrap';
+import { motion } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
+import {
+  FiMapPin, FiClock, FiCalendar, FiStar,
+  FiChevronLeft, FiArrowRight
+} from 'react-icons/fi';
 import { fetchCourtById } from '../../store/slices/courtSlice';
 import ReviewForm from '../../components/Reviews/ReviewForm';
 import ReviewList from '../../components/Reviews/ReviewList';
 import Loading from '../../components/Loading/Loading';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 import './CourtDetail.css';
+
+const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
 
 const CourtDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t } = useTranslation();
   const dispatch = useDispatch();
-  const { court, isLoading } = useSelector((state) => state.courts);
+  const { court, isLoading } = useSelector((s) => s.courts);
+  const [activeTab, setActiveTab] = useState('info');
+  const [activeImg, setActiveImg] = useState(0);
 
   useEffect(() => {
     dispatch(fetchCourtById(id));
   }, [id, dispatch]);
 
   if (isLoading) return <Loading />;
-  if (!court) return <div>Court not found</div>;
+  if (!court) return (
+    <div style={{ textAlign: 'center', padding: '5rem' }}>
+      <p>Không tìm thấy sân</p>
+      <button onClick={() => navigate('/courts')} style={{ padding: '10px 20px', cursor: 'pointer' }}>← Quay lại</button>
+    </div>
+  );
+
+  const courtId = court._id || court.id;
+  const images = court.images?.length > 0
+    ? court.images.map(i => resolveMediaUrl(i.imageUrl) || '/placeholder.jpg')
+    : [resolveMediaUrl(court.imageUrl || court.image) || '/placeholder.jpg'];
+
+  const rating = court.rating || court.averageRating;
 
   return (
-    <Container className="py-5">
-      <Row>
-        <Col md={6}>
-          <img
-            src={court.imageUrl || '/placeholder.jpg'}
-            alt={court.courtName}
-            className="img-fluid rounded mb-4"
-          />
-        </Col>
-        <Col md={6}>
-          <h1 className="fw-bold mb-3">{court.courtName}</h1>
-          <p className="text-muted mb-3">{court.courtType?.typeName}</p>
-          <p className="mb-4">{court.description}</p>
-          <div className="mb-4">
-            <h3 className="fw-bold text-accent">
-              {court.pricePerHour?.toLocaleString('vi-VN')} ₫/hour
-            </h3>
+    <div className="cd-page">
+      {/* Hero image */}
+      <div className="cd-hero">
+        <img
+          src={images[activeImg]}
+          alt={court.courtName}
+          className="cd-hero-img"
+          onError={(e) => { e.currentTarget.src = '/placeholder.jpg'; }}
+        />
+        <div className="cd-hero-overlay" />
+        <div className="cd-hero-content">
+          <button className="cd-back-btn" onClick={() => navigate('/courts')}>
+            <FiChevronLeft size={18} /> Danh sách sân
+          </button>
+          {court.courtType?.typeName && (
+            <span className="cd-type-badge">{court.courtType.typeName}</span>
+          )}
+          <h1 className="cd-hero-title">{court.courtName}</h1>
+          <div className="cd-hero-meta">
+            {court.address && <span><FiMapPin size={14} /> {court.address}</span>}
+            {court.openTime && court.closeTime && (
+              <span><FiClock size={14} /> {court.openTime} – {court.closeTime}</span>
+            )}
+            {rating && (
+              <span><FiStar size={14} fill="#F59E0B" color="#F59E0B" /> {rating.toFixed(1)}</span>
+            )}
           </div>
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => navigate(`/booking/${court.id}`)}
-          >
-            {t('courts.book')}
-          </Button>
-        </Col>
-      </Row>
-      <Row className="mt-5">
-        <Col>
-          <Tabs defaultActiveKey="description">
-            <Tab eventKey="description" title="Description">
-              <div className="p-3">
-                <p>{court.description || 'No description available.'}</p>
-              </div>
-            </Tab>
-            <Tab eventKey="reviews" title="Reviews">
-              <div className="p-3">
-                <ReviewForm
-                  courtId={court.id}
-                  onSuccess={() => window.location.reload()}
-                />
-                <div className="mt-4">
-                  <h5 className="mb-3">Customer Reviews</h5>
-                  <ReviewList reviews={[]} />
+        </div>
+      </div>
+
+      {/* Thumbnail strip */}
+      {images.length > 1 && (
+        <div className="cd-thumbs-bar">
+          <Container>
+            <div className="cd-thumbs">
+              {images.map((src, i) => (
+                <button key={i} className={`cd-thumb ${i === activeImg ? 'active' : ''}`} onClick={() => setActiveImg(i)}>
+                  <img src={src} alt="" onError={(e) => { e.currentTarget.src = '/placeholder.jpg'; }} />
+                </button>
+              ))}
+            </div>
+          </Container>
+        </div>
+      )}
+
+      <Container className="cd-main">
+        <Row className="g-4">
+          {/* Left: Tabs */}
+          <Col lg={8}>
+            <div className="cd-tab-nav">
+              {[
+                { key: 'info', label: 'Thông tin sân' },
+                { key: 'reviews', label: `Đánh giá` },
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  className={`cd-tab-btn ${activeTab === tab.key ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab.key)}
+                >{tab.label}</button>
+              ))}
+            </div>
+
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="cd-tab-content"
+            >
+              {activeTab === 'info' && (
+                <div>
+                  {court.description && (
+                    <div className="cd-section">
+                      <h3 className="cd-section-title">Mô tả</h3>
+                      <p className="cd-desc">{court.description}</p>
+                    </div>
+                  )}
+
+                  {/* Amenities */}
+                  {Array.isArray(court.amenities) && court.amenities.length > 0 && (
+                    <div className="cd-section">
+                      <h3 className="cd-section-title">Tiện ích</h3>
+                      <div className="cd-amenities">
+                        {court.amenities.map((a, i) => (
+                          <span key={i} className="cd-amenity">✓ {a}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Rules */}
+                  {court.rules && (
+                    <div className="cd-section">
+                      <h3 className="cd-section-title">Nội quy sân</h3>
+                      <p className="cd-desc">{court.rules}</p>
+                    </div>
+                  )}
                 </div>
+              )}
+
+              {activeTab === 'reviews' && (
+                <div>
+                  <ReviewForm courtId={courtId} onSuccess={() => dispatch(fetchCourtById(id))} />
+                  <div style={{ marginTop: '1.5rem' }}>
+                    <ReviewList reviews={court.reviews || []} />
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </Col>
+
+          {/* Right: Booking Card */}
+          <Col lg={4}>
+            <div className="cd-booking-card">
+              <div className="cd-price-row">
+                <span className="cd-price">{fmt(court.pricePerHour)}</span>
+                <span className="cd-price-unit">/giờ</span>
               </div>
-            </Tab>
-          </Tabs>
-        </Col>
-      </Row>
-    </Container>
+
+              <div className="cd-info-rows">
+                {court.openTime && court.closeTime && (
+                  <div className="cd-info-row">
+                    <FiClock size={15} />
+                    <span>Giờ mở cửa: {court.openTime} – {court.closeTime}</span>
+                  </div>
+                )}
+                {court.address && (
+                  <div className="cd-info-row">
+                    <FiMapPin size={15} />
+                    <span>{court.address}</span>
+                  </div>
+                )}
+              </div>
+
+              <motion.button
+                className="cd-book-btn"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => navigate(`/booking/${courtId}`)}
+              >
+                <FiCalendar size={18} /> Đặt sân ngay <FiArrowRight size={16} />
+              </motion.button>
+            </div>
+          </Col>
+        </Row>
+      </Container>
+    </div>
   );
 };
 

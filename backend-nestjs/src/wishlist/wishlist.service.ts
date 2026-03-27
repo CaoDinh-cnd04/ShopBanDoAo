@@ -12,14 +12,24 @@ export class WishlistService {
   }
 
   async toggleWishlist(userId: string, toggleDto: ToggleWishlistDto) {
-    const existing = await this.wishlistRepository.findByUserAndProduct(userId, toggleDto.productId);
-    
+    const existing = await this.wishlistRepository.findByUserAndProduct(
+      userId,
+      toggleDto.productId,
+    );
+
     if (existing) {
       await this.wishlistRepository.delete(existing._id.toString());
       return { message: 'Đã xoá khỏi danh sách yêu thích', isAdded: false };
     } else {
-      const wishlist = await this.wishlistRepository.create(userId, toggleDto.productId);
-      return { message: 'Đã thêm vào danh sách yêu thích', isAdded: true, wishlist };
+      const wishlist = await this.wishlistRepository.create(
+        userId,
+        toggleDto.productId,
+      );
+      return {
+        message: 'Đã thêm vào danh sách yêu thích',
+        isAdded: true,
+        wishlist,
+      };
     }
   }
 }

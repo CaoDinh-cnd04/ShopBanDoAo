@@ -1,109 +1,108 @@
-import { Card, Form, Button, Alert } from 'react-bootstrap';
+import { useDispatch, useSelector } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useTranslation } from 'react-i18next';
-import { useDispatch, useSelector } from 'react-redux';
+import { motion } from 'framer-motion';
+import { FiLock, FiEye, FiEyeOff, FiSave } from 'react-icons/fi';
 import { changePassword } from '../../store/slices/authSlice';
 import { toast } from 'react-toastify';
+import { useState } from 'react';
 
-const passwordSchema = z
+const schema = z
   .object({
-    currentPassword: z.string().min(1, 'Current password is required'),
-    newPassword: z.string().min(6, 'Password must be at least 6 characters'),
-    confirmPassword: z.string().min(1, 'Please confirm your password'),
+    oldPassword: z.string().min(1, 'Vui lòng nhập mật khẩu hiện tại'),
+    newPassword: z.string().min(6, 'Mật khẩu mới tối thiểu 6 ký tự'),
+    confirmPassword: z.string().min(1, 'Vui lòng xác nhận mật khẩu'),
   })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Passwords don't match",
+  .refine((d) => d.newPassword === d.confirmPassword, {
+    message: 'Mật khẩu xác nhận không khớp',
     path: ['confirmPassword'],
   });
 
 const ChangePassword = () => {
-  const { t } = useTranslation();
   const dispatch = useDispatch();
-  const { isLoading, error } = useSelector((state) => state.auth);
+  const { isLoading } = useSelector((s) => s.auth);
+  const [show, setShow] = useState({ old: false, new: false, confirm: false });
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
     reset,
-  } = useForm({
-    resolver: zodResolver(passwordSchema),
-  });
+    formState: { errors },
+  } = useForm({ resolver: zodResolver(schema) });
 
   const onSubmit = async (data) => {
     const result = await dispatch(
-      changePassword({
-        currentPassword: data.currentPassword,
-        newPassword: data.newPassword,
-      })
+      changePassword({ oldPassword: data.oldPassword, newPassword: data.newPassword })
     );
-
     if (changePassword.fulfilled.match(result)) {
-      toast.success('Password changed successfully!');
+      toast.success('Đổi mật khẩu thành công!');
       reset();
     } else {
-      toast.error(result.payload || 'Failed to change password');
+      toast.error(result.payload || 'Đổi mật khẩu thất bại');
     }
   };
 
+  const Field = ({ id, label, name, showKey }) => (
+    <div className="profile-field">
+      <label className="profile-field-label"><FiLock size={14} /> {label}</label>
+      <div style={{ position: 'relative' }}>
+        <input
+          type={show[showKey] ? 'text' : 'password'}
+          className={`profile-field-input ${errors[name] ? 'error' : ''}`}
+          placeholder="••••••••"
+          style={{ paddingRight: '40px', width: '100%' }}
+          {...register(name)}
+        />
+        <button
+          type="button"
+          onClick={() => setShow((s) => ({ ...s, [showKey]: !s[showKey] }))}
+          style={{
+            position: 'absolute', right: '10px', top: '50%',
+            transform: 'translateY(-50%)', background: 'none',
+            border: 'none', cursor: 'pointer', color: 'var(--text-secondary)',
+            padding: '2px',
+          }}
+        >
+          {show[showKey] ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+        </button>
+      </div>
+      {errors[name] && <span className="profile-field-error">{errors[name].message}</span>}
+    </div>
+  );
+
   return (
-    <Card>
-      <Card.Header>
-        <h5 className="mb-0">Change Password</h5>
-      </Card.Header>
-      <Card.Body>
-        {error && <Alert variant="danger">{error}</Alert>}
-        <Form onSubmit={handleSubmit(onSubmit)}>
-          <Form.Group className="mb-3">
-            <Form.Label>Current Password *</Form.Label>
-            <Form.Control
-              type="password"
-              {...register('currentPassword')}
-              placeholder="Enter current password"
-            />
-            {errors.currentPassword && (
-              <Form.Text className="text-danger">
-                {errors.currentPassword.message}
-              </Form.Text>
-            )}
-          </Form.Group>
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <div className="profile-section-card">
+        <div className="profile-section-header">
+          <h2 className="profile-section-title">Đổi mật khẩu</h2>
+          <p className="profile-section-sub">
+            Mật khẩu tối thiểu 6 ký tự. Nếu đăng nhập bằng Google, bạn có thể đặt mật khẩu mới mà không cần nhập mật khẩu cũ.
+          </p>
+        </div>
 
-          <Form.Group className="mb-3">
-            <Form.Label>New Password *</Form.Label>
-            <Form.Control
-              type="password"
-              {...register('newPassword')}
-              placeholder="Enter new password"
-            />
-            {errors.newPassword && (
-              <Form.Text className="text-danger">
-                {errors.newPassword.message}
-              </Form.Text>
-            )}
-          </Form.Group>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate style={{ maxWidth: '440px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <Field id="old" label="Mật khẩu hiện tại" name="oldPassword" showKey="old" />
+            <Field id="new" label="Mật khẩu mới" name="newPassword" showKey="new" />
+            <Field id="confirm" label="Xác nhận mật khẩu mới" name="confirmPassword" showKey="confirm" />
+          </div>
 
-          <Form.Group className="mb-3">
-            <Form.Label>Confirm New Password *</Form.Label>
-            <Form.Control
-              type="password"
-              {...register('confirmPassword')}
-              placeholder="Confirm new password"
-            />
-            {errors.confirmPassword && (
-              <Form.Text className="text-danger">
-                {errors.confirmPassword.message}
-              </Form.Text>
-            )}
-          </Form.Group>
-
-          <Button type="submit" variant="primary" disabled={isLoading}>
-            {isLoading ? 'Changing...' : 'Change Password'}
-          </Button>
-        </Form>
-      </Card.Body>
-    </Card>
+          <div className="profile-form-actions" style={{ marginTop: '1.25rem' }}>
+            <button type="submit" className="profile-btn-primary" disabled={isLoading}>
+              {isLoading ? <span className="profile-spinner" /> : <><FiSave size={15} /> Đổi mật khẩu</>}
+            </button>
+            <button type="button" className="profile-btn-secondary" onClick={() => reset()}>
+              Hủy
+            </button>
+          </div>
+        </form>
+      </div>
+    </motion.div>
   );
 };
 

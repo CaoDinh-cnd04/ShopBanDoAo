@@ -166,7 +166,7 @@ const AdminProductForm = () => {
     return (
       <div className="admin-page text-center py-5">
         <Spinner animation="border" />
-        <div className="mt-2" style={{ color: 'rgba(255,255,255,0.62)' }}>
+        <div className="mt-2 text-muted">
           Đang tải sản phẩm…
         </div>
       </div>

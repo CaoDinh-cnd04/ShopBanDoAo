@@ -3,11 +3,16 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Voucher, VoucherSchema } from './schemas/voucher.schema';
 import { VoucherRepository } from './vouchers.repository';
 import { VouchersService } from './vouchers.service';
-import { VouchersController } from './vouchers.controller';
+import {
+  VouchersController,
+  AdminVouchersController,
+} from './vouchers.controller';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: Voucher.name, schema: VoucherSchema }])],
-  controllers: [VouchersController],
+  imports: [
+    MongooseModule.forFeature([{ name: Voucher.name, schema: VoucherSchema }]),
+  ],
+  controllers: [VouchersController, AdminVouchersController],
   providers: [VoucherRepository, VouchersService],
   exports: [VouchersService],
 })

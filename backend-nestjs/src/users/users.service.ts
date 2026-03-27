@@ -19,7 +19,8 @@ export class UsersService {
       ];
     }
     if (query.role) match.role = query.role;
-    if (query.isActive !== undefined) match.isActive = query.isActive === 'true';
+    if (query.isActive !== undefined)
+      match.isActive = query.isActive === 'true';
 
     const [users, total] = await Promise.all([
       this.userRepository.findAll(match, skip, limit),
@@ -52,6 +53,19 @@ export class UsersService {
   async deleteUser(id: string) {
     const user = await this.userRepository.softDelete(id);
     if (!user) throw new NotFoundException('Không tìm thấy người dùng');
-    return { message: 'Xóa an toàn thành công' }; // Sẽ được interceptor map thông tin
+    return { message: 'Xóa an toàn thành công' };
+  }
+
+  async getUserStats() {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const [totalUsers, newUsersThisMonth, adminCount, activeUsers] =
+      await Promise.all([
+        this.userRepository.count({}),
+        this.userRepository.count({ createdAt: { $gte: startOfMonth } }),
+        this.userRepository.count({ role: 'Admin' }),
+        this.userRepository.count({ isActive: true }),
+      ]);
+    return { totalUsers, newUsersThisMonth, adminCount, activeUsers };
   }
 }

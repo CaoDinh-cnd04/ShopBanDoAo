@@ -1,6 +1,19 @@
-import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
-import { CreateNotificationDto, QueryNotificationDto } from './dto/notification.dto';
+import {
+  CreateNotificationDto,
+  QueryNotificationDto,
+} from './dto/notification.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../core/guards/roles.guard';
 import { Roles } from '../core/decorators/roles.decorator';
@@ -11,7 +24,10 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Get()
-  async getMyNotifications(@Request() req: any, @Query() query: QueryNotificationDto) {
+  async getMyNotifications(
+    @Request() req: any,
+    @Query() query: QueryNotificationDto,
+  ) {
     return this.notificationsService.getMyNotifications(req.user.userId, query);
   }
 

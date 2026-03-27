@@ -1,8 +1,17 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsMongoId, IsDateString } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  IsMongoId,
+  IsDateString,
+} from 'class-validator';
 
 export class CreateBookingDto {
   @IsMongoId() @IsNotEmpty() courtId: string;
-  @IsDateString({}, { message: 'bookingDate phải là định dạng ISO8601' }) @IsNotEmpty() bookingDate: string;
+  @IsDateString({}, { message: 'bookingDate phải là định dạng ISO8601' })
+  @IsNotEmpty()
+  bookingDate: string;
   @IsString() @IsNotEmpty() startTime: string;
   @IsString() @IsNotEmpty() endTime: string;
   @IsNumber() @IsNotEmpty() totalAmount: number;
@@ -11,6 +20,7 @@ export class CreateBookingDto {
 export class UpdateBookingStatusDto {
   @IsOptional() @IsString() bookingStatus?: string;
   @IsOptional() @IsString() paymentStatus?: string;
+  @IsOptional() @IsString() statusName?: string;
 }
 
 export class QueryBookingDto {

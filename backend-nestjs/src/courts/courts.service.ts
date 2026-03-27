@@ -18,7 +18,8 @@ export class CourtsService {
 
     const match: any = {};
     if (query.courtType) match.courtType = query.courtType;
-    if (query.isActive !== undefined) match.isActive = query.isActive === 'true';
+    if (query.isActive !== undefined)
+      match.isActive = query.isActive === 'true';
 
     const [courts, total] = await Promise.all([
       this.courtRepository.findAll(match, skip, limit),
@@ -27,7 +28,12 @@ export class CourtsService {
 
     return {
       courts,
-      pagination: { currentPage: page, totalPages: Math.ceil(total / limit), totalItems: total, limit },
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        limit,
+      },
     };
   }
 
@@ -47,5 +53,13 @@ export class CourtsService {
     const court = await this.courtRepository.delete(id);
     if (!court) throw new NotFoundException('Không tìm thấy sân');
     return { message: 'Xóa sân thành công' };
+  }
+
+  async getCourtStats() {
+    const [totalCourts, activeCourts] = await Promise.all([
+      this.courtRepository.count({}),
+      this.courtRepository.count({ isActive: true }),
+    ]);
+    return { totalCourts, activeCourts };
   }
 }

@@ -188,10 +188,8 @@ const AdminReviews = () => {
                               )}
                             </div>
                             <h6 className="fw-bold mb-2">{review.reviewTitle ?? review.ReviewTitle}</h6>
-                            <p className="mb-2" style={{ color: 'rgba(255,255,255,0.88)' }}>
-                              {review.reviewContent ?? review.ReviewContent}
-                            </p>
-                            <div className="small" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                            <p className="mb-2 text-dark">{review.reviewContent ?? review.ReviewContent}</p>
+                            <div className="small text-muted">
                               <i className="bi bi-person me-1"></i>
                               {review.userName ?? review.UserName} ({review.userEmail ?? review.UserEmail})
                               <span className="mx-2">•</span>
@@ -227,7 +225,7 @@ const AdminReviews = () => {
             ) : (
               <Col md={12}>
                 <Card className="admin-panel">
-                  <Card.Body className="text-center py-5" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                  <Card.Body className="text-center py-5 text-muted">
                     Không có review nào
                   </Card.Body>
                 </Card>

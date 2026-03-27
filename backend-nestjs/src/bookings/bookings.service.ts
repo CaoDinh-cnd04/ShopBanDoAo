@@ -1,7 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { BookingRepository } from './bookings.repository';
-import { CreateBookingDto, UpdateBookingStatusDto, QueryBookingDto } from './dto/booking.dto';
+import {
+  CreateBookingDto,
+  UpdateBookingStatusDto,
+  QueryBookingDto,
+} from './dto/booking.dto';
 
 @Injectable()
 export class BookingsService {
@@ -19,7 +23,11 @@ export class BookingsService {
   }
 
   async getMyBookings(userId: string) {
-    const bookings = await this.bookingRepository.findAll({ userId: new Types.ObjectId(userId) }, 0, 100);
+    const bookings = await this.bookingRepository.findAll(
+      { userId: new Types.ObjectId(userId) },
+      0,
+      100,
+    );
     return { bookings };
   }
 
@@ -41,25 +49,102 @@ export class BookingsService {
 
     return {
       bookings,
-      pagination: { currentPage: page, totalPages: Math.ceil(total / limit), totalItems: total, limit },
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        limit,
+      },
     };
   }
 
   async getBookingById(id: string, userId?: string, role?: string) {
     const booking = await this.bookingRepository.findById(id);
-    if (!booking) throw new NotFoundException('Không tìm thấy thông tin đặt sân');
-    
+    if (!booking)
+      throw new NotFoundException('Không tìm thấy thông tin đặt sân');
+
     // Nếu là user thường, chỉ xem được đơn của mình
-    if (role !== 'Admin' && booking.userId._id?.toString() !== userId && booking.userId.toString() !== userId) {
+    if (
+      role !== 'Admin' &&
+      booking.userId._id?.toString() !== userId &&
+      booking.userId.toString() !== userId
+    ) {
       throw new NotFoundException('Không tìm thấy thông tin lịch đặt sân này');
     }
-    
+
     return booking;
   }
 
   async updateBookingStatus(id: string, updateDto: UpdateBookingStatusDto) {
-    const booking = await this.bookingRepository.update(id, updateDto);
+    const payload: any = { ...updateDto };
+    if (updateDto.statusName && !updateDto.bookingStatus) {
+      payload.bookingStatus = updateDto.statusName;
+      delete payload.statusName;
+    }
+    const booking = await this.bookingRepository.update(id, payload);
     if (!booking) throw new NotFoundException('Không tìm thấy đơn đặt sân');
     return { message: 'Cập nhật trạng thái sân thành công', booking };
+  }
+
+  async cancelBookingByUser(userId: string, bookingId: string) {
+    const booking = await this.bookingRepository.findById(bookingId);
+    if (!booking) throw new NotFoundException('Không tìm thấy lịch đặt sân');
+
+    const ownerId = booking.userId?._id?.toString() || booking.userId?.toString();
+    if (ownerId !== userId) throw new ForbiddenException('Bạn không có quyền hủy lịch này');
+
+    const status = (booking.bookingStatus || '').toLowerCase();
+    if (!['pending', 'chờ xác nhận'].includes(status)) {
+      throw new BadRequestException('Chỉ có thể hủy lịch đang chờ xác nhận');
+    }
+
+    const updated = await this.bookingRepository.update(bookingId, {
+      bookingStatus: 'cancelled',
+    });
+    return { message: 'Hủy lịch đặt sân thành công', booking: updated };
+  }
+
+  async getBookingStats() {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [
+      totalBookings,
+      pendingBookings,
+      confirmedBookings,
+      cancelledBookings,
+      revenueAgg,
+      thisMonthAgg,
+    ] = await Promise.all([
+      this.bookingRepository.count({}),
+      this.bookingRepository.count({
+        bookingStatus: { $in: ['Pending', 'Chờ xác nhận'] },
+      }),
+      this.bookingRepository.count({
+        bookingStatus: { $in: ['Confirmed', 'Đã xác nhận'] },
+      }),
+      this.bookingRepository.count({
+        bookingStatus: { $in: ['Cancelled', 'Đã hủy'] },
+      }),
+      this.bookingRepository.aggregate([
+        { $match: { paymentStatus: { $in: ['Paid', 'Đã thanh toán'] } } },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+      ]),
+      this.bookingRepository.aggregate([
+        { $match: { createdAt: { $gte: startOfMonth } } },
+        { $group: { _id: null, count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    return {
+      overview: {
+        totalBookings,
+        pendingBookings,
+        confirmedBookings,
+        cancelledBookings,
+        totalRevenue: revenueAgg[0]?.total ?? 0,
+        thisMonthBookings: thisMonthAgg[0]?.count ?? 0,
+      },
+    };
   }
 }

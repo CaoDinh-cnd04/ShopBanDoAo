@@ -7,8 +7,17 @@ import { User, UserDocument } from './schemas/user.schema';
 export class UserRepository {
   constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
-  async findAll(match: any, skip: number, limit: number): Promise<UserDocument[]> {
-    return this.userModel.find(match).skip(skip).limit(limit).select('-passwordHash').exec();
+  async findAll(
+    match: any,
+    skip: number,
+    limit: number,
+  ): Promise<UserDocument[]> {
+    return this.userModel
+      .find(match)
+      .skip(skip)
+      .limit(limit)
+      .select('-passwordHash')
+      .exec();
   }
 
   async count(match: any): Promise<number> {
@@ -19,11 +28,20 @@ export class UserRepository {
     return this.userModel.findById(id).select('-passwordHash').exec();
   }
 
-  async update(id: string, updateData: Partial<User>): Promise<UserDocument | null> {
-    return this.userModel.findByIdAndUpdate(id, updateData, { new: true }).select('-passwordHash').exec();
+  async update(
+    id: string,
+    updateData: Partial<User>,
+  ): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(id, updateData, { new: true })
+      .select('-passwordHash')
+      .exec();
   }
 
   async softDelete(id: string): Promise<UserDocument | null> {
-    return this.userModel.findByIdAndUpdate(id, { isActive: false }, { new: true }).select('-passwordHash').exec();
+    return this.userModel
+      .findByIdAndUpdate(id, { isActive: false }, { new: true })
+      .select('-passwordHash')
+      .exec();
   }
 }

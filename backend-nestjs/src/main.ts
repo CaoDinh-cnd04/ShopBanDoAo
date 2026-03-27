@@ -6,9 +6,9 @@ import { TransformInterceptor } from './core/interceptors/transform.interceptor'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
-  // Set global prefix
-  app.setGlobalPrefix('api');
+
+  // NOTE: Global prefix đã bỏ vì mỗi @Controller đã khai báo 'api/...' sẵn rồi
+  // Nếu giữ setGlobalPrefix('api') thì route sẽ thành /api/api/xxx -> 404
 
   // Enable CORS
   app.enableCors();

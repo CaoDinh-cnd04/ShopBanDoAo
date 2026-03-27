@@ -1,215 +1,205 @@
-import { useState } from 'react';
-import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
-import { FcGoogle } from 'react-icons/fc';
-import { register, firebaseLogin } from '../../store/slices/authSlice';
-import { signInWithGoogle } from '../../utils/googleAuth';
+import { motion } from 'framer-motion';
+import { FiUser, FiMail, FiLock, FiPhone, FiEye, FiEyeOff, FiArrowRight } from 'react-icons/fi';
+import { register as registerAction } from '../../store/slices/authSlice';
 import { toast } from 'react-toastify';
-import Loading from '../../components/Loading/Loading';
+import { isGoogleAuthConfigured } from '../../config/googleAuth';
+import GoogleLoginButton from '../../components/Auth/GoogleLoginButton';
 import './Auth.css';
 
-const registerSchema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  email: z.string().email('Invalid email address'),
-  phone: z.string().min(10, 'Valid phone number is required'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ['confirmPassword'],
-});
-
-const Register = () => {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const { isLoading, error } = useSelector((state) => state.auth);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-
-  const {
-    register: registerForm,
-    handleSubmit,
-    formState: { errors },
-  } = useForm({
-    resolver: zodResolver(registerSchema),
+const buildSchema = (fromGoogle) =>
+  z.object({
+    fullName: z.string().min(2, 'Họ tên tối thiểu 2 ký tự'),
+    email: z.string().email('Email không hợp lệ'),
+    phone: z.string().regex(/^(0|\+84)[3-9]\d{8}$/, 'Số điện thoại không hợp lệ'),
+    password: fromGoogle
+      ? z.string().min(6, 'Mật khẩu tối thiểu 6 ký tự').or(z.literal(''))
+      : z.string().min(6, 'Mật khẩu tối thiểu 6 ký tự'),
+    confirmPassword: z.string(),
+  }).refine((d) => d.password === d.confirmPassword, {
+    message: 'Mật khẩu xác nhận không khớp',
+    path: ['confirmPassword'],
   });
 
+const Register = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { isLoading } = useSelector((s) => s.auth);
+  const [showPwd, setShowPwd] = useState(false);
+  const [searchParams] = useSearchParams();
+
+  const fromGoogle = searchParams.get('fromGoogle') === '1';
+  const preEmail  = searchParams.get('email') || '';
+  const preName   = searchParams.get('fullName') || '';
+
+  const schema = buildSchema(fromGoogle);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm({ resolver: zodResolver(schema), defaultValues: { fullName: '', email: '', phone: '', password: '', confirmPassword: '' } });
+
+  useEffect(() => {
+    if (fromGoogle) {
+      if (preEmail) setValue('email', preEmail);
+      if (preName)  setValue('fullName', preName);
+    }
+  }, [fromGoogle, preEmail, preName, setValue]);
+
   const onSubmit = async (data) => {
-    const { confirmPassword, ...userData } = data;
-    const result = await dispatch(register(userData));
-    if (register.fulfilled.match(result)) {
-      toast.success('Registration successful!');
+    const { confirmPassword, ...payload } = data;
+    // Nếu đến từ Google và người dùng không điền mật khẩu → dùng placeholder
+    if (fromGoogle && !payload.password) {
+      payload.password = 'google_oauth_no_password_set_later';
+    }
+    const res = await dispatch(registerAction(payload));
+    if (registerAction.fulfilled.match(res)) {
+      toast.success('Đăng ký thành công! 🎉');
       navigate('/');
     } else {
-      toast.error(result.payload || 'Registration failed');
+      toast.error(res.payload || 'Đăng ký thất bại');
     }
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      setIsGoogleLoading(true);
-      const idToken = await signInWithGoogle();
-      const result = await dispatch(firebaseLogin(idToken));
-      if (firebaseLogin.fulfilled.match(result)) {
-        toast.success('Login with Google successful!');
-        navigate('/');
-      } else {
-        toast.error(result.payload || 'Google login failed');
-      }
-    } catch (error) {
-      console.error('Google login error:', error);
-      if (error.code === 'auth/popup-closed-by-user') {
-        toast.info('Sign in cancelled');
-      } else {
-        toast.error(error.message || 'Failed to sign in with Google. Please try again.');
-      }
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  };
+  const Field = ({ name, label, type = 'text', placeholder, icon: Icon, extra, readOnly }) => (
+    <div className="auth-field">
+      <label className="auth-label">{label}</label>
+      <div className="auth-input-wrap">
+        {Icon && <Icon className="auth-input-icon" size={16} />}
+        <input
+          type={type}
+          className={`auth-input ${errors[name] ? 'error' : ''} ${readOnly ? 'auth-input-readonly' : ''}`}
+          placeholder={placeholder}
+          readOnly={readOnly}
+          {...register(name)}
+        />
+        {extra}
+      </div>
+      {errors[name] && <span className="auth-error">{errors[name].message}</span>}
+    </div>
+  );
 
   return (
-    <Container className="py-5">
-      <Row className="justify-content-center">
-        <Col md={6} lg={5}>
-          <Card>
-            <Card.Body className="p-5">
-              <h2 className="text-center fw-bold mb-4">{t('auth.register')}</h2>
-              {error && <Alert variant="danger">{error}</Alert>}
-              <Form onSubmit={handleSubmit(onSubmit)}>
-                <Row>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>{t('auth.firstName')}</Form.Label>
-                      <Form.Control
-                        type="text"
-                        {...registerForm('firstName')}
-                        placeholder="First name"
-                      />
-                      {errors.firstName && (
-                        <Form.Text className="text-danger">{errors.firstName.message}</Form.Text>
-                      )}
-                    </Form.Group>
-                  </Col>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>{t('auth.lastName')}</Form.Label>
-                      <Form.Control
-                        type="text"
-                        {...registerForm('lastName')}
-                        placeholder="Last name"
-                      />
-                      {errors.lastName && (
-                        <Form.Text className="text-danger">{errors.lastName.message}</Form.Text>
-                      )}
-                    </Form.Group>
-                  </Col>
-                </Row>
+    <div className="auth-page">
+      {/* Info panel */}
+      <div className="auth-panel-left">
+        <div className="auth-panel-content">
+          <div className="auth-logo">⚡ SPORTS</div>
+          <h2 className="auth-panel-title">
+            {fromGoogle ? 'Hoàn tất đăng ký' : 'Tham gia cùng chúng tôi!'}
+          </h2>
+          <p className="auth-panel-sub">
+            {fromGoogle
+              ? 'Tài khoản Google của bạn đã được xác thực. Vui lòng điền thêm thông tin để hoàn tất.'
+              : 'Tạo tài khoản để mua sắm thể thao và đặt sân với hàng ngàn khách hàng tin dùng.'}
+          </p>
+          <div className="auth-panel-badges">
+            {(fromGoogle
+              ? ['Google đã xác thực', 'An toàn', 'Nhanh chóng']
+              : ['Miễn phí đăng ký', 'Ưu đãi thành viên', 'Hỗ trợ 24/7']
+            ).map((b) => (
+              <span key={b} className="auth-panel-badge">{b}</span>
+            ))}
+          </div>
+        </div>
+        <div className="auth-blob auth-blob-1" />
+        <div className="auth-blob auth-blob-2" />
+      </div>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>{t('auth.email')}</Form.Label>
-                  <Form.Control
-                    type="email"
-                    {...registerForm('email')}
-                    placeholder="Enter your email"
-                  />
-                  {errors.email && (
-                    <Form.Text className="text-danger">{errors.email.message}</Form.Text>
-                  )}
-                </Form.Group>
+      {/* Form panel */}
+      <div className="auth-panel-right">
+        <motion.div
+          className="auth-form-card"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45 }}
+        >
+          <h1 className="auth-form-title">
+            {fromGoogle ? 'Hoàn tất đăng ký' : 'Đăng ký'}
+          </h1>
+          <p className="auth-form-subtitle">
+            {fromGoogle ? (
+              <>Xác thực qua Google thành công — điền thêm thông tin bên dưới.</>
+            ) : (
+              <>Đã có tài khoản? <Link to="/login" className="auth-link">Đăng nhập →</Link></>
+            )}
+          </p>
 
-                <Form.Group className="mb-3">
-                  <Form.Label>{t('auth.phone')}</Form.Label>
-                  <Form.Control
-                    type="tel"
-                    {...registerForm('phone')}
-                    placeholder="Enter your phone"
-                  />
-                  {errors.phone && (
-                    <Form.Text className="text-danger">{errors.phone.message}</Form.Text>
-                  )}
-                </Form.Group>
+          {fromGoogle && (
+            <div className="auth-google-notice">
+              <span>✓ Xác thực Google thành công</span>
+            </div>
+          )}
 
-                <Form.Group className="mb-3">
-                  <Form.Label>{t('auth.password')}</Form.Label>
-                  <Form.Control
-                    type="password"
-                    {...registerForm('password')}
-                    placeholder="Enter your password"
-                  />
-                  {errors.password && (
-                    <Form.Text className="text-danger">{errors.password.message}</Form.Text>
-                  )}
-                </Form.Group>
+          <form onSubmit={handleSubmit(onSubmit)} className="auth-form" noValidate>
+            <Field
+              name="fullName"
+              label="Họ và tên"
+              placeholder="Nguyễn Văn A"
+              icon={FiUser}
+              readOnly={fromGoogle && !!preName}
+            />
+            <Field
+              name="email"
+              label="Email"
+              type="email"
+              placeholder="your@email.com"
+              icon={FiMail}
+              readOnly={fromGoogle && !!preEmail}
+            />
+            <Field
+              name="phone"
+              label="Số điện thoại"
+              type="tel"
+              placeholder="0901234567"
+              icon={FiPhone}
+            />
 
-                <Form.Group className="mb-3">
-                  <Form.Label>{t('auth.confirmPassword')}</Form.Label>
-                  <Form.Control
-                    type="password"
-                    {...registerForm('confirmPassword')}
-                    placeholder="Confirm your password"
-                  />
-                  {errors.confirmPassword && (
-                    <Form.Text className="text-danger">{errors.confirmPassword.message}</Form.Text>
-                  )}
-                </Form.Group>
+            <Field
+              name="password"
+              label={fromGoogle ? 'Mật khẩu (tùy chọn)' : 'Mật khẩu'}
+              type={showPwd ? 'text' : 'password'}
+              placeholder={fromGoogle ? '(để trống nếu chỉ dùng Google)' : '••••••••'}
+              icon={FiLock}
+              extra={
+                <button type="button" className="auth-eye-btn" onClick={() => setShowPwd((v) => !v)} tabIndex={-1}>
+                  {showPwd ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                </button>
+              }
+            />
+            {!fromGoogle && (
+              <Field
+                name="confirmPassword"
+                label="Xác nhận mật khẩu"
+                type="password"
+                placeholder="••••••••"
+                icon={FiLock}
+              />
+            )}
 
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="lg"
-                  className="w-100 mb-3"
-                  disabled={isLoading || isGoogleLoading}
-                >
-                  {isLoading ? <Loading /> : t('auth.register')}
-                </Button>
+            <button type="submit" className="auth-submit-btn" disabled={isLoading}>
+              {isLoading
+                ? <span className="auth-spinner" />
+                : <><FiArrowRight size={16} /> {fromGoogle ? 'Hoàn tất đăng ký' : 'Tạo tài khoản'}</>}
+            </button>
 
-                {import.meta.env.VITE_FIREBASE_API_KEY && (
-                  <>
-                    <div className="divider mb-3">
-                      <span className="divider-text">OR</span>
-                    </div>
-
-                    <Button
-                      type="button"
-                      variant="outline-danger"
-                      size="lg"
-                      className="w-100 mb-3 google-btn"
-                      onClick={handleGoogleLogin}
-                      disabled={isLoading || isGoogleLoading}
-                    >
-                      {isGoogleLoading ? (
-                        <Loading />
-                      ) : (
-                        <>
-                          <FcGoogle size={20} className="me-2" />
-                          {t('auth.loginWithGoogle')}
-                        </>
-                      )}
-                    </Button>
-                  </>
-                )}
-
-                <div className="text-center">
-                  <p className="mb-0">
-                    {t('auth.hasAccount')}{' '}
-                    <Link to="/login" className="text-decoration-none fw-bold">
-                      {t('auth.login')}
-                    </Link>
-                  </p>
-                </div>
-              </Form>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
+            {!fromGoogle && isGoogleAuthConfigured && (
+              <>
+                <div className="auth-divider"><span>hoặc</span></div>
+                <GoogleLoginButton onSuccess={() => navigate('/')} disabled={isLoading} />
+              </>
+            )}
+          </form>
+        </motion.div>
+      </div>
+    </div>
   );
 };
 

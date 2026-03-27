@@ -1,6 +1,20 @@
-import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { OrdersService } from './orders.service';
-import { CreateOrderDto, UpdateOrderStatusDto, QueryOrderDto } from './dto/order.dto';
+import {
+  CreateOrderDto,
+  UpdateOrderStatusDto,
+  QueryOrderDto,
+} from './dto/order.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../core/guards/roles.guard';
 import { Roles } from '../core/decorators/roles.decorator';
@@ -27,6 +41,12 @@ export class OrdersController {
   }
 
   // ADMIN ROUTES
+  @Get('admin/orders/stats')
+  @Roles('Admin')
+  async getOrderStats(@Query() query: any) {
+    return this.ordersService.getOrderStats(query);
+  }
+
   @Get('admin/orders')
   @Roles('Admin')
   async getAllOrdersByAdmin(@Query() queryDto: QueryOrderDto) {
@@ -41,7 +61,10 @@ export class OrdersController {
 
   @Put('admin/orders/:id/status')
   @Roles('Admin')
-  async updateOrderStatusByAdmin(@Param('id') id: string, @Body() updateDto: UpdateOrderStatusDto) {
+  async updateOrderStatusByAdmin(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateOrderStatusDto,
+  ) {
     return this.ordersService.updateOrderStatus(id, updateDto);
   }
 }

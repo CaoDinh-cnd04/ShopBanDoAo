@@ -1,7 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { ProductRepository } from './products.repository';
-import { CreateProductDto, UpdateProductDto, QueryProductDto } from './dto/product.dto';
+import {
+  CreateProductDto,
+  UpdateProductDto,
+  QueryProductDto,
+} from './dto/product.dto';
 
 @Injectable()
 export class ProductsService {
@@ -20,7 +24,11 @@ export class ProductsService {
       ];
     }
     if (query.categoryId) match.categoryId = query.categoryId;
-    if (query.isActive !== undefined) match.isActive = query.isActive === 'true';
+    if (query.isActive !== undefined)
+      match.isActive = query.isActive === 'true';
+    if (query.isFeatured !== undefined)
+      match.isFeatured =
+        query.isFeatured === '1' || query.isFeatured === 'true';
 
     const [products, total] = await Promise.all([
       this.productRepository.findAll(match, skip, limit),

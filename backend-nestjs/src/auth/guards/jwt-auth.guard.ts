@@ -5,7 +5,12 @@ import { AuthGuard } from '@nestjs/passport';
 export class JwtAuthGuard extends AuthGuard('jwt') {
   handleRequest(err: any, user: any, info: any) {
     if (err || !user) {
-      throw err || new UnauthorizedException('Vui lòng đăng nhập JWT token không hợp lệ hoặc đã hết hạn');
+      throw (
+        err ||
+        new UnauthorizedException(
+          'Vui lòng đăng nhập JWT token không hợp lệ hoặc đã hết hạn',
+        )
+      );
     }
     return user;
   }

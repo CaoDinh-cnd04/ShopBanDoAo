@@ -1,138 +1,130 @@
 import { useEffect, useState } from 'react';
-import { Card, Row, Col, Button, Badge, Tabs, Tab } from 'react-bootstrap';
-import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
-import {
-  fetchAvailableVouchers,
-  fetchUserVouchers,
-  receiveVoucher,
-} from '../../store/slices/voucherSlice';
+import { motion } from 'framer-motion';
+import { FiTag, FiCopy, FiCheck, FiCalendar, FiPercent, FiDollarSign } from 'react-icons/fi';
+import { fetchPublicVouchers } from '../../store/slices/voucherSlice';
 import { toast } from 'react-toastify';
 import Loading from '../../components/Loading/Loading';
-import './Vouchers.css';
 
-const Vouchers = () => {
-  const { t } = useTranslation();
-  const dispatch = useDispatch();
-  const { availableVouchers, userVouchers, isLoading } = useSelector(
-    (state) => state.vouchers
-  );
+const formatMoney = (n) =>
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 
-  useEffect(() => {
-    dispatch(fetchAvailableVouchers());
-    dispatch(fetchUserVouchers());
-  }, [dispatch]);
+const formatDate = (d) =>
+  d ? new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
 
-  const handleReceiveVoucher = async (voucherId) => {
-    const result = await dispatch(receiveVoucher(voucherId));
-    if (receiveVoucher.fulfilled.match(result)) {
-      toast.success('Voucher received successfully!');
-      dispatch(fetchAvailableVouchers());
-      dispatch(fetchUserVouchers());
-    } else {
-      toast.error(result.payload || 'Failed to receive voucher');
+const VoucherCard = ({ voucher }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(voucher.code);
+      setCopied(true);
+      toast.success(`Đã sao chép mã: ${voucher.code}`);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Không thể sao chép, hãy copy thủ công');
     }
   };
+
+  const isPercent = voucher.discountType === 'percent';
+  const discountLabel = isPercent
+    ? `${voucher.discountValue}%`
+    : formatMoney(voucher.discountValue);
+
+  return (
+    <motion.div
+      className="voucher-card-item"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+    >
+      {/* Left accent strip */}
+      <div className="voucher-strip">
+        {isPercent ? <FiPercent size={18} /> : <FiDollarSign size={18} />}
+      </div>
+
+      <div className="voucher-body">
+        <div className="voucher-top">
+          <div>
+            <div className="voucher-code">{voucher.code}</div>
+            <div className="voucher-discount">Giảm {discountLabel}</div>
+          </div>
+          <button
+            className={`voucher-copy-btn ${copied ? 'copied' : ''}`}
+            onClick={handleCopy}
+            title="Sao chép mã"
+          >
+            {copied ? <FiCheck size={15} /> : <FiCopy size={15} />}
+            {copied ? 'Đã copy' : 'Sao chép'}
+          </button>
+        </div>
+
+        <div className="voucher-meta">
+          {voucher.minOrderValue > 0 && (
+            <span className="voucher-meta-item">
+              Đơn tối thiểu: {formatMoney(voucher.minOrderValue)}
+            </span>
+          )}
+          {isPercent && voucher.maxDiscountAmount > 0 && (
+            <span className="voucher-meta-item">
+              Giảm tối đa: {formatMoney(voucher.maxDiscountAmount)}
+            </span>
+          )}
+          {voucher.endDate && (
+            <span className="voucher-meta-item">
+              <FiCalendar size={12} /> HSD: {formatDate(voucher.endDate)}
+            </span>
+          )}
+          {voucher.usageLimit > 0 && (
+            <span className="voucher-meta-item">
+              Còn: {voucher.usageLimit - (voucher.usedCount ?? 0)} lượt
+            </span>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const Vouchers = () => {
+  const dispatch = useDispatch();
+  const { vouchers, isLoading, error } = useSelector((s) => s.vouchers);
+
+  useEffect(() => {
+    dispatch(fetchPublicVouchers());
+  }, [dispatch]);
 
   if (isLoading) return <Loading />;
 
   return (
-    <Card>
-      <Card.Header>
-        <h5 className="mb-0">My Vouchers</h5>
-      </Card.Header>
-      <Card.Body>
-        <Tabs defaultActiveKey="available" className="mb-4">
-          <Tab eventKey="available" title="Available Vouchers">
-            {availableVouchers.length === 0 ? (
-              <p className="text-muted">No available vouchers</p>
-            ) : (
-              <Row>
-                {availableVouchers.map((voucher) => (
-                  <Col md={6} key={voucher.id} className="mb-3">
-                    <Card className="voucher-card h-100">
-                      <Card.Body>
-                        <div className="d-flex justify-content-between align-items-start mb-2">
-                          <div>
-                            <h5 className="fw-bold text-accent">{voucher.voucherCode}</h5>
-                            <p className="mb-1">{voucher.description}</p>
-                          </div>
-                          <Badge bg="success">
-                            {voucher.discountType === 'Percentage'
-                              ? `${voucher.discountValue}%`
-                              : `${voucher.discountValue.toLocaleString('vi-VN')} ₫`}
-                          </Badge>
-                        </div>
-                        {voucher.minPurchaseAmount && (
-                          <p className="text-muted small mb-2">
-                            Min purchase: {voucher.minPurchaseAmount.toLocaleString('vi-VN')} ₫
-                          </p>
-                        )}
-                        {voucher.expiryDate && (
-                          <p className="text-muted small mb-3">
-                            Expires: {new Date(voucher.expiryDate).toLocaleDateString()}
-                          </p>
-                        )}
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={() => handleReceiveVoucher(voucher.id)}
-                          className="w-100"
-                        >
-                          Receive Voucher
-                        </Button>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                ))}
-              </Row>
-            )}
-          </Tab>
-          <Tab eventKey="my-vouchers" title="My Vouchers">
-            {userVouchers.length === 0 ? (
-              <p className="text-muted">You don't have any vouchers yet</p>
-            ) : (
-              <Row>
-                {userVouchers.map((userVoucher) => {
-                  const voucher = userVoucher.voucher;
-                  return (
-                    <Col md={6} key={userVoucher.id} className="mb-3">
-                      <Card className="voucher-card h-100">
-                        <Card.Body>
-                          <div className="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                              <h5 className="fw-bold text-accent">{voucher.voucherCode}</h5>
-                              <p className="mb-1">{voucher.description}</p>
-                            </div>
-                            <Badge bg={userVoucher.isUsed ? 'secondary' : 'success'}>
-                              {userVoucher.isUsed ? 'Used' : 'Active'}
-                            </Badge>
-                          </div>
-                          {voucher.discountType === 'Percentage' ? (
-                            <p className="fw-bold fs-4 text-accent">
-                              {voucher.discountValue}% OFF
-                            </p>
-                          ) : (
-                            <p className="fw-bold fs-4 text-accent">
-                              {voucher.discountValue.toLocaleString('vi-VN')} ₫ OFF
-                            </p>
-                          )}
-                          {voucher.expiryDate && (
-                            <p className="text-muted small">
-                              Expires: {new Date(voucher.expiryDate).toLocaleDateString()}
-                            </p>
-                          )}
-                        </Card.Body>
-                      </Card>
-                    </Col>
-                  );
-                })}
-              </Row>
-            )}
-          </Tab>
-        </Tabs>
-      </Card.Body>
-    </Card>
+    <div className="profile-section-card">
+      <div className="profile-section-header">
+        <div className="profile-section-title-row">
+          <FiTag size={20} />
+          <h2 className="profile-section-title">Voucher khuyến mãi</h2>
+        </div>
+        <p className="profile-section-sub">
+          Sao chép mã và nhập tại trang thanh toán để được giảm giá
+        </p>
+      </div>
+
+      {error && (
+        <div className="profile-alert error">Không thể tải danh sách voucher. Thử lại sau.</div>
+      )}
+
+      {!error && vouchers.length === 0 && (
+        <div className="profile-empty-state">
+          <FiTag size={48} />
+          <p>Hiện chưa có voucher nào đang áp dụng</p>
+        </div>
+      )}
+
+      <div className="voucher-list">
+        {vouchers.map((v) => (
+          <VoucherCard key={v._id || v.id} voucher={v} />
+        ))}
+      </div>
+    </div>
   );
 };
 

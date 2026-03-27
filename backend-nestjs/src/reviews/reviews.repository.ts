@@ -5,10 +5,17 @@ import { Review, ReviewDocument } from './schemas/review.schema';
 
 @Injectable()
 export class ReviewRepository {
-  constructor(@InjectModel(Review.name) private reviewModel: Model<ReviewDocument>) {}
+  constructor(
+    @InjectModel(Review.name) private reviewModel: Model<ReviewDocument>,
+  ) {}
 
-  async findAll(match: any, skip: number, limit: number): Promise<ReviewDocument[]> {
-    return this.reviewModel.find(match)
+  async findAll(
+    match: any,
+    skip: number,
+    limit: number,
+  ): Promise<ReviewDocument[]> {
+    return this.reviewModel
+      .find(match)
       .skip(skip)
       .limit(limit)
       .populate('userId', 'fullName')
@@ -29,8 +36,13 @@ export class ReviewRepository {
     return this.reviewModel.findById(id).exec();
   }
 
-  async update(id: string, updateData: Partial<Review>): Promise<ReviewDocument | null> {
-    return this.reviewModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+  async update(
+    id: string,
+    updateData: Partial<Review>,
+  ): Promise<ReviewDocument | null> {
+    return this.reviewModel
+      .findByIdAndUpdate(id, updateData, { new: true })
+      .exec();
   }
 
   async delete(id: string): Promise<ReviewDocument | null> {

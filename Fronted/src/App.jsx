@@ -22,11 +22,8 @@ import Booking from './pages/Booking/Booking';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import Profile from './pages/Profile/Profile';
-import Orders from './pages/Profile/Orders';
 import OrderDetail from './pages/Profile/OrderDetail';
-import Bookings from './pages/Profile/Bookings';
 import BookingDetail from './pages/Profile/BookingDetail';
-import Wishlist from './pages/Profile/Wishlist';
 import AdminLayout from './components/Admin/AdminLayout';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminProducts from './pages/Admin/AdminProducts';
@@ -49,7 +46,6 @@ import NotFound from './pages/NotFound/NotFound';
 
 // Redux
 import { checkAuth } from './store/slices/authSlice';
-import { loadCart } from './store/slices/cartSlice';
 import { setTheme } from './store/slices/themeSlice';
 
 // Components
@@ -64,7 +60,6 @@ function App() {
     // Check authentication on mount
     dispatch(checkAuth());
     // Load cart from localStorage
-    dispatch(loadCart());
     // Load theme preference
     const savedTheme = localStorage.getItem('theme') || 'light';
     dispatch(setTheme(savedTheme));
@@ -120,61 +115,47 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            {/* Profile — tất cả sub-tabs render trong Profile layout với sidebar */}
             <Route
               path="profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="profile/orders/:id"
-              element={
-                <ProtectedRoute>
-                  <OrderDetail />
-                </ProtectedRoute>
-              }
+              element={<ProtectedRoute><Profile /></ProtectedRoute>}
             />
             <Route
               path="profile/orders"
-              element={
-                <ProtectedRoute>
-                  <Orders />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="profile/bookings/:id"
-              element={
-                <ProtectedRoute>
-                  <BookingDetail />
-                </ProtectedRoute>
-              }
+              element={<ProtectedRoute><Profile /></ProtectedRoute>}
             />
             <Route
               path="profile/bookings"
-              element={
-                <ProtectedRoute>
-                  <Bookings />
-                </ProtectedRoute>
-              }
+              element={<ProtectedRoute><Profile /></ProtectedRoute>}
             />
             <Route
               path="profile/wishlist"
-              element={
-                <ProtectedRoute>
-                  <Wishlist />
-                </ProtectedRoute>
-              }
+              element={<ProtectedRoute><Profile /></ProtectedRoute>}
+            />
+            <Route
+              path="profile/addresses"
+              element={<ProtectedRoute><Profile /></ProtectedRoute>}
+            />
+            <Route
+              path="profile/vouchers"
+              element={<ProtectedRoute><Profile /></ProtectedRoute>}
+            />
+            <Route
+              path="profile/password"
+              element={<ProtectedRoute><Profile /></ProtectedRoute>}
             />
             <Route
               path="profile/notifications"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
+              element={<ProtectedRoute><Profile /></ProtectedRoute>}
+            />
+            {/* Detail pages — standalone */}
+            <Route
+              path="profile/orders/:id"
+              element={<ProtectedRoute><OrderDetail /></ProtectedRoute>}
+            />
+            <Route
+              path="profile/bookings/:id"
+              element={<ProtectedRoute><BookingDetail /></ProtectedRoute>}
             />
 
             {/* 404 cho trang chủ */}

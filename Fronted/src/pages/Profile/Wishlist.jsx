@@ -1,36 +1,51 @@
 import { useEffect } from 'react';
-import { Row, Col } from 'react-bootstrap';
-import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { FiHeart } from 'react-icons/fi';
 import { fetchWishlist } from '../../store/slices/wishlistSlice';
 import WishlistCard from '../../components/Profile/WishlistCard';
-import EmptyState from '../../components/Profile/EmptyState';
 import Loading from '../../components/Loading/Loading';
 
 const Wishlist = () => {
-  const { t } = useTranslation();
   const dispatch = useDispatch();
-  const { items, isLoading } = useSelector((state) => state.wishlist);
+  const navigate = useNavigate();
+  const { items, isLoading } = useSelector((s) => s.wishlist);
+  const safeItems = Array.isArray(items) ? items : [];
 
-  useEffect(() => {
-    dispatch(fetchWishlist());
-  }, [dispatch]);
+  useEffect(() => { dispatch(fetchWishlist()); }, [dispatch]);
 
   if (isLoading) return <Loading />;
 
-  if (!items || items.length === 0) {
-    return <EmptyState type="wishlist" />;
-  }
-
   return (
-    <div className="wishlist-page">
-      <Row className="g-4">
-        {Array.isArray(items) && items.map((item) => (
-          <Col lg={3} md={4} sm={6} key={item.wishlistItemId ?? item.WishlistItemID ?? item.id}>
-            <WishlistCard item={item} />
-          </Col>
-        ))}
-      </Row>
+    <div className="profile-section-card">
+      <div className="profile-section-header">
+        <div className="profile-section-title-row">
+          <FiHeart size={20} />
+          <h2 className="profile-section-title">Yêu thích</h2>
+        </div>
+        <p className="profile-section-sub">{safeItems.length} sản phẩm</p>
+      </div>
+
+      {safeItems.length === 0 ? (
+        <div className="profile-empty-state">
+          <FiHeart size={48} />
+          <p>Bạn chưa có sản phẩm yêu thích. Hãy khám phá và thêm những sản phẩm bạn thích!</p>
+          <button className="profile-btn-primary" onClick={() => navigate('/products')}>
+            Khám phá sản phẩm
+          </button>
+        </div>
+      ) : (
+        <motion.div
+          className="wishlist-grid"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          {safeItems.map((item) => (
+            <WishlistCard key={item._id || item.id} item={item} />
+          ))}
+        </motion.div>
+      )}
     </div>
   );
 };
