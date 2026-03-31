@@ -19,3 +19,10 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
+      # Khớp VITE_GOOGLE_REDIRECT_URI (frontend) và Google Console «Authorized redirect URIs»
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false

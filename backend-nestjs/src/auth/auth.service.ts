@@ -67,6 +67,24 @@ export class AuthService {
     return v || undefined;
   }
 
+  /**
+   * Redirect URI dùng khi gọi Google token endpoint — phải trùng byte với URL trong
+   * «Authorized redirect URIs» và với lúc user mở trang đăng nhập Google.
+   * Nên set GOOGLE_REDIRECT_URI trên Render = ví dụ https://ndsports.id.vn/auth/google/callback
+   * (cùng giá trị với VITE_GOOGLE_REDIRECT_URI khi build frontend).
+   */
+  private getGoogleRedirectUriForTokenExchange(clientRedirect: string): string {
+    const raw =
+      this.configService.get<string>('GOOGLE_REDIRECT_URI') ??
+      process.env.GOOGLE_REDIRECT_URI;
+    const fromEnv =
+      typeof raw === 'string' ? raw.replace(/^["']|["']$/g, '').trim() : '';
+    if (fromEnv) {
+      return normalizeOAuthRedirectUri(fromEnv);
+    }
+    return normalizeOAuthRedirectUri(clientRedirect ?? '');
+  }
+
   /** Tài khoản chỉ tạo qua Google (chưa đặt mật khẩu app). */
   private isGoogleOnlyUser(user: UserDocument | null | undefined): boolean {
     const h = user?.passwordHash;
@@ -256,14 +274,17 @@ export class AuthService {
     if (!rawCode) {
       throw new BadRequestException('Code không được để trống');
     }
-    const rawRedirect = normalizeOAuthRedirectUri(redirectUri ?? '');
+    const rawRedirect = this.getGoogleRedirectUriForTokenExchange(redirectUri);
     if (!rawRedirect) {
       throw new BadRequestException('redirectUri không được để trống');
     }
 
     const client = new OAuth2Client(clientId, clientSecret, rawRedirect);
     try {
-      const r = await client.getToken(rawCode);
+      const r = await client.getToken({
+        code: rawCode,
+        redirect_uri: rawRedirect,
+      });
       const tokens = r.tokens;
       if (tokens?.id_token) {
         return this.verifyGoogleIdTokenAndIssueSession(tokens.id_token);
@@ -281,7 +302,14 @@ export class AuthService {
       if (e instanceof HttpException) {
         throw e;
       }
-      const msg = e instanceof Error ? e.message : String(e);
+      let msg = e instanceof Error ? e.message : String(e);
+      const gaxios = e as {
+        response?: { data?: { error?: string; error_description?: string } };
+      };
+      const desc = gaxios.response?.data?.error_description;
+      if (typeof desc === 'string' && desc.trim()) {
+        msg = `${msg} | ${desc.trim()}`;
+      }
       const lower = msg.toLowerCase();
       this.logger.warn(`exchangeGoogleAuthCode getToken failed: ${msg}`);
       if (

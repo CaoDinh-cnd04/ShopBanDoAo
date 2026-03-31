@@ -67,7 +67,8 @@ async function bootstrap(): Promise<void> {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: true,
+      /** false: tránh 400 khi client gửi thêm field (extension, bản build cũ) — vẫn strip qua whitelist */
+      forbidNonWhitelisted: false,
       transform: true,
     }),
   );
