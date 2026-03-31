@@ -3,6 +3,13 @@ import { store } from '../store/store';
 import { logout } from '../store/slices/authSlice';
 import { getApiBaseUrl } from '../config/apiBase';
 
+/** Khớp BrowserRouter basename (VITE_BASE) — tránh redirect /login → 404 trên GitHub Pages */
+function getLoginPath() {
+  const base = import.meta.env.BASE_URL || '/';
+  const trimmed = base.replace(/\/$/, '') || '';
+  return trimmed ? `${trimmed}/login` : '/login';
+}
+
 const API_BASE_URL = getApiBaseUrl();
 
 const api = axios.create({
@@ -62,10 +69,12 @@ api.interceptors.response.use(
       if (!isAuthRoute) {
         store.dispatch(logout());
         const path = `${window.location.pathname}${window.location.search}`;
-        const onLogin = path.startsWith('/login');
+        const loginPath = getLoginPath();
+        const onLogin =
+          path === loginPath || path.startsWith(`${loginPath}?`);
         if (!onLogin) {
           const returnUrl = encodeURIComponent(path);
-          window.location.href = `/login?returnUrl=${returnUrl}`;
+          window.location.href = `${loginPath}?returnUrl=${returnUrl}`;
         }
       }
     }

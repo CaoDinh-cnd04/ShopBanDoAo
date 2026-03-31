@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   IsEmail,
   IsNotEmpty,
@@ -43,6 +44,7 @@ export class GoogleLoginDto {
 
 /** JWT credential từ nút GoogleLogin (Sign In With Google) — không dùng popup OAuth */
 export class GoogleIdTokenDto {
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @IsNotEmpty({ message: 'ID token không được để trống' })
   idToken: string;

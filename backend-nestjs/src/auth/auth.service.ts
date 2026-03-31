@@ -27,11 +27,21 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
   ) {
-    if (!this.configService.get<string>('GOOGLE_CLIENT_ID')?.trim()) {
+    if (!this.getGoogleClientId()) {
       this.logger.warn(
-        'GOOGLE_CLIENT_ID chưa cấu hình — POST /api/auth/google-id-token sẽ trả 400. Thêm biến trên Render (cùng Client ID với frontend).',
+        'GOOGLE_CLIENT_ID chưa cấu hình — POST /api/auth/google-id-token sẽ trả 400. Thêm biến trên Render (cùng Client ID với VITE_GOOGLE_CLIENT_ID).',
       );
     }
+  }
+
+  /** ConfigService hoặc process.env; bỏ dấu ngoặc thừa từ một số host (Render). */
+  private getGoogleClientId(): string | undefined {
+    const raw =
+      this.configService.get<string>('GOOGLE_CLIENT_ID') ??
+      process.env.GOOGLE_CLIENT_ID;
+    if (raw == null || typeof raw !== 'string') return undefined;
+    const v = raw.replace(/^["']|["']$/g, '').trim();
+    return v || undefined;
   }
 
   async register(registerDto: RegisterDto) {
@@ -152,10 +162,12 @@ export class AuthService {
       throw new BadRequestException('ID token không được để trống');
     }
 
-    const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID')?.trim();
+    const clientId = this.getGoogleClientId();
     if (!clientId) {
       this.logger.error('GOOGLE_CLIENT_ID is not set');
-      throw new BadRequestException('Server chưa cấu hình Google OAuth');
+      throw new BadRequestException(
+        'Server chưa cấu hình Google OAuth (GOOGLE_CLIENT_ID trên Render phải trùng VITE_GOOGLE_CLIENT_ID).',
+      );
     }
 
     const client = new OAuth2Client(clientId);
