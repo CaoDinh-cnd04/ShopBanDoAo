@@ -3,7 +3,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import { googleAuthCodeExchange, isAdminUser } from '../../store/slices/authSlice';
-import { getGoogleRedirectUri, parseGoogleOAuthState } from '../../config/googleAuth';
+import {
+  clearStoredGoogleOAuthRedirectUri,
+  getGoogleRedirectUriForCodeExchange,
+  parseGoogleOAuthState,
+} from '../../config/googleAuth';
 import { safeReturnUrl } from '../../auth/returnUrl';
 import './Auth.css';
 
@@ -22,6 +26,7 @@ export default function AuthGoogleCallback() {
       const err = searchParams.get('error');
       const errDesc = searchParams.get('error_description');
       if (err) {
+        clearStoredGoogleOAuthRedirectUri();
         toast.error(errDesc || err || 'Đăng nhập Google bị hủy');
         navigate('/login', { replace: true });
         return;
@@ -30,6 +35,7 @@ export default function AuthGoogleCallback() {
       const code = searchParams.get('code');
       const state = searchParams.get('state');
       if (!code) {
+        clearStoredGoogleOAuthRedirectUri();
         toast.error('Thiếu mã xác thực Google');
         navigate('/login', { replace: true });
         return;
@@ -46,11 +52,12 @@ export default function AuthGoogleCallback() {
       }
       sessionStorage.setItem(key, 'pending');
 
-      const redirectUri = getGoogleRedirectUri();
+      const redirectUri = getGoogleRedirectUriForCodeExchange();
       const parsed = parseGoogleOAuthState(state);
       const returnFromState = safeReturnUrl(parsed.returnUrl);
 
       const res = await dispatch(googleAuthCodeExchange({ code, redirectUri }));
+      clearStoredGoogleOAuthRedirectUri();
       if (googleAuthCodeExchange.fulfilled.match(res)) {
         sessionStorage.setItem(key, 'done');
         toast.success('Đăng nhập Google thành công');

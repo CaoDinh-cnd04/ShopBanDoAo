@@ -9,6 +9,7 @@ import {
 } from 'class-validator';
 
 export class RegisterDto {
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString({ message: 'Họ tên phải là chuỗi' })
   @IsNotEmpty({ message: 'Họ tên không được để trống' })
   fullName: string;
@@ -24,6 +25,18 @@ export class RegisterDto {
   @MinLength(6, { message: 'Mật khẩu phải từ 6 ký tự trở lên' })
   password: string;
 
+  /** Rỗng / chỉ khoảng trắng → bỏ qua; số từ autofill → chuỗi */
+  @Transform(({ value }) => {
+    if (value == null || value === '') return undefined;
+    const raw =
+      typeof value === 'number'
+        ? String(value)
+        : typeof value === 'string'
+          ? value.trim()
+          : value;
+    if (typeof raw !== 'string') return value;
+    return raw === '' ? undefined : raw;
+  })
   @IsOptional()
   @IsString()
   phone?: string;

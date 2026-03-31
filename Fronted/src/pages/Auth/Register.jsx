@@ -17,7 +17,10 @@ const schema = z
   .object({
     fullName: z.string().min(2, 'Họ tên tối thiểu 2 ký tự'),
     email: z.string().email('Email không hợp lệ'),
-    phone: z.string().regex(/^(0|\+84)[3-9]\d{8}$/, 'Số điện thoại không hợp lệ'),
+    phone: z
+      .string()
+      .transform((s) => s.replace(/\s/g, ''))
+      .refine((s) => /^(0|\+84)[3-9]\d{8}$/.test(s), 'Số điện thoại không hợp lệ'),
     password: z.string().min(6, 'Mật khẩu tối thiểu 6 ký tự'),
     confirmPassword: z.string(),
   })
@@ -50,8 +53,8 @@ export default function Register() {
   const onSubmit = async (data) => {
     const res = await dispatch(
       registerUser({
-        fullName: data.fullName,
-        email: data.email,
+        fullName: data.fullName.trim(),
+        email: data.email.trim().toLowerCase(),
         phone: data.phone,
         password: data.password,
       }),

@@ -4,6 +4,7 @@
 # Biến Actions (Settings → Secrets and variables → Actions → Variables):
 #   VITE_API_BASE_URL — URL Render: https://<service>.onrender.com/api  hoặc VPS
 #   VITE_GOOGLE_CLIENT_ID — client ID OAuth (nếu cần)
+#   VITE_GOOGLE_REDIRECT_URI — tùy chọn: URL đầy đủ callback (vd: https://domain.com/auth/google/callback)
 #   VITE_BASE — tùy chọn: để trống = /TênRepo/ (URL *.github.io/TênRepo/).
 #             Đặt = / khi dùng custom domain gốc (ndsports.id.vn).
 #   Lưu ý: đặt các biến này ở Repository variables HOẶC Environment github-pages;
@@ -45,6 +46,7 @@ jobs:
           VITE_BASE: ${{ vars.VITE_BASE || format('/{0}/', github.event.repository.name) }}
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
           VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
+          VITE_GOOGLE_REDIRECT_URI: ${{ vars.VITE_GOOGLE_REDIRECT_URI }}
         run: |
           npm ci
           npm run build

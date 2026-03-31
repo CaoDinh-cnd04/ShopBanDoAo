@@ -3,6 +3,9 @@ export const GOOGLE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID || '').tr
 
 export const isGoogleAuthConfigured = GOOGLE_CLIENT_ID.length > 0;
 
+/** Khớp với key trong AuthGoogleCallback — đổi token phải dùng đúng redirect_uri lúc authorize */
+const SESSION_OAUTH_REDIRECT = 'google_oauth_redirect_uri';
+
 /** Khớp backend `normalizeOAuthRedirectUri` — tránh lệch token exchange (400). */
 function normalizeOAuthRedirectUri(url) {
   let v = String(url).trim();
@@ -29,13 +32,41 @@ function normalizeOAuthRedirectUri(url) {
  * Redirect URI — phải khớp chính xác mục "Authorized redirect URIs" trong Google Cloud.
  * Ví dụ: https://ndsports.id.vn/auth/google/callback
  *        http://localhost:5173/auth/google/callback
+ *
+ * Khi deploy GitHub Pages với VITE_BASE=/TênRepo/, callback thực tế là
+ * https://…github.io/TênRepo/auth/google/callback — phải khai báo ĐỦ trong Console.
+ * Hoặc set VITE_GOOGLE_REDIRECT_URI (URL đầy đủ) để khớp bắt buộc với Console.
  */
 export function getGoogleRedirectUri() {
   if (typeof window === 'undefined') return '';
+  const explicit = (import.meta.env.VITE_GOOGLE_REDIRECT_URI || '').trim();
+  if (explicit) {
+    return normalizeOAuthRedirectUri(explicit);
+  }
   const base = import.meta.env.BASE_URL || '/';
   const trimmed = base.replace(/\/$/, '') || '';
   const path = `${trimmed}/auth/google/callback`;
   return normalizeOAuthRedirectUri(`${window.location.origin}${path}`);
+}
+
+/** Dùng cùng redirect_uri đã lưu khi bấm «Đăng nhập Google» — tránh lệch authorize vs exchange. */
+export function getGoogleRedirectUriForCodeExchange() {
+  if (typeof window === 'undefined') return '';
+  try {
+    const stored = sessionStorage.getItem(SESSION_OAUTH_REDIRECT)?.trim();
+    if (stored) return normalizeOAuthRedirectUri(stored);
+  } catch {
+    /* ignore */
+  }
+  return getGoogleRedirectUri();
+}
+
+export function clearStoredGoogleOAuthRedirectUri() {
+  try {
+    sessionStorage.removeItem(SESSION_OAUTH_REDIRECT);
+  } catch {
+    /* ignore */
+  }
 }
 
 /**
@@ -45,6 +76,11 @@ export function getGoogleRedirectUri() {
 export function buildGoogleAuthorizationUrl(stateObj) {
   if (!GOOGLE_CLIENT_ID) return '';
   const redirectUri = getGoogleRedirectUri();
+  try {
+    sessionStorage.setItem(SESSION_OAUTH_REDIRECT, redirectUri);
+  } catch {
+    /* ignore */
+  }
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: redirectUri,
