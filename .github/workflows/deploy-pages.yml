@@ -2,7 +2,7 @@
 # Repo → Settings → Pages → Source: GitHub Actions
 # DNS: A records @ → 185.199.108.153 … 185.199.111.153 (GitHub) hoặc CNAME www → <user>.github.io
 # Biến Actions (Settings → Secrets and variables → Actions → Variables):
-#   VITE_API_BASE_URL — ví dụ https://api.ndsports.id.vn/api
+#   VITE_API_BASE_URL — URL Render: https://<service>.onrender.com/api  hoặc VPS
 #   VITE_GOOGLE_CLIENT_ID — client ID OAuth (nếu cần)
 #   VITE_BASE — tùy chọn: để trống = /TênRepo/ (URL *.github.io/TênRepo/).
 #             Đặt = / khi dùng custom domain gốc (ndsports.id.vn).
