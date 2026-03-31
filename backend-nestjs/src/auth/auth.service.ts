@@ -59,6 +59,15 @@ export class AuthService {
     return v || undefined;
   }
 
+  private isDuplicateKeyError(err: unknown): boolean {
+    return (
+      typeof err === 'object' &&
+      err !== null &&
+      'code' in err &&
+      (err as { code: number }).code === 11000
+    );
+  }
+
   async register(registerDto: RegisterDto) {
     const { email, password, fullName, phone } = registerDto;
 
@@ -69,12 +78,23 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await this.authRepository.create({
-      email,
-      fullName,
-      passwordHash: hashedPassword,
-      phone: phone?.trim() || undefined,
-    });
+    let user;
+    try {
+      user = await this.authRepository.create({
+        email,
+        fullName: fullName.trim(),
+        passwordHash: hashedPassword,
+        phone: phone?.trim() ? phone.trim() : undefined,
+      });
+    } catch (err: unknown) {
+      if (this.isDuplicateKeyError(err)) {
+        throw new BadRequestException('Email đã được sử dụng');
+      }
+      this.logger.error(
+        `register save failed: ${err instanceof Error ? err.stack : String(err)}`,
+      );
+      throw err;
+    }
 
     const userId = String(user._id);
     const payload = {
@@ -102,7 +122,19 @@ export class AuthService {
       throw new UnauthorizedException('Tài khoản không tồn tại');
     }
 
-    const isMatch = await bcrypt.compare(loginDto.password, user.passwordHash);
+    if (user.passwordHash?.startsWith('GOOGLE_OAUTH_')) {
+      throw new UnauthorizedException(
+        'Tài khoản đăng ký qua Google — vui lòng đăng nhập bằng Google.',
+      );
+    }
+
+    let isMatch = false;
+    try {
+      isMatch = await bcrypt.compare(loginDto.password, user.passwordHash);
+    } catch {
+      this.logger.warn(`bcrypt.compare failed for user ${String(user._id)}`);
+      throw new UnauthorizedException('Không đăng nhập được bằng mật khẩu này');
+    }
     if (!isMatch) {
       throw new UnauthorizedException('Sai mật khẩu');
     }
@@ -204,20 +236,101 @@ export class AuthService {
     try {
       const r = await client.getToken(rawCode);
       const tokens = r.tokens;
-      if (!tokens?.id_token) {
-        throw new BadRequestException('Google không trả id_token');
+      if (tokens?.id_token) {
+        return this.verifyGoogleIdTokenAndIssueSession(tokens.id_token);
       }
-      return this.verifyGoogleIdTokenAndIssueSession(tokens.id_token);
+      if (tokens?.access_token) {
+        this.logger.warn(
+          'Google trả access_token nhưng không có id_token — dùng UserInfo API',
+        );
+        return this.issueSessionFromGoogleAccessToken(tokens.access_token);
+      }
+      throw new BadRequestException(
+        'Google không trả id_token hoặc access_token. Kiểm tra scope openid trong URL đăng nhập Google.',
+      );
     } catch (e: unknown) {
       if (e instanceof HttpException) {
         throw e;
       }
       const msg = e instanceof Error ? e.message : String(e);
+      const lower = msg.toLowerCase();
       this.logger.warn(`exchangeGoogleAuthCode getToken failed: ${msg}`);
+      if (
+        lower.includes('redirect_uri') ||
+        lower.includes('redirect uri') ||
+        lower.includes('redirecturi')
+      ) {
+        throw new BadRequestException(
+          'redirect_uri không khớp Google Console. Thêm CHÍNH XÁC URL callback của trang đang mở (http/https, www, và path /auth/google/callback hoặc /base/auth/google/callback).',
+        );
+      }
+      if (
+        lower.includes('invalid_grant') ||
+        lower.includes('already redeemed') ||
+        lower.includes('code was already')
+      ) {
+        throw new BadRequestException(
+          'Mã đăng nhập Google đã hết hạn hoặc đã dùng. Vui lòng bấm đăng nhập Google lại.',
+        );
+      }
+      if (
+        lower.includes('invalid_client') ||
+        lower.includes('unauthorized_client') ||
+        lower.includes('client_secret')
+      ) {
+        throw new BadRequestException(
+          'GOOGLE_CLIENT_ID hoặc GOOGLE_CLIENT_SECRET trên Render không khớp OAuth client trong Google Cloud.',
+        );
+      }
       throw new UnauthorizedException(
         'Không đổi được mã Google. Kiểm tra Authorized redirect URIs và GOOGLE_CLIENT_SECRET.',
       );
     }
+  }
+
+  /**
+   * Khi Google không trả id_token nhưng có access_token — lấy profile qua UserInfo.
+   */
+  private async issueSessionFromGoogleAccessToken(accessToken: string) {
+    const token = accessToken?.trim();
+    if (!token) {
+      throw new BadRequestException('Access token Google rỗng');
+    }
+    let profile: {
+      email?: string;
+      name?: string;
+      email_verified?: boolean;
+    };
+    try {
+      const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`userinfo ${res.status} ${text.slice(0, 120)}`);
+      }
+      const data = (await res.json()) as Record<string, unknown>;
+      profile = {
+        email: data.email as string | undefined,
+        name: data.name as string | undefined,
+        email_verified: data.email_verified as boolean | undefined,
+      };
+    } catch (e: unknown) {
+      const m = e instanceof Error ? e.message : String(e);
+      this.logger.warn(`Google UserInfo failed: ${m}`);
+      throw new UnauthorizedException(
+        'Không lấy được thông tin tài khoản Google. Thử đăng nhập lại.',
+      );
+    }
+    const email = profile.email?.trim().toLowerCase();
+    if (!email) {
+      throw new UnauthorizedException('Google không cung cấp email');
+    }
+    if (profile.email_verified === false) {
+      throw new UnauthorizedException('Email Google chưa được xác minh');
+    }
+    const fullName = profile.name?.trim() || email.split('@')[0];
+    return this.findOrCreateGoogleUserAndReturnJwt(email, fullName);
   }
 
   private async findOrCreateGoogleUserAndReturnJwt(

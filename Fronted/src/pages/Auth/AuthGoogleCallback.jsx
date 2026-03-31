@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
@@ -7,16 +7,17 @@ import { getGoogleRedirectUri, parseGoogleOAuthState } from '../../config/google
 import { safeReturnUrl } from '../../auth/returnUrl';
 import './Auth.css';
 
+/** Tránh gửi cùng một code 2 lần (React Strict Mode dev / F5 / nhiều tab) */
+function oauthDedupeKey(code) {
+  return `google_oauth_code_${code}`;
+}
+
 export default function AuthGoogleCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const ran = useRef(false);
 
   useEffect(() => {
-    if (ran.current) return;
-    ran.current = true;
-
     const run = async () => {
       const err = searchParams.get('error');
       const errDesc = searchParams.get('error_description');
@@ -34,17 +35,30 @@ export default function AuthGoogleCallback() {
         return;
       }
 
+      const key = oauthDedupeKey(code);
+      const prev = sessionStorage.getItem(key);
+      if (prev === 'done') {
+        navigate('/', { replace: true });
+        return;
+      }
+      if (prev === 'pending') {
+        return;
+      }
+      sessionStorage.setItem(key, 'pending');
+
       const redirectUri = getGoogleRedirectUri();
       const parsed = parseGoogleOAuthState(state);
       const returnFromState = safeReturnUrl(parsed.returnUrl);
 
       const res = await dispatch(googleAuthCodeExchange({ code, redirectUri }));
       if (googleAuthCodeExchange.fulfilled.match(res)) {
+        sessionStorage.setItem(key, 'done');
         toast.success('Đăng nhập Google thành công');
         const user = res.payload?.user;
         const target = returnFromState || (user && isAdminUser(user) ? '/admin' : '/');
         navigate(target, { replace: true });
       } else {
+        sessionStorage.removeItem(key);
         toast.error(res.payload || 'Đăng nhập Google thất bại');
         navigate('/login', { replace: true });
       }

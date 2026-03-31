@@ -12,6 +12,9 @@ export class RegisterDto {
   @IsNotEmpty({ message: 'Họ tên không được để trống' })
   fullName: string;
 
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toLowerCase() : value,
+  )
   @IsEmail({}, { message: 'Email không hợp lệ' })
   @IsNotEmpty({ message: 'Email không được để trống' })
   email: string;
@@ -26,6 +29,9 @@ export class RegisterDto {
 }
 
 export class LoginDto {
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toLowerCase() : value,
+  )
   @IsEmail({}, { message: 'Email không hợp lệ' })
   @IsNotEmpty({ message: 'Email không được để trống' })
   email: string;
