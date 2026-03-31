@@ -20,15 +20,16 @@ function ensureUploadsDirectory(): string {
 }
 
 /**
- * COOP/CORP cho OAuth popup; không cache response JSON dưới `/api`.
- * Controllers đã dùng prefix `api/...` — không dùng setGlobalPrefix('api') để tránh /api/api.
+ * COOP `unsafe-none` — giảm chặn postMessage / popup Google so với same-origin.
+ * (Trang SPA tĩnh GitHub Pages vẫn có COOP riêng; header này áp lên response API.)
+ * Không cache JSON dưới `/api`.
  */
 function securityHeadersMiddleware(
   req: Request,
   res: Response,
   next: NextFunction,
 ): void {
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   if (req.path.startsWith('/api')) {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');

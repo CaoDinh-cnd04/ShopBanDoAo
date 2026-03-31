@@ -32,15 +32,21 @@ const appInner = (
   </Provider>
 );
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      {GOOGLE_CLIENT_ID ? (
-        <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>{appInner}</GoogleOAuthProvider>
-      ) : (
-        appInner
-      )}
-    </ErrorBoundary>
-  </React.StrictMode>
+/**
+ * GoogleOAuthProvider phải nằm NGOÀI React.StrictMode — nếu không,
+ * StrictMode mount kép (dev) → google.accounts.id.initialize() gọi 2 lần.
+ */
+const appWithBoundary = (
+  <ErrorBoundary>{appInner}</ErrorBoundary>
 );
 
+const rootTree =
+  GOOGLE_CLIENT_ID ? (
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <React.StrictMode>{appWithBoundary}</React.StrictMode>
+    </GoogleOAuthProvider>
+  ) : (
+    <React.StrictMode>{appWithBoundary}</React.StrictMode>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(rootTree);
