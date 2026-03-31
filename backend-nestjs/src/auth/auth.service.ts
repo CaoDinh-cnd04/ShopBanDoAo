@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   UnauthorizedException,
   BadRequestException,
   NotFoundException,
@@ -16,6 +17,8 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private authRepository: AuthRepository,
     private jwtService: JwtService,
@@ -99,36 +102,30 @@ export class AuthService {
       throw new BadRequestException('Access token không được để trống');
     }
 
-    let googleRes: Awaited<ReturnType<typeof fetch>>;
-    try {
-      googleRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-    } catch {
-      throw new BadRequestException(
-        'Không kết nối được Google UserInfo (mạng server)',
-      );
-    }
-
-    if (!googleRes.ok) {
-      throw new UnauthorizedException(
-        'Google access token không hợp lệ hoặc đã hết hạn',
-      );
-    }
-
-    const profile = (await googleRes.json()) as {
+    let profile: {
       email?: string;
       name?: string;
       email_verified?: boolean;
       verified_email?: boolean;
     };
 
+    try {
+      profile = await this.fetchGoogleProfile(token);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      this.logger.warn(`Google UserInfo failed: ${msg}`);
+      throw new UnauthorizedException(
+        'Không xác thực được token Google. Thử đăng nhập lại.',
+      );
+    }
+
     const email = profile.email?.trim().toLowerCase();
     if (!email) {
       throw new UnauthorizedException('Google không cung cấp email');
     }
 
-    if (profile.email_verified === false || profile.verified_email === false) {
+    const ev = profile.email_verified ?? profile.verified_email;
+    if (ev === false) {
       throw new UnauthorizedException('Email Google chưa được xác minh');
     }
 
@@ -136,33 +133,98 @@ export class AuthService {
 
     if (!user) {
       const fullName = profile.name?.trim() || email.split('@')[0];
-      user = await this.authRepository.create({
-        email,
-        fullName,
-        passwordHash: `GOOGLE_OAUTH_${Date.now()}`,
-        role: 'User',
-        isActive: true,
-      } as any);
+      try {
+        user = await this.authRepository.create({
+          email,
+          fullName,
+          passwordHash: `GOOGLE_OAUTH_${Date.now()}`,
+          role: 'User',
+          isActive: true,
+        } as any);
+      } catch (createErr: unknown) {
+        const code = (createErr as { code?: number })?.code;
+        if (code === 11000) {
+          user = await this.authRepository.findByEmail(email);
+        }
+        if (!user) {
+          this.logger.error(
+            `googleLogin create user failed: ${createErr instanceof Error ? createErr.message : createErr}`,
+          );
+          throw new BadRequestException(
+            'Không tạo được tài khoản. Thử lại sau.',
+          );
+        }
+      }
     }
 
-    const userId = String(user._id);
-    const payload = {
-      sub: userId,
-      email: user.email,
-      role: user.role || 'User',
-    };
-    const jwt = await this.jwtService.signAsync(payload);
+    try {
+      const userId = String(user!._id);
+      const payload = {
+        sub: userId,
+        email: user!.email,
+        role: user!.role || 'User',
+      };
+      const jwt = await this.jwtService.signAsync(payload);
 
-    return {
-      token: jwt,
-      user: {
-        id: userId,
-        email: user.email,
-        fullName: user.fullName,
-        phone: user.phone ?? null,
-        role: user.role || 'User',
-      },
+      return {
+        token: jwt,
+        user: {
+          id: userId,
+          email: user!.email,
+          fullName: user!.fullName,
+          phone: user!.phone ?? null,
+          role: user!.role || 'User',
+        },
+      };
+    } catch (e: unknown) {
+      this.logger.error(
+        `googleLogin JWT failed: ${e instanceof Error ? e.message : e}`,
+      );
+      throw new BadRequestException('Không tạo được phiên đăng nhập. Thử lại.');
+    }
+  }
+
+  /** Gọi Google UserInfo (v3, fallback v2) — throw nếu không lấy được profile hợp lệ */
+  private async fetchGoogleProfile(accessToken: string) {
+    const tryFetch = async (url: string) => {
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status} ${text.slice(0, 200)}`);
+      }
+      let data: Record<string, unknown>;
+      try {
+        data = (await res.json()) as Record<string, unknown>;
+      } catch {
+        throw new Error('Invalid JSON from Google UserInfo');
+      }
+      return data;
     };
+
+    try {
+      const data = await tryFetch(
+        'https://www.googleapis.com/oauth2/v3/userinfo',
+      );
+      return {
+        email: data.email as string | undefined,
+        name: data.name as string | undefined,
+        email_verified: data.email_verified as boolean | undefined,
+        verified_email: data.verified_email as boolean | undefined,
+      };
+    } catch (first) {
+      this.logger.debug(`userinfo v3 failed, try v2: ${first}`);
+      const data = await tryFetch(
+        'https://www.googleapis.com/oauth2/v2/userinfo',
+      );
+      return {
+        email: data.email as string | undefined,
+        name: data.name as string | undefined,
+        email_verified: undefined,
+        verified_email: data.verified_email as boolean | undefined,
+      };
+    }
   }
 
   async getProfile(userId: string) {

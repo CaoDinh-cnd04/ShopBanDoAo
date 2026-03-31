@@ -21,6 +21,20 @@ async function bootstrap() {
   // NOTE: Global prefix đã bỏ vì mỗi @Controller đã khai báo 'api/...' sẵn rồi
   // Nếu giữ setGlobalPrefix('api') thì route sẽ thành /api/api/xxx -> 404
 
+  // FIX COOP: cho phép Google OAuth popup giao tiếp lại với tab gốc mà không bị chặn.
+  // "same-origin-allow-popups" = tab mẹ COOP same-origin nhưng popup mở ra được phép close.
+  // Thiếu header này thì window.closed bị block → Google login popup không về được.
+  app.use((_req: any, res: any, next: any) => {
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    // API data luôn fresh — không bị client cache cũ
+    if (_req.path?.startsWith('/api')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+    }
+    next();
+  });
+
   // CORS: SPA (ndsports.id.vn, localhost) gọi API Render — bật rõ header Authorization + OPTIONS
   app.enableCors({
     origin: true,

@@ -18,7 +18,12 @@ const GoogleLoginButton = ({ onSuccess, disabled }) => {
     onSuccess: async (tokenResponse) => {
       try {
         setLoading(true);
-        const res = await dispatch(googleLogin(tokenResponse.access_token));
+        const at = tokenResponse?.access_token;
+        if (!at) {
+          toast.error('Không nhận được token từ Google. Thử lại.');
+          return;
+        }
+        const res = await dispatch(googleLogin(at));
 
         if (!googleLogin.fulfilled.match(res)) {
           toast.error(res.payload || 'Đăng nhập Google thất bại');
