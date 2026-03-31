@@ -1,57 +1,62 @@
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { useGoogleLogin } from '@react-oauth/google';
-import { FcGoogle } from 'react-icons/fc';
+import { GoogleLogin } from '@react-oauth/google';
 import { toast } from 'react-toastify';
-import { googleLogin } from '../../store/slices/authSlice';
+import { googleIdTokenLogin } from '../../store/slices/authSlice';
 
 /**
- * Nút đăng nhập Google.
- * Backend tự tạo tài khoản nếu email chưa tồn tại → luôn trả { token, user }.
+ * Đăng nhập Google qua JWT credential (Sign In With Google) — không dùng popup OAuth,
+ * tránh Cross-Origin-Opener-Policy / window.closed trên GitHub Pages.
  */
 const GoogleLoginButton = ({ onSuccess, disabled }) => {
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(false);
 
-  const handleGoogle = useGoogleLogin({
-    scope: 'openid email profile',
-    onSuccess: async (tokenResponse) => {
-      try {
-        setLoading(true);
-        const at = tokenResponse?.access_token;
-        if (!at) {
-          toast.error('Không nhận được token từ Google. Thử lại.');
-          return;
-        }
-        const res = await dispatch(googleLogin(at));
+  const handleSuccess = async (credentialResponse) => {
+    const cred = credentialResponse?.credential;
+    if (!cred) {
+      toast.error('Không nhận được token từ Google. Thử lại.');
+      return;
+    }
+    try {
+      setLoading(true);
+      const res = await dispatch(googleIdTokenLogin(cred));
 
-        if (!googleLogin.fulfilled.match(res)) {
-          toast.error(res.payload || 'Đăng nhập Google thất bại');
-          return;
-        }
-
-        toast.success('Đăng nhập Google thành công! 🎉');
-        onSuccess?.(res);
-      } catch {
-        toast.error('Lỗi đăng nhập Google');
-      } finally {
-        setLoading(false);
+      if (!googleIdTokenLogin.fulfilled.match(res)) {
+        toast.error(res.payload || 'Đăng nhập Google thất bại');
+        return;
       }
-    },
-    onError: () => toast.error('Đăng nhập Google thất bại'),
-  });
+
+      toast.success('Đăng nhập Google thành công! 🎉');
+      onSuccess?.(res);
+    } catch {
+      toast.error('Lỗi đăng nhập Google');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const busy = disabled || loading;
 
   return (
-    <button
-      type="button"
-      className="auth-google-btn"
-      onClick={() => handleGoogle({ prompt: 'select_account' })}
-      disabled={disabled || loading}
-    >
-      {loading
-        ? <span className="auth-spinner dark" />
-        : <><FcGoogle size={20} /> Đăng nhập với Google</>}
-    </button>
+    <div className={`auth-google-btn-wrap ${busy ? 'auth-google-btn-wrap--busy' : ''}`}>
+      <GoogleLogin
+        onSuccess={handleSuccess}
+        onError={() => toast.error('Đăng nhập Google thất bại')}
+        text="continue_with"
+        shape="rectangular"
+        size="large"
+        width="100%"
+        theme="outline"
+        locale="vi"
+        containerProps={{ className: 'auth-google-btn-inner' }}
+      />
+      {loading ? (
+        <span className="auth-google-loading" aria-hidden>
+          <span className="auth-spinner dark" />
+        </span>
+      ) : null}
+    </div>
   );
 };
 

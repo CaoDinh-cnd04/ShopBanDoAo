@@ -127,6 +127,23 @@ export const googleLogin = createAsyncThunk(
   }
 );
 
+/** JWT credential từ nút GoogleLogin (khuyến nghị — không popup OAuth) */
+export const googleIdTokenLogin = createAsyncThunk(
+  'auth/googleIdTokenLogin',
+  async (idToken, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/auth/google-id-token', { idToken });
+      const { token, user } = response.data.data;
+      const normalized = normalizeUser(user);
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(normalized));
+      return { token, user: normalized };
+    } catch (error) {
+      return rejectWithValue(messageFromApiError(error, 'Đăng nhập Google thất bại'));
+    }
+  }
+);
+
 export const getProfile = createAsyncThunk(
   'auth/getProfile',
   async (_, { rejectWithValue }) => {
@@ -265,6 +282,16 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(googleLogin.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
+
+      .addCase(googleIdTokenLogin.pending, (state) => { state.isLoading = true; state.error = null; })
+      .addCase(googleIdTokenLogin.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isAuthenticated = true;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.error = null;
+      })
+      .addCase(googleIdTokenLogin.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
 
       // Check Auth
       .addCase(checkAuth.fulfilled, (state, action) => {

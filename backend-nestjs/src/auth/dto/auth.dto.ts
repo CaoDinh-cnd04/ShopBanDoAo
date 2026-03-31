@@ -41,6 +41,13 @@ export class GoogleLoginDto {
   accessToken: string;
 }
 
+/** JWT credential từ nút GoogleLogin (Sign In With Google) — không dùng popup OAuth */
+export class GoogleIdTokenDto {
+  @IsString()
+  @IsNotEmpty({ message: 'ID token không được để trống' })
+  idToken: string;
+}
+
 export class UpdateProfileDto {
   @IsOptional()
   @IsString({ message: 'Họ tên phải là chuỗi' })

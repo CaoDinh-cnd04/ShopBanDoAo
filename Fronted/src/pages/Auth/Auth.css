@@ -263,7 +263,33 @@
   background: var(--border-color);
 }
 
-/* Google button */
+/* Google Sign-In button (component @react-oauth/google) */
+.auth-google-btn-wrap {
+  position: relative;
+  width: 100%;
+}
+.auth-google-btn-wrap--busy {
+  pointer-events: none;
+  opacity: 0.75;
+}
+.auth-google-btn-inner {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+.auth-google-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 12px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Google button (legacy custom button) */
 .auth-google-btn {
   display: flex;
   align-items: center;

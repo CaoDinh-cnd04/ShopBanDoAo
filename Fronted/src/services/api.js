@@ -58,7 +58,8 @@ api.interceptors.response.use(
       const isAuthRoute =
         url.includes('/auth/login') ||
         url.includes('/auth/register') ||
-        url.includes('/auth/google-login');
+        url.includes('/auth/google-login') ||
+        url.includes('/auth/google-id-token');
       if (!isAuthRoute) {
         store.dispatch(logout());
         const path = `${window.location.pathname}${window.location.search}`;

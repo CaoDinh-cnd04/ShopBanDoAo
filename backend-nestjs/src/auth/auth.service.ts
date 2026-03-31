@@ -1,11 +1,14 @@
 import {
   Injectable,
   Logger,
+  HttpException,
   UnauthorizedException,
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { OAuth2Client } from 'google-auth-library';
 import { AuthRepository } from './auth.repository';
 import {
   RegisterDto,
@@ -22,6 +25,7 @@ export class AuthService {
   constructor(
     private authRepository: AuthRepository,
     private jwtService: JwtService,
+    private configService: ConfigService,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -129,10 +133,68 @@ export class AuthService {
       throw new UnauthorizedException('Email Google chưa được xác minh');
     }
 
+    const fullName = profile.name?.trim() || email.split('@')[0];
+    return this.findOrCreateGoogleUserAndReturnJwt(email, fullName);
+  }
+
+  /**
+   * Đăng nhập qua JWT credential (Sign In With Google — nút GoogleLogin, không popup OAuth).
+   */
+  async googleLoginWithIdToken(idToken: string) {
+    const raw = idToken?.trim();
+    if (!raw) {
+      throw new BadRequestException('ID token không được để trống');
+    }
+
+    const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID')?.trim();
+    if (!clientId) {
+      this.logger.error('GOOGLE_CLIENT_ID is not set');
+      throw new BadRequestException('Server chưa cấu hình Google OAuth');
+    }
+
+    const client = new OAuth2Client(clientId);
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: raw,
+        audience: clientId,
+      });
+      const payload = ticket.getPayload();
+      if (!payload) {
+        throw new UnauthorizedException(
+          'Google không cung cấp thông tin tài khoản',
+        );
+      }
+
+      const email = payload.email?.trim().toLowerCase();
+      if (!email) {
+        throw new UnauthorizedException('Google không cung cấp email');
+      }
+
+      if (payload.email_verified === false) {
+        throw new UnauthorizedException('Email Google chưa được xác minh');
+      }
+
+      const fullName = payload.name?.trim() || email.split('@')[0];
+      return this.findOrCreateGoogleUserAndReturnJwt(email, fullName);
+    } catch (e: unknown) {
+      if (e instanceof HttpException) {
+        throw e;
+      }
+      const msg = e instanceof Error ? e.message : String(e);
+      this.logger.warn(`verifyIdToken failed: ${msg}`);
+      throw new UnauthorizedException(
+        'Token Google không hợp lệ hoặc đã hết hạn. Thử đăng nhập lại.',
+      );
+    }
+  }
+
+  private async findOrCreateGoogleUserAndReturnJwt(
+    email: string,
+    fullName: string,
+  ) {
     let user = await this.authRepository.findByEmail(email);
 
     if (!user) {
-      const fullName = profile.name?.trim() || email.split('@')[0];
       try {
         user = await this.authRepository.create({
           email,
@@ -147,9 +209,9 @@ export class AuthService {
           user = await this.authRepository.findByEmail(email);
         }
         if (!user) {
-          this.logger.error(
-            `googleLogin create user failed: ${createErr instanceof Error ? createErr.message : createErr}`,
-          );
+          const errMsg =
+            createErr instanceof Error ? createErr.message : String(createErr);
+          this.logger.error(`Google create user failed: ${errMsg}`);
           throw new BadRequestException(
             'Không tạo được tài khoản. Thử lại sau.',
           );
@@ -157,12 +219,18 @@ export class AuthService {
       }
     }
 
+    if (!user) {
+      throw new BadRequestException(
+        'Không tìm thấy tài khoản sau khi xác thực Google.',
+      );
+    }
+
     try {
-      const userId = String(user!._id);
+      const userId = String(user._id);
       const payload = {
         sub: userId,
-        email: user!.email,
-        role: user!.role || 'User',
+        email: user.email,
+        role: user.role || 'User',
       };
       const jwt = await this.jwtService.signAsync(payload);
 
@@ -170,16 +238,15 @@ export class AuthService {
         token: jwt,
         user: {
           id: userId,
-          email: user!.email,
-          fullName: user!.fullName,
-          phone: user!.phone ?? null,
-          role: user!.role || 'User',
+          email: user.email,
+          fullName: user.fullName,
+          phone: user.phone ?? null,
+          role: user.role || 'User',
         },
       };
     } catch (e: unknown) {
-      this.logger.error(
-        `googleLogin JWT failed: ${e instanceof Error ? e.message : e}`,
-      );
+      const errMsg = e instanceof Error ? e.message : String(e);
+      this.logger.error(`Google JWT failed: ${errMsg}`);
       throw new BadRequestException('Không tạo được phiên đăng nhập. Thử lại.');
     }
   }

@@ -14,6 +14,7 @@ import {
   RegisterDto,
   LoginDto,
   GoogleLoginDto,
+  GoogleIdTokenDto,
   UpdateProfileDto,
   ChangePasswordDto,
 } from './dto/auth.dto';
@@ -38,6 +39,13 @@ export class AuthController {
   @Post('google-login')
   async googleLogin(@Body() dto: GoogleLoginDto) {
     return this.authService.googleLogin(dto.accessToken);
+  }
+
+  /** Đăng nhập qua JWT credential (nút GoogleLogin) — khuyến nghị, tránh COOP/popup */
+  @HttpCode(HttpStatus.OK)
+  @Post('google-id-token')
+  async googleIdToken(@Body() dto: GoogleIdTokenDto) {
+    return this.authService.googleLoginWithIdToken(dto.idToken);
   }
 
   @UseGuards(JwtAuthGuard)
