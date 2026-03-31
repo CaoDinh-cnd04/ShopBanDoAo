@@ -13,9 +13,15 @@ import 'react-datepicker/dist/react-datepicker.css';
 import 'react-toastify/dist/ReactToastify.css';
 import './styles/index.css';
 
+/** Khớp Vite `base` (GitHub Pages / subpath hoặc domain gốc) */
+const baseUrl = import.meta.env.BASE_URL || '/';
+const routerBasename =
+  baseUrl === '/' ? undefined : baseUrl.replace(/\/$/, '');
+
 const appInner = (
   <Provider store={store}>
     <BrowserRouter
+      basename={routerBasename}
       future={{
         v7_startTransition: true,
         v7_relativeSplatPath: true,

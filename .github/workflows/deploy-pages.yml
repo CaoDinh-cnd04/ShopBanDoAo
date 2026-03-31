@@ -1,0 +1,57 @@
+# Deploy Fronted lên GitHub Pages (custom domain: xem Fronted/public/CNAME)
+# Repo → Settings → Pages → Source: GitHub Actions
+# DNS: A records @ → 185.199.108.153 … 185.199.111.153 (GitHub) hoặc CNAME www → <user>.github.io
+# Biến Actions (Settings → Secrets and variables → Actions → Variables):
+#   VITE_API_BASE_URL — ví dụ https://api.ndsports.id.vn/api
+#   VITE_GOOGLE_CLIENT_ID — client ID OAuth (nếu cần)
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install & build
+        working-directory: ./Fronted
+        env:
+          # Site tại domain gốc (ndsports.id.vn). Nếu chỉ dùng *.github.io/RepoName thì đổi thành /ShopBanDoAo/
+          VITE_BASE: /
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
+        run: |
+          npm ci
+          npm run build
+          cp dist/index.html dist/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: Fronted/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
