@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Form, Button, ProgressBar } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import { getApiBaseUrl } from '../../config/apiBase';
 
 const FileUpload = ({
     onUploadSuccess,
@@ -64,7 +65,7 @@ const FileUpload = ({
             }
 
             const endpoint = multiple ? '/upload/multiple' : '/upload/single';
-            const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+            const API_URL = getApiBaseUrl();
 
             const response = await axios.post(`${API_URL}${endpoint}`, formData, {
                 headers: {

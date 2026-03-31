@@ -1,21 +1,11 @@
 /**
  * Upload ảnh — dùng fetch + FormData, KHÔNG set Content-Type (trình duyệt tự gắn boundary).
- * Tránh axios default JSON header làm hỏng multipart.
- *
- * Dev: ưu tiên gọi cùng origin → /api (Vite proxy → Nest).
- * Prod: dùng VITE_API_BASE_URL nếu có.
  */
+import { getApiBaseUrl } from '../config/apiBase';
 
 function getApiRoot() {
-  const env = import.meta.env.VITE_API_BASE_URL;
-  if (env != null && String(env).trim() !== '') {
-    return String(env).replace(/\/$/, '');
-  }
-  // Cùng origin (5173/api được proxy tới 3000) — tránh CORS khi dev
-  if (typeof window !== 'undefined') {
-    return `${window.location.origin}/api`;
-  }
-  return 'http://localhost:3000/api';
+  const base = getApiBaseUrl();
+  return base ? base.replace(/\/$/, '') : '';
 }
 
 function getToken() {
