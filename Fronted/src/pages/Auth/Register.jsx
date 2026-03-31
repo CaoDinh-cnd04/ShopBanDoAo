@@ -54,7 +54,8 @@ const Register = () => {
   }, [fromGoogle, preEmail, preName, setValue]);
 
   const onSubmit = async (data) => {
-    const { confirmPassword: _, ...payload } = data;
+    const payload = { ...data };
+    delete payload.confirmPassword;
     // Nếu đến từ Google và người dùng không điền mật khẩu → dùng placeholder
     if (fromGoogle && !payload.password) {
       payload.password = 'google_oauth_no_password_set_later';

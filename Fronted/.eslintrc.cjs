@@ -10,6 +10,8 @@ module.exports = {
     'react/prop-types': 'off',
     'react/react-in-jsx-scope': 'off',
     'react/no-unescaped-entities': 'off',
+    /** Một số bản build/PR cũ dùng fetchpriority (HTML); React khuyên fetchPriority */
+    'react/no-unknown-property': ['error', { ignore: ['fetchpriority'] }],
     'react-hooks/exhaustive-deps': 'warn',
   },
   overrides: [
