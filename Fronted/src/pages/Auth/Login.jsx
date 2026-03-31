@@ -122,7 +122,7 @@ const Login = () => {
               <>
                 <div className="auth-divider"><span>hoặc</span></div>
                 <GoogleLoginButton
-                  onSuccess={(res) => redirectAfterLogin(res.payload?.user)}
+                  returnUrl={searchParams.get('returnUrl')}
                   disabled={isLoading}
                 />
               </>

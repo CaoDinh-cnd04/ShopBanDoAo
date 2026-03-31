@@ -2,11 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
-import { GoogleOAuthProvider } from '@react-oauth/google';
 import { store } from './store/store';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
-import { GOOGLE_CLIENT_ID } from './config/googleAuth';
 import './i18n/config';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -32,21 +30,8 @@ const appInner = (
   </Provider>
 );
 
-/**
- * GoogleOAuthProvider phải nằm NGOÀI React.StrictMode — nếu không,
- * StrictMode mount kép (dev) → google.accounts.id.initialize() gọi 2 lần.
- */
-const appWithBoundary = (
-  <ErrorBoundary>{appInner}</ErrorBoundary>
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <ErrorBoundary>{appInner}</ErrorBoundary>
+  </React.StrictMode>,
 );
-
-const rootTree =
-  GOOGLE_CLIENT_ID ? (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <React.StrictMode>{appWithBoundary}</React.StrictMode>
-    </GoogleOAuthProvider>
-  ) : (
-    <React.StrictMode>{appWithBoundary}</React.StrictMode>
-);
-
-ReactDOM.createRoot(document.getElementById('root')).render(rootTree);

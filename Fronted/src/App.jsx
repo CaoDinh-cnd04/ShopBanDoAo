@@ -19,6 +19,7 @@ import CourtDetail from './pages/CourtDetail/CourtDetail';
 import Booking from './pages/Booking/Booking';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
+import AuthGoogleCallback from './pages/Auth/AuthGoogleCallback';
 import Profile from './pages/Profile/Profile';
 import OrderDetail from './pages/Profile/OrderDetail';
 import BookingDetail from './pages/Profile/BookingDetail';
@@ -81,6 +82,7 @@ function App() {
             <Route path="courts/:id" element={<CourtDetail />} />
             <Route path="login" element={<Login />} />
             <Route path="register" element={<Register />} />
+            <Route path="auth/google/callback" element={<AuthGoogleCallback />} />
             <Route path="about" element={<About />} />
             <Route path="contact" element={<Contact />} />
             <Route path="faq" element={<FAQ />} />

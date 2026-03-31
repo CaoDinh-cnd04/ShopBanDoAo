@@ -29,7 +29,12 @@ export class AuthService {
   ) {
     if (!this.getGoogleClientId()) {
       this.logger.warn(
-        'GOOGLE_CLIENT_ID chưa cấu hình — POST /api/auth/google-id-token sẽ trả 400. Thêm biến trên Render (cùng Client ID với VITE_GOOGLE_CLIENT_ID).',
+        'GOOGLE_CLIENT_ID chưa cấu hình — đăng nhập Google sẽ lỗi. Thêm trên Render (cùng VITE_GOOGLE_CLIENT_ID).',
+      );
+    }
+    if (!this.getGoogleClientSecret()) {
+      this.logger.warn(
+        'GOOGLE_CLIENT_SECRET chưa cấu hình — POST /api/auth/google-auth-code (redirect) sẽ trả 400.',
       );
     }
   }
@@ -39,6 +44,16 @@ export class AuthService {
     const raw =
       this.configService.get<string>('GOOGLE_CLIENT_ID') ??
       process.env.GOOGLE_CLIENT_ID;
+    if (raw == null || typeof raw !== 'string') return undefined;
+    const v = raw.replace(/^["']|["']$/g, '').trim();
+    return v || undefined;
+  }
+
+  /** Client secret của OAuth Web — chỉ trên server (Render). */
+  private getGoogleClientSecret(): string | undefined {
+    const raw =
+      this.configService.get<string>('GOOGLE_CLIENT_SECRET') ??
+      process.env.GOOGLE_CLIENT_SECRET;
     if (raw == null || typeof raw !== 'string') return undefined;
     const v = raw.replace(/^["']|["']$/g, '').trim();
     return v || undefined;
@@ -202,6 +217,46 @@ export class AuthService {
       this.logger.warn(`verifyIdToken failed: ${msg}`);
       throw new UnauthorizedException(
         'Token Google không hợp lệ hoặc đã hết hạn. Thử đăng nhập lại.',
+      );
+    }
+  }
+
+  /**
+   * OAuth2 redirect: đổi authorization code → id_token (cần GOOGLE_CLIENT_SECRET).
+   */
+  async exchangeGoogleAuthCode(code: string, redirectUri: string) {
+    const clientId = this.getGoogleClientId();
+    const clientSecret = this.getGoogleClientSecret();
+    if (!clientId || !clientSecret) {
+      throw new BadRequestException(
+        'Thiếu GOOGLE_CLIENT_ID hoặc GOOGLE_CLIENT_SECRET (OAuth Web Client trên Google Cloud + Render).',
+      );
+    }
+    const rawCode = code?.trim();
+    if (!rawCode) {
+      throw new BadRequestException('Code không được để trống');
+    }
+    const rawRedirect = redirectUri?.trim();
+    if (!rawRedirect) {
+      throw new BadRequestException('redirectUri không được để trống');
+    }
+
+    const client = new OAuth2Client(clientId, clientSecret, rawRedirect);
+    try {
+      const r = await client.getToken(rawCode);
+      const tokens = r.tokens;
+      if (!tokens?.id_token) {
+        throw new BadRequestException('Google không trả id_token');
+      }
+      return this.googleLoginWithIdToken(tokens.id_token);
+    } catch (e: unknown) {
+      if (e instanceof HttpException) {
+        throw e;
+      }
+      const msg = e instanceof Error ? e.message : String(e);
+      this.logger.warn(`exchangeGoogleAuthCode getToken failed: ${msg}`);
+      throw new UnauthorizedException(
+        'Không đổi được mã Google. Kiểm tra Authorized redirect URIs và GOOGLE_CLIENT_SECRET.',
       );
     }
   }

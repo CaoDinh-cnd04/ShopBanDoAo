@@ -104,12 +104,15 @@ export const register = createAsyncThunk(
   }
 );
 
-/** JWT credential từ nút GoogleLogin (Sign In With Google) — POST /api/auth/google-id-token */
-export const googleIdTokenLogin = createAsyncThunk(
-  'auth/googleIdTokenLogin',
-  async (idToken, { rejectWithValue }) => {
+/** OAuth2 redirect: code + redirectUri — POST /api/auth/google-auth-code */
+export const googleAuthCodeExchange = createAsyncThunk(
+  'auth/googleAuthCodeExchange',
+  async ({ code, redirectUri }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/auth/google-id-token', { idToken });
+      const response = await api.post('/auth/google-auth-code', {
+        code,
+        redirectUri,
+      });
       const { token, user } = response.data.data;
       const normalized = normalizeUser(user);
       localStorage.setItem('token', token);
@@ -249,15 +252,15 @@ const authSlice = createSlice({
       })
       .addCase(register.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
 
-      .addCase(googleIdTokenLogin.pending, (state) => { state.isLoading = true; state.error = null; })
-      .addCase(googleIdTokenLogin.fulfilled, (state, action) => {
+      .addCase(googleAuthCodeExchange.pending, (state) => { state.isLoading = true; state.error = null; })
+      .addCase(googleAuthCodeExchange.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
         state.user = action.payload.user;
         state.token = action.payload.token;
         state.error = null;
       })
-      .addCase(googleIdTokenLogin.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
+      .addCase(googleAuthCodeExchange.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
 
       // Check Auth
       .addCase(checkAuth.fulfilled, (state, action) => {

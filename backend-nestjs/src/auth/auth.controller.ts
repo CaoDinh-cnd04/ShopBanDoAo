@@ -15,6 +15,7 @@ import {
   LoginDto,
   GoogleLoginDto,
   GoogleIdTokenDto,
+  GoogleAuthCodeDto,
   UpdateProfileDto,
   ChangePasswordDto,
 } from './dto/auth.dto';
@@ -41,11 +42,18 @@ export class AuthController {
     return this.authService.googleLogin(dto.accessToken);
   }
 
-  /** Đăng nhập qua JWT credential (nút GoogleLogin) — khuyến nghị, tránh COOP/popup */
+  /** Đăng nhập qua JWT credential (legacy) */
   @HttpCode(HttpStatus.OK)
   @Post('google-id-token')
   async googleIdToken(@Body() dto: GoogleIdTokenDto) {
     return this.authService.googleLoginWithIdToken(dto.idToken);
+  }
+
+  /** OAuth2 redirect: đổi code → session — khuyến nghị (không iframe GSI / COOP) */
+  @HttpCode(HttpStatus.OK)
+  @Post('google-auth-code')
+  async googleAuthCode(@Body() dto: GoogleAuthCodeDto) {
+    return this.authService.exchangeGoogleAuthCode(dto.code, dto.redirectUri);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -42,12 +42,25 @@ export class GoogleLoginDto {
   accessToken: string;
 }
 
-/** JWT credential từ nút GoogleLogin (Sign In With Google) — không dùng popup OAuth */
+/** JWT credential (legacy / mobile) */
 export class GoogleIdTokenDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @IsNotEmpty({ message: 'ID token không được để trống' })
   idToken: string;
+}
+
+/** OAuth2 authorization code sau redirect — đổi lấy id_token trên server */
+export class GoogleAuthCodeDto {
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @IsNotEmpty({ message: 'Code không được để trống' })
+  code: string;
+
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @IsNotEmpty({ message: 'redirectUri không được để trống' })
+  redirectUri: string;
 }
 
 export class UpdateProfileDto {

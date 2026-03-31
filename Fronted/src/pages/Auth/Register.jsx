@@ -194,7 +194,7 @@ const Register = () => {
             {!fromGoogle && isGoogleAuthConfigured && (
               <>
                 <div className="auth-divider"><span>hoặc</span></div>
-                <GoogleLoginButton onSuccess={() => navigate('/')} disabled={isLoading} />
+                <GoogleLoginButton disabled={isLoading} />
               </>
             )}
           </form>
