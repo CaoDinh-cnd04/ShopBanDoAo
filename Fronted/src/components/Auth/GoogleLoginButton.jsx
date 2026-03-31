@@ -40,7 +40,7 @@ const GoogleLoginButton = ({ onSuccess, disabled }) => {
     <button
       type="button"
       className="auth-google-btn"
-      onClick={() => handleGoogle()}
+      onClick={() => handleGoogle({ prompt: 'select_account' })}
       disabled={disabled || loading}
     >
       {loading

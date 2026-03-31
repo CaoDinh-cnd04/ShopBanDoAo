@@ -38,8 +38,9 @@ export class AuthService {
       phone: phone?.trim() || undefined,
     });
 
+    const userId = String(user._id);
     const payload = {
-      sub: user._id,
+      sub: userId,
       email: user.email,
       role: user.role || 'User',
     };
@@ -48,7 +49,7 @@ export class AuthService {
     return {
       token: accessToken,
       user: {
-        id: user._id,
+        id: userId,
         email: user.email,
         fullName: user.fullName,
         phone: user.phone || null,
@@ -68,8 +69,9 @@ export class AuthService {
       throw new UnauthorizedException('Sai mật khẩu');
     }
 
+    const userId = String(user._id);
     const payload = {
-      sub: user._id,
+      sub: userId,
       email: user.email,
       role: user.role || 'User',
     };
@@ -78,7 +80,7 @@ export class AuthService {
     return {
       token: accessToken,
       user: {
-        id: user._id,
+        id: userId,
         email: user.email,
         fullName: user.fullName,
         phone: user.phone || null,
@@ -97,19 +99,27 @@ export class AuthService {
       throw new BadRequestException('Access token không được để trống');
     }
 
-    const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    let googleRes: Awaited<ReturnType<typeof fetch>>;
+    try {
+      googleRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      throw new BadRequestException(
+        'Không kết nối được Google UserInfo (mạng server)',
+      );
+    }
 
-    if (!res.ok) {
+    if (!googleRes.ok) {
       throw new UnauthorizedException(
         'Google access token không hợp lệ hoặc đã hết hạn',
       );
     }
 
-    const profile = (await res.json()) as {
+    const profile = (await googleRes.json()) as {
       email?: string;
       name?: string;
+      email_verified?: boolean;
       verified_email?: boolean;
     };
 
@@ -118,27 +128,26 @@ export class AuthService {
       throw new UnauthorizedException('Google không cung cấp email');
     }
 
-    if (profile.verified_email === false) {
+    if (profile.email_verified === false || profile.verified_email === false) {
       throw new UnauthorizedException('Email Google chưa được xác minh');
     }
 
     let user = await this.authRepository.findByEmail(email);
 
-    // Email chưa tồn tại → tự động tạo tài khoản từ Google profile (chuẩn OAuth2)
     if (!user) {
       const fullName = profile.name?.trim() || email.split('@')[0];
       user = await this.authRepository.create({
         email,
         fullName,
         passwordHash: `GOOGLE_OAUTH_${Date.now()}`,
-        phone: null,
         role: 'User',
         isActive: true,
       } as any);
     }
 
+    const userId = String(user._id);
     const payload = {
-      sub: user._id,
+      sub: userId,
       email: user.email,
       role: user.role || 'User',
     };
@@ -147,10 +156,10 @@ export class AuthService {
     return {
       token: jwt,
       user: {
-        id: user._id,
+        id: userId,
         email: user.email,
         fullName: user.fullName,
-        phone: user.phone || null,
+        phone: user.phone ?? null,
         role: user.role || 'User',
       },
     };
