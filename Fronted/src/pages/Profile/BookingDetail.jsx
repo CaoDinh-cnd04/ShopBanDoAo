@@ -7,6 +7,7 @@ import api from '../../services/api';
 const BookingDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [booking, setBooking] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -32,17 +33,17 @@ const BookingDetail = () => {
 
     useEffect(() => {
         const pay = searchParams.get('payment');
+        if (!pay) return;
         if (pay === 'success') {
             toast.success('Thanh toán cọc VNPAY thành công!');
-            searchParams.delete('payment');
-            setSearchParams(searchParams, { replace: true });
         } else if (pay === 'failed') {
             toast.error('Thanh toán không thành công. Vui lòng thử lại.');
-            searchParams.delete('payment');
-            searchParams.delete('reason');
-            searchParams.delete('code');
-            setSearchParams(searchParams, { replace: true });
         }
+        const next = new URLSearchParams(searchParams);
+        next.delete('payment');
+        next.delete('reason');
+        next.delete('code');
+        setSearchParams(next, { replace: true });
     }, [searchParams, setSearchParams]);
 
     const getStatusBadge = (status) => {
