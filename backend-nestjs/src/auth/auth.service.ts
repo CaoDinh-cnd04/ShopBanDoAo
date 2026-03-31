@@ -88,7 +88,9 @@ export class AuthService {
       });
     } catch (err: unknown) {
       if (this.isDuplicateKeyError(err)) {
-        throw new BadRequestException('Email đã được sử dụng');
+        throw new BadRequestException(
+          'Email đã có trong hệ thống (có thể đã đăng ký trước đó hoặc đã đăng nhập Google lần đầu). Hãy dùng Đăng nhập hoặc Đăng nhập Google.',
+        );
       }
       this.logger.error(
         `register save failed: ${err instanceof Error ? err.stack : String(err)}`,

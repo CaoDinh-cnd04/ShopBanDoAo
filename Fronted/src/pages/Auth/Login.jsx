@@ -9,6 +9,7 @@ import { login, isAdminUser } from '../../store/slices/authSlice';
 import { toast } from 'react-toastify';
 import { isGoogleAuthConfigured } from '../../config/googleAuth';
 import GoogleLoginButton from '../../components/Auth/GoogleLoginButton';
+import InAppBrowserNotice from '../../components/Auth/InAppBrowserNotice';
 import { safeReturnUrl } from '../../auth/returnUrl';
 import AuthShell from './AuthShell';
 import './Auth.css';
@@ -107,14 +108,15 @@ export default function Login() {
           )}
         </button>
 
-        {isGoogleAuthConfigured && (
-          <>
-            <div className="auth-divider">
-              <span>hoặc</span>
-            </div>
-            <GoogleLoginButton returnUrl={searchParams.get('returnUrl')} disabled={isLoading} />
-          </>
-        )}
+            {isGoogleAuthConfigured && (
+              <>
+                <div className="auth-divider">
+                  <span>hoặc</span>
+                </div>
+                <InAppBrowserNotice />
+                <GoogleLoginButton returnUrl={searchParams.get('returnUrl')} disabled={isLoading} />
+              </>
+            )}
       </form>
     </AuthShell>
   );

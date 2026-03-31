@@ -355,6 +355,21 @@
   margin-bottom: 0.5rem;
 }
 
+/* Messenger / FB in-app — Google OAuth 403 disallowed_useragent */
+.auth-inapp-notice {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #b45309;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin-bottom: 0.75rem;
+}
+.auth-inapp-notice strong {
+  color: #92400e;
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .auth-page { flex-direction: column; }

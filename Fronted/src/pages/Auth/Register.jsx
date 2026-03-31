@@ -9,6 +9,7 @@ import { register as registerUser } from '../../store/slices/authSlice';
 import { toast } from 'react-toastify';
 import { isGoogleAuthConfigured } from '../../config/googleAuth';
 import GoogleLoginButton from '../../components/Auth/GoogleLoginButton';
+import InAppBrowserNotice from '../../components/Auth/InAppBrowserNotice';
 import AuthShell from './AuthShell';
 import './Auth.css';
 
@@ -138,6 +139,7 @@ export default function Register() {
             <div className="auth-divider">
               <span>hoặc</span>
             </div>
+            <InAppBrowserNotice />
             <GoogleLoginButton disabled={isLoading} />
           </>
         )}

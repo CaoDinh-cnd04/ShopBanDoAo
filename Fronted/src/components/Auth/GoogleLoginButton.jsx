@@ -4,6 +4,7 @@ import {
   buildGoogleAuthorizationUrl,
   isGoogleAuthConfigured,
 } from '../../config/googleAuth';
+import { IN_APP_GOOGLE_HINT, isInAppBrowser } from '../../utils/inAppBrowser';
 
 /**
  * Đăng nhập Google bằng OAuth2 redirect (full page) — không dùng GSI iframe,
@@ -14,6 +15,10 @@ import {
  */
 const GoogleLoginButton = ({ returnUrl, disabled }) => {
   const handleClick = () => {
+    if (isInAppBrowser()) {
+      toast.error(IN_APP_GOOGLE_HINT, { autoClose: 12000 });
+      return;
+    }
     if (!isGoogleAuthConfigured) {
       toast.error('Chưa cấu hình Google Client ID');
       return;
