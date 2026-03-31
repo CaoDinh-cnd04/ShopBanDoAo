@@ -1,4 +1,5 @@
 import api from './api';
+import { DEFAULT_BANNER } from '../config/bannerDefaults';
 import { uploadProductImages as uploadProductImagesFetch, uploadSingleImage } from './uploadService';
 
 // ==================== UPLOAD (fetch — không dùng axios cho multipart) ====================
@@ -89,32 +90,60 @@ export const adminCourtService = {
     getCourtStats: () => api.get('/admin/courts/stats'),
 };
 
-// ==================== BANNER (localStorage) ====================
+// ==================== BANNER (MongoDB qua API + cache localStorage) ====================
 const BANNER_KEY = 'siteSettings:banner';
+
+const dispatchBannerUpdated = (detail) => {
+    try {
+        window.dispatchEvent(new CustomEvent('site-banner-updated', { detail }));
+    } catch {
+        /* ignore */
+    }
+};
+
 export const adminBannerService = {
-    getBanner: () => {
+    /** Đọc banner: API trước, fallback localStorage (bản cũ) */
+    getBanner: async () => {
+        try {
+            const res = await api.get('/site-settings/banner');
+            const data = res.data?.data;
+            if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+                try {
+                    localStorage.setItem(BANNER_KEY, JSON.stringify(data));
+                } catch {
+                    /* ignore */
+                }
+                return data;
+            }
+        } catch {
+            /* offline hoặc API lỗi */
+        }
         try {
             const raw = localStorage.getItem(BANNER_KEY);
             return raw ? JSON.parse(raw) : null;
-        } catch { return null; }
+        } catch {
+            return null;
+        }
     },
-    saveBanner: (data) => {
-        localStorage.setItem(BANNER_KEY, JSON.stringify(data));
+    saveBanner: async (data) => {
+        await api.put('/site-settings/banner', data);
         try {
-            window.dispatchEvent(new CustomEvent('site-banner-updated', { detail: data }));
+            localStorage.setItem(BANNER_KEY, JSON.stringify(data));
         } catch {
             /* ignore */
         }
-        return Promise.resolve({ success: true });
+        dispatchBannerUpdated(data);
+        return { success: true };
     },
-    resetBanner: () => {
-        localStorage.removeItem(BANNER_KEY);
+    resetBanner: async () => {
+        await api.put('/site-settings/banner', DEFAULT_BANNER);
         try {
-            window.dispatchEvent(new CustomEvent('site-banner-updated'));
+            localStorage.setItem(BANNER_KEY, JSON.stringify(DEFAULT_BANNER));
         } catch {
             /* ignore */
         }
-        return Promise.resolve({ success: true });
+        dispatchBannerUpdated(DEFAULT_BANNER);
+        return { success: true };
     },
 };
 

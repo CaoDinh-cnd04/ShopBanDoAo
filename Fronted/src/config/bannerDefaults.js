@@ -1,0 +1,23 @@
+/** Mặc định banner trang chủ — dùng chung Home + Admin + API reset */
+export const DEFAULT_BANNER = {
+  eyebrow: '⚡ SPORTS E-COMMERCE',
+  title: 'Đặt sân thể thao dễ dàng',
+  subtitle: 'Hệ thống đặt sân trực tuyến – nhanh chóng, tiện lợi, mọi lúc mọi nơi',
+  ctaText: 'Đặt sân ngay',
+  ctaLink: '/courts',
+  ctaIcon: 'shopping',
+  ctaText2: 'Xem sản phẩm',
+  ctaLink2: '/products',
+  ctaIcon2: 'calendar',
+  heroImageUrl: '',
+  showBadge: true,
+  badgeText: '10,000+ khách hàng',
+  badgeIcon: 'star',
+  bgColor1: '#0f766e',
+  bgColor2: '#134e4a',
+  bgAngle: 135,
+  textColor: '#ffffff',
+  overlayOpacity: 0.45,
+  imageUrl: '',
+  showImage: false,
+};

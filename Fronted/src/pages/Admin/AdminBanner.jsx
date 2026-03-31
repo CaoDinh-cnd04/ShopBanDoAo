@@ -6,29 +6,7 @@ import { FiSave, FiRefreshCw, FiEye, FiShoppingBag, FiCalendar, FiPackage, FiSta
 import adminService from '../../services/adminService';
 import ImageUploadField from '../../components/Upload/ImageUploadField';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
-
-export const DEFAULT_BANNER = {
-  eyebrow: '⚡ SPORTS E-COMMERCE',
-  title: 'Đặt sân thể thao dễ dàng',
-  subtitle: 'Hệ thống đặt sân trực tuyến – nhanh chóng, tiện lợi, mọi lúc mọi nơi',
-  ctaText: 'Đặt sân ngay',
-  ctaLink: '/courts',
-  ctaIcon: 'shopping',
-  ctaText2: 'Xem sản phẩm',
-  ctaLink2: '/products',
-  ctaIcon2: 'calendar',
-  heroImageUrl: '',
-  showBadge: true,
-  badgeText: '10,000+ khách hàng',
-  badgeIcon: 'star',
-  bgColor1: '#0f766e',
-  bgColor2: '#134e4a',
-  bgAngle: 135,
-  textColor: '#ffffff',
-  overlayOpacity: 0.45,
-  imageUrl: '',
-  showImage: false,
-};
+import { DEFAULT_BANNER } from '../../config/bannerDefaults';
 
 const ICON_OPTIONS = [
   { value: 'shopping', label: 'Giỏ / mua' },
@@ -65,8 +43,10 @@ const AdminBanner = () => {
   const [activeTab, setActiveTab] = useState('content');
 
   useEffect(() => {
-    const stored = adminService.banner.getBanner();
-    if (stored) setBanner({ ...DEFAULT_BANNER, ...stored });
+    (async () => {
+      const stored = await adminService.banner.getBanner();
+      if (stored) setBanner({ ...DEFAULT_BANNER, ...stored });
+    })();
   }, []);
 
   const update = (key, value) => {
@@ -84,12 +64,16 @@ const AdminBanner = () => {
     }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (!window.confirm('Khôi phục banner về mặc định?')) return;
-    adminService.banner.resetBanner();
-    setBanner(DEFAULT_BANNER);
-    setSaved(false);
-    toast.info('Đã khôi phục mặc định');
+    try {
+      await adminService.banner.resetBanner();
+      setBanner(DEFAULT_BANNER);
+      setSaved(false);
+      toast.info('Đã khôi phục mặc định (đã lưu lên server)');
+    } catch {
+      toast.error('Không khôi phục được — kiểm tra đăng nhập Admin');
+    }
   };
 
   const heroSrc = resolveMediaUrl(banner.heroImageUrl) || banner.heroImageUrl;

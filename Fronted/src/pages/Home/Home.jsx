@@ -11,7 +11,7 @@ import ProductCard from '../../components/ProductCard/ProductCard';
 import Loading from '../../components/Loading/Loading';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import adminService from '../../services/adminService';
-import { DEFAULT_BANNER } from '../Admin/AdminBanner';
+import { DEFAULT_BANNER } from '../../config/bannerDefaults';
 import './Home.css';
 
 const PLACEHOLDER = '/placeholder-category.svg';
@@ -67,23 +67,23 @@ const Home = () => {
   const displayCategories = Array.isArray(categories) ? categories.slice(0, 6) : [];
   const displayCourts = Array.isArray(courts) ? courts.slice(0, 3) : [];
 
-  const [bannerMerged, setBannerMerged] = useState(() => {
-    const raw = adminService.banner.getBanner();
-    return raw ? { ...DEFAULT_BANNER, ...raw } : null;
-  });
+  const [bannerMerged, setBannerMerged] = useState(() => ({ ...DEFAULT_BANNER }));
 
-  const reloadBanner = useCallback(() => {
-    const raw = adminService.banner.getBanner();
-    setBannerMerged(raw ? { ...DEFAULT_BANNER, ...raw } : null);
+  const reloadBanner = useCallback(async () => {
+    const raw = await adminService.banner.getBanner();
+    setBannerMerged({ ...DEFAULT_BANNER, ...(raw || {}) });
   }, []);
 
   useEffect(() => {
-    reloadBanner();
-    window.addEventListener('site-banner-updated', reloadBanner);
-    window.addEventListener('storage', reloadBanner);
+    void reloadBanner();
+    const onUpdate = () => {
+      void reloadBanner();
+    };
+    window.addEventListener('site-banner-updated', onUpdate);
+    window.addEventListener('storage', onUpdate);
     return () => {
-      window.removeEventListener('site-banner-updated', reloadBanner);
-      window.removeEventListener('storage', reloadBanner);
+      window.removeEventListener('site-banner-updated', onUpdate);
+      window.removeEventListener('storage', onUpdate);
     };
   }, [reloadBanner]);
 
