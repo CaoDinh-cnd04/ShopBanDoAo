@@ -2,6 +2,7 @@ import { useState, useRef, useId } from 'react';
 import { Spinner } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import { uploadSingleImage } from '../../services/uploadService';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 
 /**
  * ImageUploadField - Component upload ảnh nhúng trong form admin
@@ -82,7 +83,7 @@ const ImageUploadField = ({
           ) : value ? (
             <>
               <img
-                src={value}
+                src={resolveMediaUrl(value)}
                 alt="Preview"
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />

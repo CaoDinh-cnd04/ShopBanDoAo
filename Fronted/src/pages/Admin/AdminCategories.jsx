@@ -5,6 +5,7 @@ import api from '../../services/api';
 import adminService from '../../services/adminService';
 import ImageUploadField from '../../components/Upload/ImageUploadField';
 import { VARIANT_PROFILES } from '../../config/variantProfileConfig';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 
 const tabKey = { cats: 'cats', subs: 'subs', brands: 'brands' };
 
@@ -294,7 +295,7 @@ const AdminCategories = () => {
                         <tr key={id}>
                           <td>
                             {cat.imageUrl ? (
-                              <img src={cat.imageUrl} alt={cat.categoryName}
+                              <img src={resolveMediaUrl(cat.imageUrl)} alt={cat.categoryName}
                                 style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6 }} />
                             ) : (
                               <div style={{ width: 44, height: 44, background: '#f0f0f0', borderRadius: 6,
@@ -396,7 +397,7 @@ const AdminCategories = () => {
                         <tr key={id}>
                           <td>
                             {b.logoUrl ? (
-                              <img src={b.logoUrl} alt={b.brandName}
+                              <img src={resolveMediaUrl(b.logoUrl)} alt={b.brandName}
                                 style={{ width: 44, height: 44, objectFit: 'contain', borderRadius: 6, background: '#f8f8f8', padding: 4 }} />
                             ) : (
                               <div style={{ width: 44, height: 44, background: '#f0f0f0', borderRadius: 6,

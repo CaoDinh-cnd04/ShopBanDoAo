@@ -7,6 +7,7 @@ import { toast } from 'react-toastify';
 import { FiMapPin, FiCalendar, FiLayers } from 'react-icons/fi';
 import StatCard from '../../components/Admin/StatCard';
 import ImageUploadField from '../../components/Upload/ImageUploadField';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 import api from '../../services/api';
 import adminService from '../../services/adminService';
 
@@ -288,7 +289,7 @@ const AdminCourts = () => {
                         <tr key={id}>
                           <td>
                             {c.imageUrl ? (
-                              <img src={c.imageUrl} alt={c.courtName}
+                              <img src={resolveMediaUrl(c.imageUrl)} alt={c.courtName}
                                 style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6 }} />
                             ) : (
                               <div style={{ width: 44, height: 44, background: '#e9ecef', borderRadius: 6,
