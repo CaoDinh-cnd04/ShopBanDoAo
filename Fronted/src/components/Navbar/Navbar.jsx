@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Container, Badge, Dropdown } from 'react-bootstrap';
+import { Container, Dropdown } from 'react-bootstrap';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSelector, useDispatch } from 'react-redux';
 import { useTranslation } from 'react-i18next';

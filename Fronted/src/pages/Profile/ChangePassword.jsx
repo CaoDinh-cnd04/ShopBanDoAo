@@ -43,7 +43,7 @@ const ChangePassword = () => {
     }
   };
 
-  const Field = ({ id, label, name, showKey }) => (
+  const Field = ({ label, name, showKey }) => (
     <div className="profile-field">
       <label className="profile-field-label"><FiLock size={14} /> {label}</label>
       <div style={{ position: 'relative' }}>
@@ -87,9 +87,9 @@ const ChangePassword = () => {
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate style={{ maxWidth: '440px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <Field id="old" label="Mật khẩu hiện tại" name="oldPassword" showKey="old" />
-            <Field id="new" label="Mật khẩu mới" name="newPassword" showKey="new" />
-            <Field id="confirm" label="Xác nhận mật khẩu mới" name="confirmPassword" showKey="confirm" />
+            <Field label="Mật khẩu hiện tại" name="oldPassword" showKey="old" />
+            <Field label="Mật khẩu mới" name="newPassword" showKey="new" />
+            <Field label="Xác nhận mật khẩu mới" name="confirmPassword" showKey="confirm" />
           </div>
 
           <div className="profile-form-actions" style={{ marginTop: '1.25rem' }}>

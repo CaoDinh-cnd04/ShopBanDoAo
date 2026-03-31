@@ -1,9 +1,7 @@
 import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
-import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
-import { motion } from 'framer-motion';
 
 // Layout
 import Layout from './components/Layout/Layout';
@@ -53,7 +51,6 @@ import { setTheme } from './store/slices/themeSlice';
 import AnimatedBackground from './components/AnimatedBackground/AnimatedBackground';
 
 function App() {
-  const { i18n } = useTranslation();
   const dispatch = useDispatch();
   const { theme } = useSelector((state) => state.theme);
 

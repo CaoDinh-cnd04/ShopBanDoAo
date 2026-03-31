@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Container, Card, Row, Col, Badge, Spinner, Table, Button } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -10,11 +10,7 @@ const OrderDetail = () => {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        fetchOrderDetail();
-    }, [id]);
-
-    const fetchOrderDetail = async () => {
+    const fetchOrderDetail = useCallback(async () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('token');
@@ -28,7 +24,11 @@ const OrderDetail = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id]);
+
+    useEffect(() => {
+        fetchOrderDetail();
+    }, [fetchOrderDetail]);
 
     const getStatusBadge = (status) => {
         const variants = {

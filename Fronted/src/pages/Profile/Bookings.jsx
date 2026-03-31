@@ -42,7 +42,7 @@ const FILTERS = [
   { value: 'cancelled', label: 'Đã hủy' },
 ];
 
-const ConfirmModal = ({ booking, onConfirm, onClose }) => (
+const ConfirmModal = ({ booking: _booking, onConfirm, onClose }) => (
   <AnimatePresence>
     <motion.div
       className="pf-modal-overlay"

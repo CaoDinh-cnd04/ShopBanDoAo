@@ -1,5 +1,4 @@
 import { Spinner } from 'react-bootstrap';
-import { motion } from 'framer-motion';
 import { useEffect, useRef } from 'react';
 
 const Loading = ({ size = 'md', className = '' }) => {

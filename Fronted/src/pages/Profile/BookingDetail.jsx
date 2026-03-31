@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Container, Card, Row, Col, Badge, Spinner, Table, Button } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -10,11 +10,7 @@ const BookingDetail = () => {
     const [booking, setBooking] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        fetchBookingDetail();
-    }, [id]);
-
-    const fetchBookingDetail = async () => {
+    const fetchBookingDetail = useCallback(async () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('token');
@@ -28,7 +24,11 @@ const BookingDetail = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id]);
+
+    useEffect(() => {
+        fetchBookingDetail();
+    }, [fetchBookingDetail]);
 
     const getStatusBadge = (status) => {
         const variants = {

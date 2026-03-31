@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { Container, Row, Col, Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import { FiArrowRight, FiShoppingBag, FiCalendar, FiStar, FiUsers, FiPackage } from 'react-icons/fi';
 import { fetchProducts } from '../../store/slices/productSlice';
@@ -43,7 +42,6 @@ const fadeUp = {
 };
 
 const Home = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -185,7 +183,7 @@ const Home = () => {
                   }
                   alt=""
                   className="hero-image"
-                  fetchpriority="high"
+                  fetchPriority="high"
                   decoding="async"
                 />
                 {(bannerMerged?.showBadge !== false || !bannerMerged) && (

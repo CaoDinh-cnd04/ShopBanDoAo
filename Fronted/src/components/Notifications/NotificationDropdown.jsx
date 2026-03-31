@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { Dropdown, Badge, ListGroup } from 'react-bootstrap';
-import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchNotifications, getUnreadCount, markAsRead } from '../../store/slices/notificationSlice';
 import { FiBell } from 'react-icons/fi';
@@ -8,7 +7,6 @@ import { useNavigate } from 'react-router-dom';
 import './NotificationDropdown.css';
 
 const NotificationDropdown = () => {
-  const { t } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { notifications: rawNotifications, unreadCount } = useSelector((state) => state.notifications);

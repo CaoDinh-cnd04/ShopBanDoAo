@@ -82,7 +82,7 @@ const reviewSlice = createSlice({
       .addCase(createProductReview.fulfilled, (state, action) => {
         state.productReviews.unshift(action.payload);
       })
-      .addCase(createCourtReview.fulfilled, (state) => {
+      .addCase(createCourtReview.fulfilled, (_state) => {
         // Court reviews handled separately if needed
       });
   },

@@ -157,7 +157,7 @@ export const changePassword = createAsyncThunk(
   }
 );
 
-export const checkAuth = createAsyncThunk('auth/checkAuth', async (_, { rejectWithValue }) => {
+export const checkAuth = createAsyncThunk('auth/checkAuth', async (_) => {
   const token = localStorage.getItem('token');
   const userStr = localStorage.getItem('user');
 
