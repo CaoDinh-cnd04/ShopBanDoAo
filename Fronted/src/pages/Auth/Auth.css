@@ -277,6 +277,9 @@
   display: flex !important;
   justify-content: center !important;
 }
+.auth-google-btn-inner iframe {
+  max-width: 100% !important;
+}
 .auth-google-loading {
   position: absolute;
   inset: 0;

@@ -26,7 +26,13 @@ export class AuthService {
     private authRepository: AuthRepository,
     private jwtService: JwtService,
     private configService: ConfigService,
-  ) {}
+  ) {
+    if (!this.configService.get<string>('GOOGLE_CLIENT_ID')?.trim()) {
+      this.logger.warn(
+        'GOOGLE_CLIENT_ID chưa cấu hình — POST /api/auth/google-id-token sẽ trả 400. Thêm biến trên Render (cùng Client ID với frontend).',
+      );
+    }
+  }
 
   async register(registerDto: RegisterDto) {
     const { email, password, fullName, phone } = registerDto;

@@ -38,8 +38,8 @@ const CourtDetail = () => {
 
   const courtId = court._id || court.id;
   const images = court.images?.length > 0
-    ? court.images.map(i => resolveMediaUrl(i.imageUrl) || '/placeholder.jpg')
-    : [resolveMediaUrl(court.imageUrl || court.image) || '/placeholder.jpg'];
+    ? court.images.map(i => resolveMediaUrl(i.imageUrl) || '/placeholder.svg')
+    : [resolveMediaUrl(court.imageUrl || court.image) || '/placeholder.svg'];
 
   const rating = court.rating || court.averageRating;
 
@@ -51,7 +51,7 @@ const CourtDetail = () => {
           src={images[activeImg]}
           alt={court.courtName}
           className="cd-hero-img"
-          onError={(e) => { e.currentTarget.src = '/placeholder.jpg'; }}
+          onError={(e) => { e.currentTarget.src = '/placeholder.svg'; }}
         />
         <div className="cd-hero-overlay" />
         <div className="cd-hero-content">
@@ -81,7 +81,7 @@ const CourtDetail = () => {
             <div className="cd-thumbs">
               {images.map((src, i) => (
                 <button key={i} className={`cd-thumb ${i === activeImg ? 'active' : ''}`} onClick={() => setActiveImg(i)}>
-                  <img src={src} alt="" onError={(e) => { e.currentTarget.src = '/placeholder.jpg'; }} />
+                  <img src={src} alt="" onError={(e) => { e.currentTarget.src = '/placeholder.svg'; }} />
                 </button>
               ))}
             </div>

@@ -79,10 +79,10 @@ const Booking = () => {
             {court && (
               <div className="booking-court-card">
                 <img
-                  src={resolveMediaUrl(court.imageUrl || court.image) || '/placeholder.jpg'}
+                  src={resolveMediaUrl(court.imageUrl || court.image) || '/placeholder.svg'}
                   alt={court.courtName}
                   className="bcc-img"
-                  onError={(e) => { e.currentTarget.src = '/placeholder.jpg'; }}
+                  onError={(e) => { e.currentTarget.src = '/placeholder.svg'; }}
                 />
                 <div className="bcc-info">
                   <span className="bcc-type">{court.courtType?.typeName}</span>

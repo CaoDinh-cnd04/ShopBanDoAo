@@ -205,7 +205,7 @@ const Checkout = () => {
               <div className="co-items">
                 {safeItems.slice(0, 3).map((item) => (
                   <div key={item.id || item._id} className="co-item">
-                    <img src={item.productImage || '/placeholder.jpg'} alt={item.productName} />
+                    <img src={item.productImage || '/placeholder.svg'} alt={item.productName} />
                     <div className="co-item-info">
                       <span className="co-item-name">{item.productName}</span>
                       <span className="co-item-qty">x{item.quantity}</span>

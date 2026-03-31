@@ -166,7 +166,7 @@ const ProductDetail = () => {
   }, [product?.images]);
 
   const galleryImages = useMemo(() => {
-    if (!rawImageRows.length) return [resolveMediaUrl('/placeholder.jpg')];
+    if (!rawImageRows.length) return [resolveMediaUrl('/placeholder.svg')];
     const anyTagged = rawImageRows.some((r) => r.color);
     if (!anyTagged || !hasColor || !selColor) {
       return rawImageRows.map((r) => r.url);
@@ -372,7 +372,7 @@ const ProductDetail = () => {
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.2 }}
                       onError={(e) => {
-                        e.currentTarget.src = '/placeholder.jpg';
+                        e.currentTarget.src = '/placeholder.svg';
                       }}
                     />
                   </AnimatePresence>

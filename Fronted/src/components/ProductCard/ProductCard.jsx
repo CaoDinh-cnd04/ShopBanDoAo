@@ -18,7 +18,7 @@ const ProductCard = ({ product }) => {
   const isInWishlist = wishlistItems?.some((i) => i.productId === product.id || i.productId === product._id);
 
   const rawImg = product.images?.[0]?.imageUrl || product.image;
-  const mainImage = resolveMediaUrl(rawImg) || '/placeholder.jpg';
+  const mainImage = resolveMediaUrl(rawImg) || '/placeholder.svg';
   const price = product.variants?.[0]?.price || product.defaultPrice || product.price || 0;
   const originalPrice = product.originalPrice;
   const isOnSale = originalPrice && originalPrice > price;
@@ -64,7 +64,7 @@ const ProductCard = ({ product }) => {
               className="pc-image"
               variants={{ hover: { scale: 1.07 } }}
               transition={{ duration: 0.4 }}
-              onError={(e) => { e.currentTarget.src = '/placeholder.jpg'; }}
+              onError={(e) => { e.currentTarget.src = '/placeholder.svg'; }}
               loading="lazy"
             />
 

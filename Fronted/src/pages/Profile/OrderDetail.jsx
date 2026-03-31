@@ -160,7 +160,7 @@ const OrderDetail = () => {
                                             <td>
                                                 <div className="d-flex align-items-center">
                                                     <img
-                                                        src={(item.productImage ?? item.ProductImage) || '/placeholder.jpg'}
+                                                        src={(item.productImage ?? item.ProductImage) || '/placeholder.svg'}
                                                         alt={item.productName ?? item.ProductName}
                                                         style={{ width: '50px', height: '50px', objectFit: 'cover' }}
                                                         className="rounded me-2"

@@ -133,7 +133,7 @@ const Cart = () => {
               <AnimatePresence>
                 {safeItems.map((item) => {
                   const pid = item.productId;
-                  const img = resolveMediaUrl(item.image) || '/placeholder.jpg';
+                  const img = resolveMediaUrl(item.image) || '/placeholder.svg';
                   const price = item.price || 0;
                   const vid = item.variantId;
                   const lineKey = `${pid}-${vid || 'base'}`;
@@ -147,7 +147,7 @@ const Cart = () => {
                     >
                       {/* Image */}
                       <Link to={`/products/${pid}`} className="cart-item-img-link">
-                        <img src={img} alt={item.productName} onError={(e) => { e.currentTarget.src = '/placeholder.jpg'; }} />
+                        <img src={img} alt={item.productName} onError={(e) => { e.currentTarget.src = '/placeholder.svg'; }} />
                       </Link>
 
                       {/* Info */}
