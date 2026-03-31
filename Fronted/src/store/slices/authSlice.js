@@ -60,6 +60,17 @@ const normalizeUser = (user) => {
 
 // ─── Async thunks ───────────────────────────────────────────────────────────
 
+function messageFromApiError(error, fallback) {
+  const m = error.response?.data?.message;
+  if (m != null) {
+    return Array.isArray(m) ? m.join(', ') : String(m);
+  }
+  if (!error.response && (error.code === 'ECONNABORTED' || error.message === 'Network Error')) {
+    return 'Không kết nối được server API. Kiểm tra mạng hoặc thử lại (Render có thể đang khởi động).';
+  }
+  return fallback;
+}
+
 export const login = createAsyncThunk(
   'auth/login',
   async ({ email, password }, { rejectWithValue }) => {
@@ -72,7 +83,7 @@ export const login = createAsyncThunk(
       localStorage.setItem('user', JSON.stringify(normalized));
       return { token, user: normalized };
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Đăng nhập thất bại');
+      return rejectWithValue(messageFromApiError(error, 'Đăng nhập thất bại'));
     }
   }
 );
@@ -88,7 +99,7 @@ export const register = createAsyncThunk(
       localStorage.setItem('user', JSON.stringify(normalized));
       return { token, user: normalized };
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Đăng ký thất bại');
+      return rejectWithValue(messageFromApiError(error, 'Đăng ký thất bại'));
     }
   }
 );
@@ -111,7 +122,7 @@ export const googleLogin = createAsyncThunk(
       localStorage.setItem('user', JSON.stringify(normalized));
       return { token, user: normalized };
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Đăng nhập Google thất bại');
+      return rejectWithValue(messageFromApiError(error, 'Đăng nhập Google thất bại'));
     }
   }
 );

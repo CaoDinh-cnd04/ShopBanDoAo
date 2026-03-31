@@ -14,6 +14,7 @@ const GoogleLoginButton = ({ onSuccess, disabled }) => {
   const [loading, setLoading] = useState(false);
 
   const handleGoogle = useGoogleLogin({
+    scope: 'openid email profile',
     onSuccess: async (tokenResponse) => {
       try {
         setLoading(true);

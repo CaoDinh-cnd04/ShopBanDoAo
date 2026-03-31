@@ -21,8 +21,14 @@ async function bootstrap() {
   // NOTE: Global prefix đã bỏ vì mỗi @Controller đã khai báo 'api/...' sẵn rồi
   // Nếu giữ setGlobalPrefix('api') thì route sẽ thành /api/api/xxx -> 404
 
-  // Enable CORS
-  app.enableCors();
+  // CORS: SPA (ndsports.id.vn, localhost) gọi API Render — bật rõ header Authorization + OPTIONS
+  app.enableCors({
+    origin: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
+    credentials: false,
+    maxAge: 86400,
+  });
 
   // Enable Global Validation Pipe
   app.useGlobalPipes(
