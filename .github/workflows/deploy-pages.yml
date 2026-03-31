@@ -4,8 +4,10 @@
 # Biến Actions (Settings → Secrets and variables → Actions → Variables):
 #   VITE_API_BASE_URL — ví dụ https://api.ndsports.id.vn/api
 #   VITE_GOOGLE_CLIENT_ID — client ID OAuth (nếu cần)
-#   VITE_BASE — tùy chọn: để trống = /TênRepo/ (đúng URL *.github.io/TênRepo/).
+#   VITE_BASE — tùy chọn: để trống = /TênRepo/ (URL *.github.io/TênRepo/).
 #             Đặt = / khi dùng custom domain gốc (ndsports.id.vn).
+#   Lưu ý: đặt các biến này ở Repository variables HOẶC Environment github-pages;
+#   job build dùng environment github-pages để đọc được env vars khi deploy Pages.
 name: Deploy GitHub Pages
 
 on:
@@ -25,6 +27,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
     steps:
       - uses: actions/checkout@v4
 
@@ -37,7 +41,8 @@ jobs:
         env:
           # Project Pages: phải là /TênRepo/ — không thì JS/CSS 404 → màn hình trắng.
           # Custom domain (apex): thêm Variable VITE_BASE = /
-          VITE_BASE: ${{ vars.VITE_BASE != '' && vars.VITE_BASE || format('/{0}/', github.event.repository.name) }}
+          # Repository / env vars; "/" = site ở domain gốc (ndsports.id.vn). Để trống → /TênRepo/
+          VITE_BASE: ${{ vars.VITE_BASE || format('/{0}/', github.event.repository.name) }}
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
           VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
         run: |
