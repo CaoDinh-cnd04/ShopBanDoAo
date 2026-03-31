@@ -4,11 +4,14 @@ import api from '../../services/api';
 // Async thunks
 export const fetchProducts = createAsyncThunk(
   'products/fetchProducts',
-  async (params = {}, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue, signal }) => {
     try {
-      const response = await api.get('/products', { params });
+      const response = await api.get('/products', { params, signal });
       return response.data.data;
     } catch (error) {
+      if (error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError') {
+        return rejectWithValue(null);
+      }
       return rejectWithValue(
         error.response?.data?.message || 'Failed to fetch products'
       );
@@ -42,7 +45,9 @@ const initialState = {
   },
   filters: {
     category: null,
+    categories: null,
     brand: null,
+    brands: null,
     minPrice: null,
     maxPrice: null,
     search: '',
@@ -74,14 +79,25 @@ const productSlice = createSlice({
       })
       .addCase(fetchProducts.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.products = action.payload.products || action.payload || [];
-        if (action.payload.pagination) {
-          state.pagination = action.payload.pagination;
+        const payload = action.payload;
+        const list = payload?.products ?? (Array.isArray(payload) ? payload : []);
+        const arg = action.meta.arg || {};
+        const isFeaturedRequest =
+          arg.isFeatured === 1 ||
+          arg.isFeatured === '1' ||
+          arg.isFeatured === true;
+        if (isFeaturedRequest) {
+          state.featuredProducts = Array.isArray(list) ? list : [];
+          return;
+        }
+        state.products = Array.isArray(list) ? list : [];
+        if (payload?.pagination) {
+          state.pagination = payload.pagination;
         }
       })
       .addCase(fetchProducts.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload;
+        if (action.payload != null) state.error = action.payload;
       })
       // Fetch Product by ID
       .addCase(fetchProductById.pending, (state) => {

@@ -460,6 +460,19 @@
   font-size: var(--admin-text-small);
 }
 
+/* Dashboard — lưới KPI đồng đều; hàng 2 (3 ô) căng cùng chiều cao */
+.admin-dashboard-stats .col {
+  display: flex;
+}
+.admin-dashboard-stats .col > div {
+  width: 100%;
+}
+
+.admin-dashboard-quick .admin-quick-link {
+  min-height: 2.75rem;
+  font-size: 0.875rem;
+}
+
 .admin-quick-link.btn-outline-primary {
   border-color: var(--admin-border-strong);
   color: var(--admin-text);

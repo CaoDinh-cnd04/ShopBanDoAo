@@ -15,6 +15,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    return { userId: payload.sub, email: payload.email, role: payload.role };
+    const raw = payload.role;
+    let role: string;
+    if (raw == null || raw === '') {
+      role = 'User';
+    } else if (typeof raw !== 'string') {
+      role = 'User';
+    } else {
+      role = raw;
+      const lower = role.toLowerCase();
+      if (lower === 'admin') role = 'Admin';
+      else if (lower === 'user') role = 'User';
+    }
+    return { userId: payload.sub, email: payload.email, role };
   }
 }

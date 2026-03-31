@@ -21,11 +21,11 @@ const StatCard = ({ title, value, icon, color = 'surface', trend, trendValue }) 
             ) : null}
           </div>
 
-          {trendValue ? (
-            <div className={`admin-kpi-sub ${trend === 'down' ? 'is-down' : 'is-up'}`}>
-              {trendValue}
-            </div>
-          ) : null}
+          <div
+            className={`admin-kpi-sub ${trend === 'down' ? 'is-down' : 'is-up'}${trendValue ? '' : ' admin-kpi-sub--empty'}`}
+          >
+            {trendValue ?? '\u00A0'}
+          </div>
         </Card.Body>
       </Card>
     </motion.div>

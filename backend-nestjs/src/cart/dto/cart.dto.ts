@@ -1,10 +1,32 @@
-import { IsNotEmpty, IsMongoId, IsNumber, Min } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsMongoId,
+  IsNumber,
+  Min,
+  IsOptional,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class AddToCartDto {
   @IsMongoId() @IsNotEmpty() productId: string;
-  @IsNumber() @Min(1) @IsNotEmpty() quantity: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  quantity: number;
+
+  @IsOptional()
+  @IsMongoId()
+  variantId?: string;
 }
 
 export class UpdateCartItemDto {
-  @IsNumber() @Min(1) @IsNotEmpty() quantity: number;
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  quantity: number;
+
+  @IsOptional()
+  @IsMongoId()
+  variantId?: string;
 }

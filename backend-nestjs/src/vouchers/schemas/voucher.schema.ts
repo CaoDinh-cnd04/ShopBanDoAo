@@ -8,6 +8,12 @@ export class Voucher {
   @Prop({ required: true, unique: true, uppercase: true })
   code: string;
 
+  @Prop({ default: '' })
+  voucherName: string;
+
+  @Prop({ default: '' })
+  description: string;
+
   @Prop({ required: true })
   discountType: string; // 'percent', 'fixed'
 

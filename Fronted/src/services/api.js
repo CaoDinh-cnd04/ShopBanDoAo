@@ -11,12 +11,35 @@ const api = axios.create({
   },
 });
 
-// Request interceptor - Add token to requests
+// Request interceptor - Add token; FormData phải bỏ Content-Type để browser gắn boundary multipart
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // FormData: bỏ mọi Content-Type để axios/trình duyệt gắn multipart + boundary
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      const h = config.headers;
+      if (h) {
+        if (typeof h.delete === 'function') {
+          h.delete('Content-Type');
+          h.delete('content-type');
+        }
+        if (typeof h.set === 'function') {
+          try {
+            h.set('Content-Type', false);
+          } catch {
+            /* ignore */
+          }
+        }
+        delete h['Content-Type'];
+        delete h['content-type'];
+        if (h.common) {
+          delete h.common['Content-Type'];
+          delete h.common['content-type'];
+        }
+      }
     }
     return config;
   },

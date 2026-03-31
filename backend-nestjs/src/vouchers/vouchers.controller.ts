@@ -14,6 +14,7 @@ import {
   CreateVoucherDto,
   UpdateVoucherDto,
   QueryVoucherDto,
+  ApplyVoucherDto,
 } from './dto/voucher.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../core/guards/roles.guard';
@@ -32,11 +33,8 @@ export class VouchersController {
   // USER ROUTES — cần đăng nhập
   @Post('apply')
   @UseGuards(JwtAuthGuard)
-  async applyVoucher(
-    @Body('code') code: string,
-    @Body('orderValue') orderValue: number,
-  ) {
-    return this.vouchersService.applyVoucher(code, orderValue);
+  async applyVoucher(@Body() dto: ApplyVoucherDto) {
+    return this.vouchersService.applyVoucher(dto.code, dto.orderValue);
   }
 
   // ADMIN ROUTES

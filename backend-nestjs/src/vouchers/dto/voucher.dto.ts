@@ -7,9 +7,12 @@ import {
   IsDateString,
   IsIn,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateVoucherDto {
   @IsString() @IsNotEmpty() code: string;
+  @IsOptional() @IsString() voucherName?: string;
+  @IsOptional() @IsString() description?: string;
   @IsString() @IsIn(['percent', 'fixed']) discountType: string;
   @IsNumber() @IsNotEmpty() discountValue: number;
   @IsNumber() @IsOptional() minOrderValue?: number;
@@ -20,6 +23,8 @@ export class CreateVoucherDto {
 }
 
 export class UpdateVoucherDto {
+  @IsOptional() @IsString() voucherName?: string;
+  @IsOptional() @IsString() description?: string;
   @IsOptional() @IsString() @IsIn(['percent', 'fixed']) discountType?: string;
   @IsOptional() @IsNumber() discountValue?: number;
   @IsOptional() @IsNumber() minOrderValue?: number;
@@ -35,4 +40,12 @@ export class QueryVoucherDto {
   @IsOptional() @IsString() limit?: string;
   @IsOptional() @IsString() search?: string;
   @IsOptional() @IsString() isActive?: string;
+  @IsOptional() @IsString() isExpired?: string;
+}
+
+export class ApplyVoucherDto {
+  @IsString() @IsNotEmpty() code: string;
+  @Type(() => Number)
+  @IsNumber()
+  orderValue: number;
 }

@@ -7,6 +7,23 @@ import adminService from '../../services/adminService';
 
 const DISCOUNT_TYPES = ['Phần trăm', 'Số tiền'];
 
+const mapDiscountTypeToUi = (t) => {
+  if (t === 'percent' || t === 'Phần trăm') return 'Phần trăm';
+  if (t === 'fixed' || t === 'Số tiền') return 'Số tiền';
+  return t || 'Phần trăm';
+};
+
+const voucherStatusLabel = (v) => {
+  if (!v?.endDate || !v?.startDate) return '—';
+  const now = Date.now();
+  const end = new Date(v.endDate).getTime();
+  const start = new Date(v.startDate).getTime();
+  if (Number.isNaN(end) || Number.isNaN(start)) return '—';
+  if (end < now) return 'Hết hạn';
+  if (start > now) return 'Chưa bắt đầu';
+  return 'Đang chạy';
+};
+
 const toInputDate = (d) => {
   if (!d) return '';
   const x = new Date(d);
@@ -48,7 +65,8 @@ const AdminVouchers = () => {
     if (filters.isExpired !== '') params.isExpired = filters.isExpired;
     const res = await adminService.vouchers.getAllVouchers(params);
     const data = res.data?.data;
-    setVouchers(Array.isArray(data) ? data : []);
+    const list = Array.isArray(data?.vouchers) ? data.vouchers : Array.isArray(data) ? data : [];
+    setVouchers(list);
   }, [filters.isActive, filters.isExpired]);
 
   useEffect(() => {
@@ -95,13 +113,14 @@ const AdminVouchers = () => {
   const openEdit = (v) => {
     const id = v.voucherId || v._id?.toString();
     setForm({
-      voucherCode: v.voucherCode || '',
+      voucherCode: v.voucherCode || v.code || '',
       voucherName: v.voucherName || '',
       description: v.description ?? '',
-      discountType: v.discountType || 'Phần trăm',
+      discountType: mapDiscountTypeToUi(v.discountType),
       discountValue: v.discountValue != null ? String(v.discountValue) : '',
       maxDiscountAmount: v.maxDiscountAmount != null ? String(v.maxDiscountAmount) : '',
-      minOrderAmount: v.minOrderAmount != null ? String(v.minOrderAmount) : '0',
+      minOrderAmount:
+        v.minOrderValue != null ? String(v.minOrderValue) : v.minOrderAmount != null ? String(v.minOrderAmount) : '0',
       usageLimit: v.usageLimit != null ? String(v.usageLimit) : '999',
       startDate: toInputDate(v.startDate),
       endDate: toInputDate(v.endDate),
@@ -259,28 +278,30 @@ const AdminVouchers = () => {
               <tbody>
                 {vouchers.map((v) => {
                   const id = v.voucherId || v._id?.toString();
+                  const uiType = mapDiscountTypeToUi(v.discountType);
                   const disc =
-                    v.discountType === 'Phần trăm'
+                    uiType === 'Phần trăm'
                       ? `${v.discountValue}%`
                       : fmtMoney(v.discountValue);
+                  const minOrd = v.minOrderValue ?? v.minOrderAmount ?? 0;
                   return (
                     <tr key={id}>
                       <td>
-                        <code>{v.voucherCode}</code>
+                        <code>{v.voucherCode || v.code}</code>
                       </td>
                       <td>
-                        <div className="fw-semibold">{v.voucherName}</div>
+                        <div className="fw-semibold">{v.voucherName || v.code}</div>
                         {v.description && (
                           <small className="text-muted d-block">{v.description}</small>
                         )}
                       </td>
                       <td>
                         {disc}
-                        {v.maxDiscountAmount != null && v.discountType === 'Phần trăm' && (
+                        {v.maxDiscountAmount != null && uiType === 'Phần trăm' && (
                           <small className="text-muted d-block">Tối đa {fmtMoney(v.maxDiscountAmount)}</small>
                         )}
                       </td>
-                      <td>{fmtMoney(v.minOrderAmount)}</td>
+                      <td>{fmtMoney(minOrd)}</td>
                       <td>
                         {v.usedCount ?? 0} / {v.usageLimit ?? '—'}
                       </td>
@@ -293,7 +314,9 @@ const AdminVouchers = () => {
                         <Badge bg={v.isActive !== false ? 'primary' : 'secondary'} className="me-1">
                           {v.isActive !== false ? 'Bật' : 'Tắt'}
                         </Badge>
-                        <Badge bg="info">{v.status || '—'}</Badge>
+                        <Badge bg="light" text="dark">
+                          {voucherStatusLabel(v)}
+                        </Badge>
                       </td>
                       <td className="text-end">
                         <Button

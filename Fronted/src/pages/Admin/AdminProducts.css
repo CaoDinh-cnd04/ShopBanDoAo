@@ -1,0 +1,27 @@
+.admin-products-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 10px;
+  background: var(--bs-secondary-bg, #f1f5f9);
+  border: 1px solid var(--bs-border-color, #e2e8f0);
+}
+
+.admin-products-meta {
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color, #64748b);
+  margin-top: 2px;
+}
+
+.admin-products-actions .btn {
+  min-width: 0;
+}
+
+.admin-products-stock-zero {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.admin-products-table-wrap {
+  overflow-x: auto;
+}

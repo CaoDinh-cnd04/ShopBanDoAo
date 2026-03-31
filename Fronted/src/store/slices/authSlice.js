@@ -7,14 +7,51 @@ import api from '../../services/api';
  * Đọc: response.data.data = giá trị từ service
  */
 
+/** Chuẩn hóa role: DB/API đôi khi trả "admin", "ADMIN" — AdminRoute cần 'Admin'. */
+const canonicalRole = (value) => {
+  if (value == null || value === '') return 'User';
+  const s = String(value).trim();
+  if (s === '') return 'User';
+  const lower = s.toLowerCase();
+  if (lower === 'admin') return 'Admin';
+  if (lower === 'user') return 'User';
+  return s;
+};
+
+const roleFromRolesArray = (roles) => {
+  if (!Array.isArray(roles) || !roles.length) return 'User';
+  const hasAdmin = roles.some((r) => {
+    const name = typeof r === 'string' ? r : r?.RoleName;
+    return name != null && String(name).toLowerCase() === 'admin';
+  });
+  if (hasAdmin) return 'Admin';
+  const first = roles[0];
+  return canonicalRole(typeof first === 'string' ? first : first?.RoleName) || 'User';
+};
+
+export const isAdminUser = (user) => {
+  if (!user) return false;
+  if (canonicalRole(user.role) === 'Admin') return true;
+  const roles = user.roles;
+  if (Array.isArray(roles) && roles.length) {
+    return roles.some((r) => {
+      const name = typeof r === 'string' ? r : r?.RoleName;
+      return name != null && String(name).toLowerCase() === 'admin';
+    });
+  }
+  return false;
+};
+
 const normalizeUser = (user) => {
   if (!user) return user;
   const u = { ...user };
-  if (u.role) return u;
+  if (u.role != null && u.role !== '') {
+    u.role = canonicalRole(u.role);
+    return u;
+  }
   const roles = u.roles;
   if (Array.isArray(roles) && roles.length) {
-    const hasAdmin = roles.some((r) => r === 'Admin' || (r && r.RoleName === 'Admin'));
-    u.role = hasAdmin ? 'Admin' : (typeof roles[0] === 'string' ? roles[0] : roles[0]?.RoleName) || 'User';
+    u.role = roleFromRolesArray(roles);
   } else {
     u.role = 'User';
   }
@@ -96,7 +133,7 @@ export const updateProfile = createAsyncThunk(
   async (profileData, { rejectWithValue }) => {
     try {
       const response = await api.put('/auth/profile', profileData);
-      const user = response.data.data;
+      const user = normalizeUser(response.data.data);
       localStorage.setItem('user', JSON.stringify(user));
       return user;
     } catch (error) {
@@ -239,7 +276,9 @@ const authSlice = createSlice({
       })
 
       // Update Profile
-      .addCase(updateProfile.fulfilled, (state, action) => { state.user = action.payload; })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.user = normalizeUser(action.payload);
+      })
 
       // Change Password
       .addCase(changePassword.pending, (state) => { state.isLoading = true; })

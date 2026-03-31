@@ -21,15 +21,51 @@ export class ReviewsService {
     return { message: 'Đánh giá sản phẩm thành công', review };
   }
 
+  /** Đánh giá theo sản phẩm — dùng cho PDP (chỉ hiển thị isVisible) */
+  async getReviewsByProduct(productId: string) {
+    const { reviews } = await this.getAllReviews({
+      productId,
+      page: '1',
+      limit: '200',
+      isVisible: 'true',
+    } as QueryReviewDto);
+    return reviews;
+  }
+
   async getAllReviews(query: QueryReviewDto) {
     const page = parseInt(query.page || '1');
     const limit = parseInt(query.limit || '20');
     const skip = (page - 1) * limit;
 
+    const type = (query.type || 'all').toLowerCase();
+    if (type === 'court') {
+      return {
+        reviews: [],
+        pagination: {
+          currentPage: page,
+          totalPages: 0,
+          totalItems: 0,
+          totalReviews: 0,
+          limit,
+        },
+      };
+    }
+
     const match: any = {};
     if (query.productId) match.productId = new Types.ObjectId(query.productId);
-    if (query.isVisible !== undefined)
-      match.isVisible = query.isVisible === 'true';
+
+    const vis =
+      query.isVisible !== undefined && query.isVisible !== ''
+        ? query.isVisible
+        : query.isApproved !== undefined && query.isApproved !== ''
+          ? query.isApproved
+          : undefined;
+    if (vis !== undefined) match.isVisible = vis === 'true';
+
+    if (query.rating !== undefined && query.rating !== '') {
+      const r = parseInt(query.rating, 10);
+      if (!Number.isNaN(r) && r >= 1 && r <= 5) match.rating = r;
+    }
 
     const [reviews, total] = await Promise.all([
       this.reviewRepository.findAll(match, skip, limit),
@@ -40,8 +76,9 @@ export class ReviewsService {
       reviews,
       pagination: {
         currentPage: page,
-        totalPages: Math.ceil(total / limit),
+        totalPages: total === 0 ? 0 : Math.ceil(total / limit),
         totalItems: total,
+        totalReviews: total,
         limit,
       },
     };

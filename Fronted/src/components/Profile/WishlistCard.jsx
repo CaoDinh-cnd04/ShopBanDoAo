@@ -6,6 +6,7 @@ import { useDispatch } from 'react-redux';
 import { toggleWishlist } from '../../store/slices/wishlistSlice';
 import { addToCart } from '../../store/slices/cartSlice';
 import { toast } from 'react-toastify';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 import './WishlistCard.css';
 
 const WishlistCard = ({ item }) => {
@@ -20,9 +21,13 @@ const WishlistCard = ({ item }) => {
   const productId = product._id?.toString() || product.id?.toString() || item.productId?.toString() || '';
   const productName = product.productName || product.ProductName || product.name || 'Sản phẩm';
   const price = product.defaultPrice || product.price || product.Price || 0;
-  const image = Array.isArray(product.images) && product.images.length > 0
-    ? product.images[0]
-    : product.imageUrl || product.ImageURL || null;
+  const rawImg =
+    Array.isArray(product.images) && product.images.length > 0
+      ? typeof product.images[0] === 'string'
+        ? product.images[0]
+        : product.images[0]?.imageUrl
+      : product.imageUrl || product.ImageURL || null;
+  const image = rawImg ? resolveMediaUrl(rawImg) : null;
 
   const handleRemove = async () => {
     if (!productId) return;

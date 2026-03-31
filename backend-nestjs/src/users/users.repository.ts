@@ -14,6 +14,7 @@ export class UserRepository {
   ): Promise<UserDocument[]> {
     return this.userModel
       .find(match)
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .select('-passwordHash')
@@ -43,5 +44,9 @@ export class UserRepository {
       .findByIdAndUpdate(id, { isActive: false }, { new: true })
       .select('-passwordHash')
       .exec();
+  }
+
+  async permanentDelete(id: string): Promise<UserDocument | null> {
+    return this.userModel.findByIdAndDelete(id).select('-passwordHash').exec();
   }
 }

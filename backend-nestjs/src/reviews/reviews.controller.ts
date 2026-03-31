@@ -24,10 +24,28 @@ import { Roles } from '../core/decorators/roles.decorator';
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
-  // PUBLIC/USER ROUTES
-  @Get()
-  async getAllReviews(@Query() queryDto: QueryReviewDto) {
+  /** PDP: GET /api/reviews/products/:productId — đặt trước @Get() */
+  @Get('products/:productId')
+  async getReviewsByProduct(@Param('productId') productId: string) {
+    return this.reviewsService.getReviewsByProduct(productId);
+  }
+
+  /** Admin: danh sách + lọc — GET /api/reviews/admin (tránh route @Get() rỗng trên controller khác) */
+  @Get('admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('Admin')
+  async getAllReviewsForAdmin(@Query() queryDto: QueryReviewDto) {
     return this.reviewsService.getAllReviews(queryDto);
+  }
+
+  /** Frontend gửi POST /api/reviews/products (cùng body CreateReviewDto) */
+  @Post('products')
+  @UseGuards(JwtAuthGuard)
+  async createReviewViaProductsPath(
+    @Request() req: any,
+    @Body() createDto: CreateReviewDto,
+  ) {
+    return this.reviewsService.createReview(req.user.userId, createDto);
   }
 
   @Post()
@@ -70,5 +88,11 @@ export class AdminReviewsController {
   @Get('stats')
   async getReviewStats() {
     return this.reviewsService.getReviewStats();
+  }
+
+  /** Danh sách + lọc — alias cùng prefix /api/admin/reviews (gọi GET /api/admin/reviews/list) */
+  @Get('list')
+  async getAllReviewsAlias(@Query() queryDto: QueryReviewDto) {
+    return this.reviewsService.getAllReviews(queryDto);
   }
 }

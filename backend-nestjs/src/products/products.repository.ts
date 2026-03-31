@@ -13,18 +13,32 @@ export class ProductRepository {
     match: any,
     skip: number,
     limit: number,
+    sort?: Record<string, 1 | -1>,
   ): Promise<ProductDocument[]> {
     return this.productModel
       .find(match)
       .skip(skip)
       .limit(limit)
       .populate('categoryId', 'categoryName categorySlug')
-      .sort({ createdAt: -1 })
+      .sort(sort && Object.keys(sort).length ? sort : { createdAt: -1 })
       .exec();
   }
 
   async count(match: any): Promise<number> {
     return this.productModel.countDocuments(match).exec();
+  }
+
+  /** Distinct brand từ sản phẩm (admin filter / dropdown) */
+  async distinctBrands(): Promise<string[]> {
+    const raw = await this.productModel
+      .distinct('brand', {
+        isActive: true,
+        brand: { $exists: true, $nin: ['', null] },
+      })
+      .exec();
+    return raw.filter(
+      (b): b is string => typeof b === 'string' && b.trim().length > 0,
+    );
   }
 
   async findById(id: string): Promise<ProductDocument | null> {

@@ -36,6 +36,7 @@ import AdminBookings from './pages/Admin/AdminBookings';
 import AdminUsers from './pages/Admin/AdminUsers';
 import AdminUserDetail from './pages/Admin/AdminUserDetail';
 import AdminReviews from './pages/Admin/AdminReviews';
+import AdminBanner from './pages/Admin/AdminBanner';
 import About from './pages/About/About';
 import Contact from './pages/Contact/Contact';
 import FAQ from './pages/FAQ/FAQ';
@@ -180,9 +181,11 @@ function App() {
             <Route path="bookings" element={<AdminBookings />} />
             <Route path="courts" element={<AdminCourts />} />
             <Route path="vouchers" element={<AdminVouchers />} />
+            <Route path="voucher" element={<Navigate to="/admin/vouchers" replace />} />
             <Route path="users/:id" element={<AdminUserDetail />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="reviews" element={<AdminReviews />} />
+            <Route path="banner" element={<AdminBanner />} />
           </Route>
         </Routes>
 

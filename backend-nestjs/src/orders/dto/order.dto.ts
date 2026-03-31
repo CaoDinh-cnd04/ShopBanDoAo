@@ -39,4 +39,9 @@ export class QueryOrderDto {
   @IsOptional() @IsString() limit?: string;
   @IsOptional() @IsString() orderStatus?: string;
   @IsOptional() @IsString() paymentStatus?: string;
+  /** Alias frontend AdminOrders (?status=) */
+  @IsOptional() @IsString() status?: string;
+  @IsOptional() @IsString() search?: string;
+  @IsOptional() @IsString() startDate?: string;
+  @IsOptional() @IsString() endDate?: string;
 }

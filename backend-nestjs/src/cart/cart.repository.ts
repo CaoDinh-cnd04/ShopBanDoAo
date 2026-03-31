@@ -10,7 +10,10 @@ export class CartRepository {
   async findByUserId(userId: string): Promise<CartDocument | null> {
     return this.cartModel
       .findOne({ userId: new Types.ObjectId(userId) })
-      .populate('items.productId', 'productName defaultPrice image')
+      .populate(
+        'items.productId',
+        'productName defaultPrice originalPrice images variants stockQuantity',
+      )
       .exec();
   }
 

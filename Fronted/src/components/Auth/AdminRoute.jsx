@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { isAdminUser } from '../../store/slices/authSlice';
 
 const AdminRoute = ({ children }) => {
   const { isAuthenticated, user } = useSelector((state) => state.auth);
@@ -10,7 +11,7 @@ const AdminRoute = ({ children }) => {
     return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />;
   }
 
-  if (user?.role !== 'Admin') {
+  if (!isAdminUser(user)) {
     return <Navigate to="/" replace />;
   }
 

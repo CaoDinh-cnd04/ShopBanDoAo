@@ -4,7 +4,35 @@ import { Card, Table, Button, Badge, Form, Row, Col, Spinner, Modal } from 'reac
 import { toast } from 'react-toastify';
 import adminService from '../../services/adminService';
 
-const bookingStatus = (b) => b.statusName ?? b.Status ?? '';
+const bookingId = (b) => b?._id?.toString?.() || b?.bookingId || b?.BookingID;
+
+const bookingStatus = (b) =>
+  b.bookingStatus ?? b.statusName ?? b.Status ?? '';
+
+/** Giá trị API (Mongo) — đồng bộ schema Booking.bookingStatus */
+const BOOKING_STATUS_OPTIONS = [
+  { value: 'Pending', label: 'Chờ xác nhận' },
+  { value: 'Confirmed', label: 'Đã xác nhận' },
+  { value: 'InUse', label: 'Đang sử dụng' },
+  { value: 'Completed', label: 'Hoàn thành' },
+  { value: 'Cancelled', label: 'Đã hủy' },
+];
+
+const statusLabelVi = (apiValue) =>
+  BOOKING_STATUS_OPTIONS.find((o) => o.value === apiValue)?.label || apiValue || '—';
+
+const isTerminalBookingStatus = (st) => {
+  const s = String(st || '').trim();
+  if (!s) return false;
+  const terminal = new Set([
+    'Completed',
+    'Cancelled',
+    'Canceled',
+    'Hoàn thành',
+    'Đã hủy',
+  ]);
+  return terminal.has(s);
+};
 
 const AdminBookings = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -26,37 +54,41 @@ const AdminBookings = () => {
       search: searchParams.get('search') || '',
       status: searchParams.get('status') || '',
       startDate: searchParams.get('startDate') || '',
-      endDate: searchParams.get('endDate') || ''
+      endDate: searchParams.get('endDate') || '',
     }),
-    [searchParams]
+    [searchParams],
   );
 
   useEffect(() => {
     setDraft({
       search: filters.search,
       startDate: filters.startDate,
-      endDate: filters.endDate
+      endDate: filters.endDate,
     });
   }, [filters.search, filters.startDate, filters.endDate]);
-
-  const statusOptions = [
-    'Chờ xác nhận',
-    'Đã xác nhận',
-    'Đang sử dụng',
-    'Hoàn thành',
-    'Đã hủy'
-  ];
 
   const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await adminService.bookings.getAllBookings(filters);
+      const params = {
+        page: filters.page,
+        limit: filters.limit,
+        ...(filters.search?.trim() ? { search: filters.search.trim() } : {}),
+        ...(filters.status?.trim() ? { status: filters.status.trim() } : {}),
+        ...(filters.startDate ? { startDate: filters.startDate } : {}),
+        ...(filters.endDate ? { endDate: filters.endDate } : {}),
+      };
+      const response = await adminService.bookings.getAllBookings(params);
       const payload = response.data?.data;
       setBookings(Array.isArray(payload?.bookings) ? payload.bookings : []);
       setPagination(payload?.pagination ?? null);
     } catch (error) {
       console.error('Error fetching bookings:', error);
-      toast.error('Lỗi khi tải danh sách booking');
+      toast.error(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          'Lỗi khi tải danh sách booking',
+      );
     } finally {
       setLoading(false);
     }
@@ -81,7 +113,7 @@ const AdminBookings = () => {
       search: draft.search.trim(),
       startDate: draft.startDate,
       endDate: draft.endDate,
-      page: ''
+      page: '',
     });
   };
 
@@ -101,34 +133,38 @@ const AdminBookings = () => {
 
   const handleUpdateStatus = async () => {
     try {
-      await adminService.bookings.updateBookingStatus(
-        selectedBooking.bookingId ?? selectedBooking.BookingID,
-        newStatus
-      );
+      await adminService.bookings.updateBookingStatus(bookingId(selectedBooking), newStatus);
       toast.success('Cập nhật trạng thái thành công');
       setShowStatusModal(false);
       fetchBookings();
     } catch (error) {
       console.error('Error updating status:', error);
-      toast.error('Lỗi khi cập nhật trạng thái');
+      toast.error(
+        error.response?.data?.message || error.response?.data?.error || 'Lỗi khi cập nhật trạng thái',
+      );
     }
   };
 
-  const handleCancelBooking = async (bookingId) => {
-    if (!window.confirm('Bạn có chắc muốn hủy booking này?')) return;
-
+  const handleCancelBooking = async (id) => {
+    if (!window.confirm('Hủy booking này? Trạng thái sẽ là Đã hủy (Cancelled).')) return;
     try {
-      await adminService.bookings.cancelBooking(bookingId, '');
-      toast.success('Hủy booking thành công');
+      await adminService.bookings.cancelBooking(id);
+      toast.success('Đã hủy booking');
+      if (detail && bookingId(detail) === id) {
+        setDetailOpen(false);
+        setDetail(null);
+      }
       fetchBookings();
     } catch (error) {
       console.error('Error canceling booking:', error);
-      toast.error('Lỗi khi hủy booking');
+      toast.error(
+        error.response?.data?.message || error.response?.data?.error || 'Lỗi khi hủy booking',
+      );
     }
   };
 
   const openDetail = async (booking) => {
-    const id = booking.bookingId ?? booking.BookingID;
+    const id = bookingId(booking);
     setDetail(null);
     setDetailOpen(true);
     setDetailLoading(true);
@@ -145,14 +181,23 @@ const AdminBookings = () => {
   };
 
   const getStatusBadge = (status) => {
+    const s = String(status || '').trim();
+    const label = statusLabelVi(s);
     const variants = {
       'Chờ xác nhận': 'warning',
+      Pending: 'warning',
       'Đã xác nhận': 'info',
+      Confirmed: 'info',
       'Đang sử dụng': 'primary',
+      InUse: 'primary',
       'Hoàn thành': 'success',
-      'Đã hủy': 'danger'
+      Completed: 'success',
+      'Đã hủy': 'danger',
+      Cancelled: 'danger',
+      Canceled: 'danger',
     };
-    return <Badge bg={variants[status] || 'secondary'}>{status}</Badge>;
+    const bg = variants[s] || variants[label] || 'secondary';
+    return <Badge bg={bg}>{label}</Badge>;
   };
 
   const fmtMoney = (n) =>
@@ -164,7 +209,7 @@ const AdminBookings = () => {
         <div>
           <h1 className="admin-page-title">Đặt sân</h1>
           <div className="admin-page-subtitle">
-            Lọc theo trạng thái qua URL (<code>?status=…</code>), xem chi tiết khung giờ.
+            Lọc theo trạng thái hoặc ngày, xem chi tiết khung giờ — dữ liệu từ server.
           </div>
         </div>
       </div>
@@ -184,9 +229,9 @@ const AdminBookings = () => {
               <Col md={3}>
                 <Form.Select value={filters.status} onChange={handleStatusFilterChange}>
                   <option value="">Tất cả trạng thái</option>
-                  {statusOptions.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
+                  {BOOKING_STATUS_OPTIONS.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
                     </option>
                   ))}
                 </Form.Select>
@@ -241,20 +286,36 @@ const AdminBookings = () => {
                     bookings.map((booking) => {
                       const st = bookingStatus(booking);
                       return (
-                        <tr key={booking.bookingId ?? booking.BookingID}>
-                          <td className="fw-bold">{booking.bookingCode ?? booking.BookingCode}</td>
-                          <td>
-                            <div>{booking.customerName ?? booking.CustomerName}</div>
-                            <small className="text-muted">{booking.customerEmail ?? booking.CustomerEmail}</small>
+                        <tr key={bookingId(booking)}>
+                          <td className="fw-bold">
+                            {booking.bookingCode ?? booking.BookingCode ?? bookingId(booking)}
                           </td>
                           <td>
-                            <div>{booking.courtName ?? booking.CourtName}</div>
-                            <small className="text-muted">{booking.courtType ?? booking.CourtType}</small>
+                            <div>{(booking.customerName ?? booking.CustomerName) || '—'}</div>
+                            <small className="text-muted d-block">
+                              {(booking.customerEmail ?? booking.CustomerEmail) || ''}
+                            </small>
+                            {booking.customerPhone ? (
+                              <small className="text-muted">{booking.customerPhone}</small>
+                            ) : null}
                           </td>
-                          <td>{new Date(booking.bookingDate ?? booking.BookingDate).toLocaleDateString('vi-VN')}</td>
+                          <td>
+                            <div>{booking.courtName ?? booking.CourtName ?? '—'}</div>
+                            <small className="text-muted">{booking.courtType ?? booking.CourtType ?? ''}</small>
+                          </td>
+                          <td>
+                            {(() => {
+                              const d = booking.bookingDate ?? booking.BookingDate;
+                              const t = d ? new Date(d) : null;
+                              return t && !Number.isNaN(t.getTime())
+                                ? t.toLocaleDateString('vi-VN')
+                                : '—';
+                            })()}
+                          </td>
                           <td>
                             <Badge bg="secondary">
-                              {booking.timeSlotCount ?? booking.TimeSlotCount ?? 0} khung giờ
+                              {booking.timeRange ||
+                                `${booking.startTime ?? '—'} — ${booking.endTime ?? '—'}`}
                             </Badge>
                           </td>
                           <td className="fw-bold">{fmtMoney(booking.totalAmount ?? booking.TotalAmount)}</td>
@@ -273,15 +334,15 @@ const AdminBookings = () => {
                               variant="outline-primary"
                               className="me-2"
                               onClick={() => handleStatusChange(booking)}
-                              disabled={st === 'Hoàn thành' || st === 'Đã hủy'}
+                              disabled={isTerminalBookingStatus(st)}
                             >
                               Sửa
                             </Button>
                             <Button
                               size="sm"
                               variant="outline-danger"
-                              onClick={() => handleCancelBooking(booking.bookingId ?? booking.BookingID)}
-                              disabled={st === 'Hoàn thành' || st === 'Đã hủy'}
+                              onClick={() => handleCancelBooking(bookingId(booking))}
+                              disabled={isTerminalBookingStatus(st)}
                             >
                               Hủy
                             </Button>
@@ -333,9 +394,9 @@ const AdminBookings = () => {
           <Form.Group>
             <Form.Label>Chọn trạng thái mới</Form.Label>
             <Form.Select value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
+              {BOOKING_STATUS_OPTIONS.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
                 </option>
               ))}
             </Form.Select>
@@ -363,14 +424,15 @@ const AdminBookings = () => {
           ) : detail ? (
             <>
               <p>
-                <strong>Mã:</strong> {detail.bookingCode} {getStatusBadge(detail.statusName)}
+                <strong>Mã:</strong> {detail.bookingCode || bookingId(detail)}{' '}
+                {getStatusBadge(detail.bookingStatus ?? detail.statusName)}
               </p>
               <p>
-                <strong>Khách:</strong> {detail.customerName} — {detail.customerEmail}{' '}
+                <strong>Khách:</strong> {detail.customerName || '—'} — {detail.customerEmail || '—'}{' '}
                 {detail.customerPhone ? `(${detail.customerPhone})` : ''}
               </p>
               <p>
-                <strong>Sân:</strong> {detail.courtName} ({detail.courtTypeName || '—'})
+                <strong>Sân:</strong> {detail.courtName || '—'} ({detail.courtTypeName || '—'})
               </p>
               <p>
                 <strong>Địa điểm:</strong> {detail.location || '—'}
@@ -395,8 +457,8 @@ const AdminBookings = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {(detail.timeSlots || []).map((slot) => (
-                    <tr key={slot.bookingDetailId || slot.slotName}>
+                  {(detail.timeSlots || []).map((slot, i) => (
+                    <tr key={String(slot.bookingDetailId || slot.slotName || i)}>
                       <td>{slot.slotName || '—'}</td>
                       <td>
                         {slot.startTime ?? '—'} — {slot.endTime ?? '—'}

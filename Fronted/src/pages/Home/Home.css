@@ -1,4 +1,4 @@
-﻿/* ================================================================
+/* ================================================================
    HOME PAGE — Premium Design
    ================================================================ */
 
@@ -10,6 +10,11 @@
   background: #2563EB;
   padding: 3rem 0 2.5rem;
   overflow: hidden;
+}
+
+/* Ảnh nền toàn hero từ admin — tắt blob trang trí để không chồng lấn */
+.hero-section--plain .hero-bg-blob {
+  display: none;
 }
 
 

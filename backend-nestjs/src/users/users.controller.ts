@@ -6,8 +6,10 @@ import {
   Body,
   Param,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { UsersService } from './users.service';
 import { QueryUserDto, UpdateUserDto } from './dto/user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -38,6 +40,20 @@ export class UsersController {
   @Put(':id')
   async updateUser(@Param('id') id: string, @Body() updateDto: UpdateUserDto) {
     return this.usersService.updateUser(id, updateDto);
+  }
+
+  /** Xóa vĩnh viễn — DELETE /api/admin/users/permanent/:id */
+  @Delete('permanent/:id')
+  async permanentlyDeleteUser(@Param('id') id: string, @Req() req: Request) {
+    const user = (req as Request & { user?: { userId?: string } }).user;
+    return this.usersService.permanentlyDeleteUser(id, user?.userId);
+  }
+
+  /** Alias: DELETE /api/admin/users/:id/permanent (bundle / proxy cũ) */
+  @Delete(':id/permanent')
+  async permanentlyDeleteUserLegacy(@Param('id') id: string, @Req() req: Request) {
+    const user = (req as Request & { user?: { userId?: string } }).user;
+    return this.usersService.permanentlyDeleteUser(id, user?.userId);
   }
 
   @Delete(':id')

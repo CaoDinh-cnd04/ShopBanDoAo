@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   Request,
 } from '@nestjs/common';
@@ -45,8 +46,13 @@ export class CartController {
   async removeCartItem(
     @Request() req: any,
     @Param('productId') productId: string,
+    @Query('variantId') variantId?: string,
   ) {
-    return this.cartService.removeCartItem(req.user.userId, productId);
+    return this.cartService.removeCartItem(
+      req.user.userId,
+      productId,
+      variantId,
+    );
   }
 
   @Delete()

@@ -9,7 +9,7 @@ import {
   FiMoon, FiSun, FiMenu, FiX, FiChevronDown,
   FiLogOut, FiSettings, FiPackage, FiCalendar
 } from 'react-icons/fi';
-import { logout } from '../../store/slices/authSlice';
+import { logout, isAdminUser } from '../../store/slices/authSlice';
 import { toggleTheme } from '../../store/slices/themeSlice';
 import { setFilters } from '../../store/slices/productSlice';
 import NotificationDropdown from '../Notifications/NotificationDropdown';
@@ -196,7 +196,7 @@ const Navbar = () => {
                     <Dropdown.Item as={Link} to="/profile/bookings">
                       <FiCalendar size={15} /> {t('nav.bookings')}
                     </Dropdown.Item>
-                    {user?.role === 'Admin' && (
+                    {isAdminUser(user) && (
                       <Dropdown.Item as={Link} to="/admin">
                         🛡️ Admin Panel
                       </Dropdown.Item>

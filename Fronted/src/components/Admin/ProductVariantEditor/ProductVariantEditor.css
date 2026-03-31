@@ -1,0 +1,68 @@
+/* Biến thể — giao diện gọn, dễ đọc */
+.pve-simple .pve-lead {
+  line-height: 1.45;
+  max-width: 52rem;
+}
+
+.pve-simple .pve-price-hint {
+  padding: 0.35rem 0.6rem;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.pve-details {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  background: #fafafa;
+}
+
+.pve-summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #334155;
+  list-style: none;
+}
+
+.pve-summary::-webkit-details-marker {
+  display: none;
+}
+
+.pve-summary::before {
+  content: '▸ ';
+  display: inline-block;
+  transition: transform 0.15s;
+}
+
+details[open].pve-details > .pve-summary::before {
+  transform: rotate(90deg);
+}
+
+.pve-details-body {
+  padding-top: 0.25rem;
+  border-top: 1px dashed #dee2e6;
+  margin-top: 0.35rem;
+}
+
+.pve-table th {
+  white-space: nowrap;
+  font-size: 0.8rem;
+  vertical-align: middle;
+}
+
+.pve-swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.pve-extras {
+  font-size: 0.75rem;
+  max-width: 140px;
+}

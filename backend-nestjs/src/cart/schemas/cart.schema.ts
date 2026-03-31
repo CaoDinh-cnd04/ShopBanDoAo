@@ -8,6 +8,10 @@ export class CartItem {
   @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
   productId: Types.ObjectId;
 
+  /** _id của ProductVariant (subdocument trong Product) */
+  @Prop({ type: Types.ObjectId })
+  variantId?: Types.ObjectId;
+
   @Prop({ required: true, min: 1 })
   quantity: number;
 }

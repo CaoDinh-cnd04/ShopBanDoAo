@@ -68,7 +68,7 @@ export class BookingsController {
   @Get('admin/bookings/:id')
   @Roles('Admin')
   async getBookingByIdAdmin(@Param('id') id: string) {
-    return this.bookingsService.getBookingById(id);
+    return this.bookingsService.getBookingByIdForAdmin(id);
   }
 
   @Put('admin/bookings/:id/status')

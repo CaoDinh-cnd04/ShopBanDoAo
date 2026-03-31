@@ -18,8 +18,8 @@ export class BookingRepository {
       .find(match)
       .skip(skip)
       .limit(limit)
-      .populate('userId', 'fullName email phoneNumber')
-      .populate('courtId', 'courtName courtType pricePerHour') // Mẫu nếu có collection Court
+      .populate('userId', 'fullName email phone')
+      .populate('courtId', 'courtName courtType pricePerHour location address')
       .exec();
   }
 
@@ -30,8 +30,8 @@ export class BookingRepository {
   async findById(id: string): Promise<BookingDocument | null> {
     return this.bookingModel
       .findById(id)
-      .populate('userId', 'fullName email phoneNumber')
-      .populate('courtId')
+      .populate('userId', 'fullName email phone')
+      .populate('courtId', 'courtName courtType pricePerHour location address')
       .exec();
   }
 

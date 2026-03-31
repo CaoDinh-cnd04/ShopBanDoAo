@@ -20,13 +20,13 @@ import adminService from '../../services/adminService';
 const quickLinks = [
   { to: '/admin/orders', label: 'Đơn hàng', icon: FiShoppingCart },
   {
-    to: `/admin/orders?status=${encodeURIComponent('Chờ xử lý')}`,
+    to: `/admin/orders?status=${encodeURIComponent('Pending')}`,
     label: 'Đơn chờ xử lý',
     icon: FiShoppingCart
   },
   { to: '/admin/bookings', label: 'Đặt sân', icon: FiCalendar },
   {
-    to: `/admin/bookings?status=${encodeURIComponent('Chờ xác nhận')}`,
+    to: `/admin/bookings?status=${encodeURIComponent('Pending')}`,
     label: 'Đặt chờ xác nhận',
     icon: FiCalendar
   },
@@ -136,8 +136,8 @@ const AdminDashboard = () => {
         </Alert>
       ) : (
         <>
-          <Row className="g-3 mb-1">
-            <Col md={6} xl={3}>
+          <Row className="g-3 mb-3 admin-dashboard-stats row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xl-4">
+            <Col>
               <StatCard
                 title="Người dùng"
                 value={vm.totalUsers}
@@ -147,7 +147,7 @@ const AdminDashboard = () => {
                 trendValue={`${vm.newUsersThisMonth} mới trong tháng`}
               />
             </Col>
-            <Col md={6} xl={3}>
+            <Col>
               <StatCard
                 title="Đơn hàng"
                 value={vm.totalOrders}
@@ -157,7 +157,7 @@ const AdminDashboard = () => {
                 trendValue={`${vm.pendingOrders} chờ xử lý`}
               />
             </Col>
-            <Col md={6} xl={3}>
+            <Col>
               <StatCard
                 title="Doanh thu"
                 value={new Intl.NumberFormat('vi-VN', { notation: 'compact', compactDisplay: 'short' }).format(
@@ -165,9 +165,13 @@ const AdminDashboard = () => {
                 )}
                 icon={FiDollarSign}
                 color="amber"
+                trend="up"
+                trendValue={new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                  vm.totalRevenue || 0
+                )}
               />
             </Col>
-            <Col md={6} xl={3}>
+            <Col>
               <StatCard
                 title="Đặt sân"
                 value={vm.totalBookings}
@@ -177,10 +181,7 @@ const AdminDashboard = () => {
                 trendValue={`${vm.pendingBookings} chờ xác nhận`}
               />
             </Col>
-          </Row>
-
-          <Row className="g-3 mb-3">
-            <Col md={6} xl={4}>
+            <Col>
               <StatCard
                 title="Sân"
                 value={vm.activeCourts}
@@ -190,7 +191,7 @@ const AdminDashboard = () => {
                 trendValue={`${vm.totalCourts} tổng · ${vm.courtBookingsTotal} lượt đặt`}
               />
             </Col>
-            <Col md={6} xl={4}>
+            <Col>
               <StatCard
                 title="Voucher hiệu lực"
                 value={vm.activeVouchers}
@@ -200,7 +201,7 @@ const AdminDashboard = () => {
                 trendValue={`${vm.totalVouchers} mã trong hệ thống`}
               />
             </Col>
-            <Col md={12} xl={4}>
+            <Col>
               <StatCard
                 title="Đánh giá chờ duyệt"
                 value={vm.pendingReviews}
@@ -214,24 +215,25 @@ const AdminDashboard = () => {
 
           <Card className="admin-panel mb-3">
             <Card.Body className="admin-panel-body">
-              <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                <div className="fw-bold text-dark">Truy cập nhanh</div>
-              </div>
-              <div className="d-flex flex-wrap gap-2">
+              <div className="fw-bold text-dark mb-3">Truy cập nhanh</div>
+              <Row className="g-2 admin-dashboard-quick row-cols-2 row-cols-md-4">
                 {quickLinks.map(({ to, label, icon: Icon }) => (
-                  <Button
-                    key={to}
-                    as={Link}
-                    to={to}
-                    variant="outline-primary"
-                    className="d-inline-flex align-items-center gap-2 admin-quick-link"
-                  >
-                    <Icon size={16} />
-                    {label}
-                    <FiArrowRight size={14} className="opacity-75" />
-                  </Button>
+                  <Col key={to}>
+                    <Button
+                      as={Link}
+                      to={to}
+                      variant="outline-primary"
+                      className="d-inline-flex align-items-center justify-content-between gap-2 admin-quick-link w-100 py-2 px-3"
+                    >
+                      <span className="d-inline-flex align-items-center gap-2 text-truncate min-w-0">
+                        <Icon size={16} className="flex-shrink-0" />
+                        <span className="text-truncate">{label}</span>
+                      </span>
+                      <FiArrowRight size={14} className="opacity-75 flex-shrink-0" />
+                    </Button>
+                  </Col>
                 ))}
-              </div>
+              </Row>
             </Card.Body>
           </Card>
 

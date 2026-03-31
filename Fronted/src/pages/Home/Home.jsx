@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Container, Row, Col, Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -11,9 +11,31 @@ import { fetchCourts } from '../../store/slices/courtSlice';
 import ProductCard from '../../components/ProductCard/ProductCard';
 import Loading from '../../components/Loading/Loading';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
+import adminService from '../../services/adminService';
+import { DEFAULT_BANNER } from '../Admin/AdminBanner';
 import './Home.css';
 
 const PLACEHOLDER = '/placeholder-category.svg';
+const FALLBACK_HERO_IMG =
+  'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&q=80&auto=format&fit=crop';
+
+const CTA_ICON_MAP = {
+  shopping: FiShoppingBag,
+  bag: FiShoppingBag,
+  calendar: FiCalendar,
+  package: FiPackage,
+};
+
+function CtaIcon({ name, size = 18 }) {
+  const Icon = CTA_ICON_MAP[name] || FiShoppingBag;
+  return <Icon size={size} />;
+}
+
+function BadgeIcon({ name, size = 16 }) {
+  if (name === 'users') return <FiUsers size={size} />;
+  if (name === 'none') return null;
+  return <FiStar fill="#F59E0B" color="#F59E0B" size={size} />;
+}
 
 const fadeUp = {
   hidden: { opacity: 0, y: 32 },
@@ -25,7 +47,7 @@ const Home = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const { products, isLoading } = useSelector((s) => s.products);
+  const { featuredProducts, isLoading } = useSelector((s) => s.products);
   const { categories } = useSelector((s) => s.categories);
   const { courts } = useSelector((s) => s.courts);
 
@@ -41,40 +63,107 @@ const Home = () => {
     return () => (typeof requestIdleCallback !== 'undefined' ? cancelIdleCallback(id) : clearTimeout(id));
   }, [dispatch]);
 
-  const featuredProducts = Array.isArray(products) ? products.slice(0, 8) : [];
+  const displayFeatured = Array.isArray(featuredProducts)
+    ? featuredProducts.slice(0, 8)
+    : [];
   const displayCategories = Array.isArray(categories) ? categories.slice(0, 6) : [];
   const displayCourts = Array.isArray(courts) ? courts.slice(0, 3) : [];
+
+  const [bannerMerged, setBannerMerged] = useState(() => {
+    const raw = adminService.banner.getBanner();
+    return raw ? { ...DEFAULT_BANNER, ...raw } : null;
+  });
+
+  const reloadBanner = useCallback(() => {
+    const raw = adminService.banner.getBanner();
+    setBannerMerged(raw ? { ...DEFAULT_BANNER, ...raw } : null);
+  }, []);
+
+  useEffect(() => {
+    reloadBanner();
+    window.addEventListener('site-banner-updated', reloadBanner);
+    window.addEventListener('storage', reloadBanner);
+    return () => {
+      window.removeEventListener('site-banner-updated', reloadBanner);
+      window.removeEventListener('storage', reloadBanner);
+    };
+  }, [reloadBanner]);
+
+  const heroStyle = bannerMerged
+    ? {
+        background:
+          bannerMerged.showImage && bannerMerged.imageUrl
+            ? `linear-gradient(rgba(0,0,0,${bannerMerged.overlayOpacity ?? 0.5}), rgba(0,0,0,${bannerMerged.overlayOpacity ?? 0.5})), url(${bannerMerged.imageUrl}) center/cover no-repeat`
+            : `linear-gradient(${bannerMerged.bgAngle ?? 135}deg, ${bannerMerged.bgColor1 ?? '#0f766e'}, ${bannerMerged.bgColor2 ?? '#134e4a'})`,
+        color: bannerMerged.textColor || '#fff',
+      }
+    : undefined;
 
   return (
     <div className="home-page">
       {/* ══════════════ HERO ══════════════ */}
-      <section className="hero-section">
-        {/* Background decorations */}
-        <div className="hero-bg-blob hero-blob-1" aria-hidden />
-        <div className="hero-bg-blob hero-blob-2" aria-hidden />
+      <section
+        className={`hero-section${bannerMerged?.showImage ? ' hero-section--plain' : ''}`}
+        style={heroStyle}
+      >
+        {!bannerMerged?.showImage && (
+          <>
+            <div className="hero-bg-blob hero-blob-1" aria-hidden />
+            <div className="hero-bg-blob hero-blob-2" aria-hidden />
+          </>
+        )}
 
         <Container className="hero-container">
           <Row className="align-items-center g-4">
             <Col lg={6}>
               <motion.div initial="hidden" animate="show" variants={fadeUp}>
-                <span className="section-eyebrow">⚡ Sports E-Commerce</span>
-                <h1 className="hero-title">
-                  Trang bị tốt nhất,<br />
-                  <span className="gradient-text">chinh phục mọi sân</span>
+                <span className="section-eyebrow">
+                  {bannerMerged?.eyebrow ?? '⚡ Sports E-Commerce'}
+                </span>
+                <h1
+                  className="hero-title"
+                  style={
+                    bannerMerged
+                      ? { color: bannerMerged.textColor, whiteSpace: 'pre-line' }
+                      : undefined
+                  }
+                >
+                  {bannerMerged?.title ? (
+                    bannerMerged.title
+                  ) : (
+                    <>
+                      Trang bị tốt nhất,
+                      <br />
+                      <span className="gradient-text">chinh phục mọi sân</span>
+                    </>
+                  )}
                 </h1>
-                <p className="hero-subtitle">
-                  Hàng nghìn sản phẩm thể thao chính hãng cùng hệ thống đặt sân hiện đại —
-                  tất cả trong một nền tảng.
+                <p
+                  className="hero-subtitle"
+                  style={
+                    bannerMerged ? { color: bannerMerged.textColor, opacity: 0.9 } : undefined
+                  }
+                >
+                  {bannerMerged?.subtitle ||
+                    'Hàng nghìn sản phẩm thể thao chính hãng cùng hệ thống đặt sân hiện đại — tất cả trong một nền tảng.'}
                 </p>
                 <div className="hero-ctas">
                   <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
-                    <Button className="btn-primary hero-cta-main" onClick={() => navigate('/products')}>
-                      <FiShoppingBag size={18} /> Mua sắm ngay
+                    <Button
+                      className="btn-primary hero-cta-main"
+                      onClick={() => navigate(bannerMerged?.ctaLink || '/courts')}
+                    >
+                      <CtaIcon name={bannerMerged?.ctaIcon || 'shopping'} size={18} />{' '}
+                      {bannerMerged?.ctaText || 'Đặt sân ngay'}
                     </Button>
                   </motion.div>
                   <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
-                    <Button className="btn-outline hero-cta-secondary" onClick={() => navigate('/courts')}>
-                      <FiCalendar size={18} /> Đặt sân thể thao
+                    <Button
+                      className="btn-outline hero-cta-secondary"
+                      onClick={() => navigate(bannerMerged?.ctaLink2 || '/products')}
+                    >
+                      <CtaIcon name={bannerMerged?.ctaIcon2 || 'calendar'} size={18} />{' '}
+                      {bannerMerged?.ctaText2 || 'Xem sản phẩm'}
                     </Button>
                   </motion.div>
                 </div>
@@ -89,22 +178,27 @@ const Home = () => {
               >
                 <div className="hero-image-glow" aria-hidden />
                 <img
-                  src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&q=80&auto=format&fit=crop"
-                  alt="Sports"
+                  src={
+                    resolveMediaUrl(bannerMerged?.heroImageUrl) ||
+                    bannerMerged?.heroImageUrl ||
+                    FALLBACK_HERO_IMG
+                  }
+                  alt=""
                   className="hero-image"
-                  fetchPriority="high"
+                  fetchpriority="high"
                   decoding="async"
                 />
-                {/* Floating badge */}
-                <motion.div
-                  className="hero-float-badge"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.8, type: 'spring' }}
-                >
-                  <FiStar fill="#F59E0B" color="#F59E0B" size={16} />
-                  <span>10,000+ khách hàng</span>
-                </motion.div>
+                {(bannerMerged?.showBadge !== false || !bannerMerged) && (
+                  <motion.div
+                    className="hero-float-badge"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.8, type: 'spring' }}
+                  >
+                    <BadgeIcon name={bannerMerged?.badgeIcon || 'star'} size={16} />
+                    <span>{bannerMerged?.badgeText || '10,000+ khách hàng'}</span>
+                  </motion.div>
+                )}
               </motion.div>
             </Col>
           </Row>
@@ -199,14 +293,14 @@ const Home = () => {
 
           {isLoading ? (
             <Loading />
-          ) : featuredProducts.length === 0 ? (
+          ) : displayFeatured.length === 0 ? (
             <div className="empty-state">
               <p>Chưa có sản phẩm nổi bật</p>
               <Button className="btn-primary" onClick={() => navigate('/products')}>Xem tất cả sản phẩm</Button>
             </div>
           ) : (
             <Row className="g-4">
-              {featuredProducts.map((product, i) => (
+              {displayFeatured.map((product, i) => (
                 <Col xl={3} lg={4} md={6} key={product.id || product._id}>
                   <motion.div
                     variants={fadeUp}

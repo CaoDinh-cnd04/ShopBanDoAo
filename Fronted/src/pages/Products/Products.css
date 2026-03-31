@@ -1,4 +1,4 @@
-﻿/* ================================================================
+/* ================================================================
    PRODUCTS PAGE — Premium Listing Layout
    ================================================================ */
 .products-page { min-height: 80vh; }
@@ -116,6 +116,9 @@
   border: 1.5px solid var(--border-color);
   border-radius: 16px;
   padding: 1.25rem;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .filter-header {
@@ -156,6 +159,11 @@
   border-top: 1px solid var(--border-color);
 }
 
+.filter-group-first {
+  padding-top: 0;
+  border-top: none;
+}
+
 .filter-group-label {
   font-size: 0.78rem;
   font-weight: 700;
@@ -165,10 +173,148 @@
   margin-bottom: 0.75rem;
 }
 
-.filter-options, .price-presets {
+.filter-options,
+.price-presets,
+.filter-price-presets {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
+}
+
+.filter-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.filter-search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.filter-search-input {
+  width: 100%;
+  padding: 10px 12px 10px 38px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.filter-search-input:focus {
+  border-color: #2563eb;
+}
+
+.filter-search-input::placeholder {
+  color: var(--text-muted, #94a3b8);
+}
+
+.filter-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-checklist-scroll {
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.filter-check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.filter-check-row:hover {
+  background: var(--bg-tertiary, rgba(0, 0, 0, 0.04));
+}
+
+.filter-check-row input {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.filter-empty-hint {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.filter-price-custom {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.filter-price-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.filter-price-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.filter-price-field input {
+  padding: 8px 10px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+}
+
+.filter-price-field input:focus {
+  border-color: #2563eb;
+}
+
+.filter-apply-price-btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1.5px solid #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.filter-apply-price-btn:hover {
+  background: rgba(37, 99, 235, 0.15);
 }
 
 .filter-opt {
@@ -285,7 +431,13 @@
 }
 .drawer-header button:hover { background: var(--bg-tertiary); }
 
-.drawer-content { flex: 1; overflow-y: auto; padding: 1rem; }
+.drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1rem;
+  min-width: 0;
+}
 
 /* ── Responsive ── */
 @media (max-width: 991px) {

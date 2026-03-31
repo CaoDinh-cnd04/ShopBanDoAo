@@ -7,8 +7,10 @@ import {
   Body,
   Param,
   Query,
+  Request,
   UseGuards,
 } from '@nestjs/common';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { ProductsService } from './products.service';
 import {
   CreateProductDto,
@@ -23,14 +25,28 @@ import { Roles } from '../core/decorators/roles.decorator';
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  /** Danh sách thương hiệu có trong DB — đặt trước :id */
+  @Get('meta/brands')
+  async getDistinctBrands() {
+    return this.productsService.getDistinctBrands();
+  }
+
   @Get()
-  async getAllProducts(@Query() queryDto: QueryProductDto) {
-    return this.productsService.getAllProducts(queryDto);
+  @UseGuards(OptionalJwtAuthGuard)
+  async getAllProducts(
+    @Request() req: { user?: { role?: string } },
+    @Query() queryDto: QueryProductDto,
+  ) {
+    return this.productsService.getAllProducts(queryDto, req.user ?? null);
   }
 
   @Get(':id')
-  async getProductById(@Param('id') id: string) {
-    return this.productsService.getProductById(id);
+  @UseGuards(OptionalJwtAuthGuard)
+  async getProductById(
+    @Request() req: { user?: { role?: string } },
+    @Param('id') id: string,
+  ) {
+    return this.productsService.getProductById(id, req.user ?? null);
   }
 
   @Post()

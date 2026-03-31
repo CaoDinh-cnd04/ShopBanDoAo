@@ -14,7 +14,12 @@ export class VoucherRepository {
     skip: number,
     limit: number,
   ): Promise<VoucherDocument[]> {
-    return this.voucherModel.find(match).skip(skip).limit(limit).exec();
+    return this.voucherModel
+      .find(match)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .exec();
   }
 
   async count(match: any): Promise<number> {
@@ -45,5 +50,11 @@ export class VoucherRepository {
 
   async delete(id: string): Promise<VoucherDocument | null> {
     return this.voucherModel.findByIdAndDelete(id).exec();
+  }
+
+  async softDeactivate(id: string): Promise<VoucherDocument | null> {
+    return this.voucherModel
+      .findByIdAndUpdate(id, { isActive: false }, { new: true })
+      .exec();
   }
 }

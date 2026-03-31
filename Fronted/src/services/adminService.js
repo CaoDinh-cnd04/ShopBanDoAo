@@ -1,4 +1,13 @@
 import api from './api';
+import { uploadProductImages as uploadProductImagesFetch, uploadSingleImage } from './uploadService';
+
+// ==================== UPLOAD (fetch — không dùng axios cho multipart) ====================
+export const uploadImage = async (file) => {
+    const res = await uploadSingleImage(file);
+    const inner = res.data?.data;
+    if (typeof inner === 'string') return inner;
+    return inner?.url ?? inner?.path ?? inner?.filename ?? '';
+};
 
 // ==================== USER MANAGEMENT ====================
 export const adminUserService = {
@@ -7,6 +16,8 @@ export const adminUserService = {
     getUserById: (id) => api.get(`/admin/users/${id}`),
     updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
     deleteUser: (id) => api.delete(`/admin/users/${id}`),
+    /** Xóa bản ghi user khỏi DB (không hoàn tác) — DELETE /api/admin/users/permanent/:id */
+    permanentDeleteUser: (id) => api.delete(`/admin/users/permanent/${id}`),
     toggleUserStatus: (id, isActive) => api.put(`/admin/users/${id}`, { isActive }),
     getUserStats: () => api.get('/admin/users/stats'),
 };
@@ -20,6 +31,7 @@ export const adminOrderService = {
         api.put(`/admin/orders/${id}/status`, { orderStatus: statusName }),
     cancelOrder: (id, _reason) =>
         api.put(`/admin/orders/${id}/status`, { orderStatus: 'Cancelled' }),
+    deleteOrder: (id) => api.delete(`/admin/orders/${id}`),
     getOrderStats: (params) => api.get('/admin/orders/stats', { params }),
 };
 
@@ -39,24 +51,30 @@ export const adminProductService = {
     getProductById: (id) => api.get(`/products/${id}`),
     createProduct: (data) => api.post('/products', data),
     updateProduct: (id, data) => api.put(`/products/${id}`, data),
+    /** Thương hiệu đang có trên sản phẩm (distinct) */
+    getDistinctBrands: () => api.get('/products/meta/brands'),
+    /** Admin: upload nhiều ảnh — field `files`, tối đa 20 file, ≤5MB/ảnh */
+    uploadProductImages: (files) => uploadProductImagesFetch(files),
 };
 
 // ==================== CATEGORY & BRAND MANAGEMENT ====================
 export const adminCategoryService = {
+    // Categories
     createCategory: (data) => api.post('/categories', data),
     updateCategory: (id, data) => api.put(`/categories/${id}`, data),
     deleteCategory: (id) => api.delete(`/categories/${id}`),
 
-    // Sub-categories: fallback no-op (not implemented yet)
-    createSubCategory: () => Promise.resolve({ data: { data: null } }),
-    updateSubCategory: () => Promise.resolve({ data: { data: null } }),
-    deleteSubCategory: () => Promise.resolve({ data: { data: null } }),
+    // Sub-categories — backend: POST/PUT/DELETE /api/categories/sub
+    createSubCategory: (data) => api.post('/categories/sub', data),
+    updateSubCategory: (subId, data) => api.put(`/categories/sub/${subId}`, data),
+    deleteSubCategory: (subId, categoryId) =>
+        api.delete(`/categories/sub/${subId}`, { params: categoryId ? { categoryId } : {} }),
 
-    // Brands: trả về mảng rỗng (chưa có backend)
-    getAllBrands: () => Promise.resolve({ data: { data: [] } }),
-    createBrand: () => Promise.resolve({ data: { data: null } }),
-    updateBrand: () => Promise.resolve({ data: { data: null } }),
-    deleteBrand: () => Promise.resolve({ data: { data: null } }),
+    // Brands — backend: GET/POST/PUT/DELETE /api/brands
+    getAllBrands: () => api.get('/brands'),
+    createBrand: (data) => api.post('/brands', data),
+    updateBrand: (id, data) => api.put(`/brands/${id}`, data),
+    deleteBrand: (id) => api.delete(`/brands/${id}`),
 };
 
 // ==================== COURT MANAGEMENT ====================
@@ -65,8 +83,39 @@ export const adminCourtService = {
     createCourt: (data) => api.post('/courts', data),
     updateCourt: (id, data) => api.put(`/courts/${id}`, data),
     deleteCourt: (id) => api.delete(`/courts/${id}`),
-    createCourtType: () => Promise.resolve({ data: { data: null } }),
+    createCourtType: (data) => api.post('/courts/types', data),
+    updateCourtType: (id, data) => api.put(`/courts/types/${id}`, data),
+    deleteCourtType: (id) => api.delete(`/courts/types/${id}`),
     getCourtStats: () => api.get('/admin/courts/stats'),
+};
+
+// ==================== BANNER (localStorage) ====================
+const BANNER_KEY = 'siteSettings:banner';
+export const adminBannerService = {
+    getBanner: () => {
+        try {
+            const raw = localStorage.getItem(BANNER_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch { return null; }
+    },
+    saveBanner: (data) => {
+        localStorage.setItem(BANNER_KEY, JSON.stringify(data));
+        try {
+            window.dispatchEvent(new CustomEvent('site-banner-updated', { detail: data }));
+        } catch {
+            /* ignore */
+        }
+        return Promise.resolve({ success: true });
+    },
+    resetBanner: () => {
+        localStorage.removeItem(BANNER_KEY);
+        try {
+            window.dispatchEvent(new CustomEvent('site-banner-updated'));
+        } catch {
+            /* ignore */
+        }
+        return Promise.resolve({ success: true });
+    },
 };
 
 // ==================== VOUCHER MANAGEMENT ====================
@@ -78,29 +127,37 @@ const mapDiscountType = (t) => {
     return t;
 };
 
-const normalizeVoucherCreate = (data) => ({
-    code: (data.code || data.voucherCode || '').trim().toUpperCase(),
-    discountType: mapDiscountType(data.discountType),
-    discountValue: Number(data.discountValue),
-    minOrderValue:
-        data.minOrderValue !== undefined
-            ? Number(data.minOrderValue)
-            : data.minOrderAmount !== undefined
-            ? Number(data.minOrderAmount)
-            : 0,
-    ...(data.maxDiscountAmount ? { maxDiscountAmount: Number(data.maxDiscountAmount) } : {}),
-    startDate: data.startDate,
-    endDate: data.endDate,
-    usageLimit: Number(data.usageLimit ?? 999),
-});
+const normalizeVoucherCreate = (data) => {
+    const payload = {
+        code: (data.code || data.voucherCode || '').trim().toUpperCase(),
+        discountType: mapDiscountType(data.discountType),
+        discountValue: Number(data.discountValue),
+        minOrderValue:
+            data.minOrderValue !== undefined
+                ? Number(data.minOrderValue)
+                : data.minOrderAmount !== undefined
+                ? Number(data.minOrderAmount)
+                : 0,
+        ...(data.maxDiscountAmount ? { maxDiscountAmount: Number(data.maxDiscountAmount) } : {}),
+        startDate: data.startDate,
+        endDate: data.endDate,
+        usageLimit: Number(data.usageLimit ?? 999),
+    };
+    if (data.voucherName?.trim()) payload.voucherName = data.voucherName.trim();
+    if (data.description?.trim()) payload.description = data.description.trim();
+    return payload;
+};
 
 const normalizeVoucherUpdate = (data) => {
     const payload = {};
+    if (data.voucherName !== undefined) payload.voucherName = data.voucherName?.trim?.() ?? '';
+    if (data.description !== undefined) payload.description = data.description?.trim?.() ?? '';
     if (data.discountType !== undefined) payload.discountType = mapDiscountType(data.discountType);
     if (data.discountValue !== undefined) payload.discountValue = Number(data.discountValue);
     const minVal = data.minOrderValue ?? data.minOrderAmount;
     if (minVal !== undefined) payload.minOrderValue = Number(minVal);
-    if (data.maxDiscountAmount) payload.maxDiscountAmount = Number(data.maxDiscountAmount);
+    if (data.maxDiscountAmount !== undefined && data.maxDiscountAmount !== '')
+        payload.maxDiscountAmount = Number(data.maxDiscountAmount);
     if (data.startDate) payload.startDate = data.startDate;
     if (data.endDate) payload.endDate = data.endDate;
     if (data.usageLimit !== undefined) payload.usageLimit = Number(data.usageLimit);
@@ -118,10 +175,11 @@ export const adminVoucherService = {
 
 // ==================== REVIEW MANAGEMENT ====================
 export const adminReviewService = {
-    getAllReviews: (params) => api.get('/reviews', { params }),
+    /** GET /api/reviews/admin — tránh 404 với một số bản Nest/@Get() rỗng */
+    getAllReviews: (params) => api.get('/reviews/admin', { params }),
     updateReviewStatus: (id, _type, isApproved) =>
         api.put(`/reviews/${id}/visibility`, { isVisible: isApproved }),
-    deleteReview: (id, _type) => api.delete(`/reviews/admin/${id}`),
+    deleteReview: (id) => api.delete(`/reviews/admin/${id}`),
     getReviewStats: () => api.get('/admin/reviews/stats'),
 };
 
@@ -159,4 +217,6 @@ export default {
     vouchers: adminVoucherService,
     reviews: adminReviewService,
     dashboard: adminDashboardService,
+    banner: adminBannerService,
 };
+

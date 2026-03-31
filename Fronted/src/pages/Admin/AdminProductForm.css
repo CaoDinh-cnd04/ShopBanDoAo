@@ -1,0 +1,19 @@
+.admin-product-form .admin-variant-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-product-form .admin-variant-table {
+  font-size: 0.875rem;
+  min-width: 720px;
+}
+
+.admin-product-form .admin-color-input {
+  width: 44px;
+  height: 32px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.admin-form-actions {
+  padding-bottom: 2rem;
+}

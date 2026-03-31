@@ -5,6 +5,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { toggleWishlist } from '../../store/slices/wishlistSlice';
 import { addToCart } from '../../store/slices/cartSlice';
 import { toast } from 'react-toastify';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 import './ProductCard.css';
 
 const formatPrice = (price) =>
@@ -16,7 +17,8 @@ const ProductCard = ({ product }) => {
   const { items: wishlistItems } = useSelector((s) => s.wishlist);
   const isInWishlist = wishlistItems?.some((i) => i.productId === product.id || i.productId === product._id);
 
-  const mainImage = product.images?.[0]?.imageUrl || product.image || '/placeholder.jpg';
+  const rawImg = product.images?.[0]?.imageUrl || product.image;
+  const mainImage = resolveMediaUrl(rawImg) || '/placeholder.jpg';
   const price = product.variants?.[0]?.price || product.defaultPrice || product.price || 0;
   const originalPrice = product.originalPrice;
   const isOnSale = originalPrice && originalPrice > price;
@@ -103,9 +105,12 @@ const ProductCard = ({ product }) => {
 
           {/* ── Info area ── */}
           <div className="pc-body">
-            {product.brand?.brandName && (
-              <span className="pc-brand">{product.brand.brandName}</span>
-            )}
+            {(typeof product.brand === 'string' && product.brand) ||
+            product.brand?.brandName ? (
+              <span className="pc-brand">
+                {typeof product.brand === 'string' ? product.brand : product.brand.brandName}
+              </span>
+            ) : null}
             <h3 className="pc-name">{product.productName}</h3>
 
             {/* Rating */}

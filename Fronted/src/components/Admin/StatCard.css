@@ -57,6 +57,14 @@
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--admin-text-muted, #64748b);
+  min-height: 1.35em;
+  line-height: 1.35;
+}
+
+/* Giữ chiều cao dòng phụ khi không có nội dung (tránh thẻ lùi so với KPI khác) */
+.admin-kpi-sub--empty {
+  color: transparent;
+  user-select: none;
 }
 
 .admin-kpi-sub.is-up {

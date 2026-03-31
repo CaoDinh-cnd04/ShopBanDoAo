@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Delete,
   Body,
   Param,
   Query,
@@ -56,7 +57,7 @@ export class OrdersController {
   @Get('admin/orders/:id')
   @Roles('Admin')
   async getOrderByIdAdmin(@Param('id') id: string) {
-    return this.ordersService.getOrderById(id);
+    return this.ordersService.getOrderByIdForAdmin(id);
   }
 
   @Put('admin/orders/:id/status')
@@ -66,5 +67,11 @@ export class OrdersController {
     @Body() updateDto: UpdateOrderStatusDto,
   ) {
     return this.ordersService.updateOrderStatus(id, updateDto);
+  }
+
+  @Delete('admin/orders/:id')
+  @Roles('Admin')
+  async deleteOrderByAdmin(@Param('id') id: string) {
+    return this.ordersService.deleteOrderByAdmin(id);
   }
 }

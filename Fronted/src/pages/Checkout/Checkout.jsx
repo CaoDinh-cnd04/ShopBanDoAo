@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Container, Row, Col } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,12 +25,24 @@ const Checkout = () => {
   const [step, setStep] = useState(1);
   const [shippingMethod, setShippingMethod] = useState('standard');
   const [paymentMethod, setPaymentMethod] = useState('cod');
+  const [cartVoucher, setCartVoucher] = useState(null);
 
   const { register, handleSubmit, formState: { errors }, trigger } = useForm();
 
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('cartVoucher');
+      if (raw) setCartVoucher(JSON.parse(raw));
+    } catch {
+      setCartVoucher(null);
+    }
+  }, []);
+
   const safeItems = Array.isArray(items) ? items : [];
   const shipping = shippingMethod === 'express' ? 60000 : (subtotal > 500000 ? 0 : 30000);
-  const total = (subtotal || 0) + shipping;
+  const rawDisc = cartVoucher?.discountAmount != null ? Number(cartVoucher.discountAmount) : 0;
+  const voucherDiscount = Math.min(Math.max(0, rawDisc), subtotal || 0);
+  const total = Math.max(0, (subtotal || 0) - voucherDiscount + shipping);
 
   const nextStep = async () => {
     if (step === 1) {
@@ -206,6 +218,12 @@ const Checkout = () => {
               <hr className="co-divider" />
               <div className="co-rows">
                 <div className="co-row"><span>Tạm tính</span><span>{fmt(subtotal)}</span></div>
+                {voucherDiscount > 0 && (
+                  <div className="co-row" style={{ color: '#15803d' }}>
+                    <span>Giảm giá ({cartVoucher?.code})</span>
+                    <span>−{fmt(voucherDiscount)}</span>
+                  </div>
+                )}
                 <div className="co-row"><span>Vận chuyển</span><span className={shipping === 0 ? 'co-free' : ''}>{shipping === 0 ? 'Miễn phí' : fmt(shipping)}</span></div>
                 <hr className="co-divider" />
                 <div className="co-row co-total"><span>Tổng cộng</span><span className="co-total-amount">{fmt(total)}</span></div>

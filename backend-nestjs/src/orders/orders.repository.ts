@@ -18,7 +18,7 @@ export class OrderRepository {
       .find(match)
       .skip(skip)
       .limit(limit)
-      .populate('userId', 'fullName email')
+      .populate('userId', 'fullName email phone')
       .populate('items.productId', 'productName defaultPrice')
       .exec();
   }
@@ -30,7 +30,7 @@ export class OrderRepository {
   async findById(id: string): Promise<OrderDocument | null> {
     return this.orderModel
       .findById(id)
-      .populate('userId', 'fullName email')
+      .populate('userId', 'fullName email phone')
       .populate('items.productId', 'productName defaultPrice')
       .exec();
   }

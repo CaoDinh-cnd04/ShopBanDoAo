@@ -10,6 +10,10 @@ import {
   QueryVoucherDto,
 } from './dto/voucher.dto';
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 @Injectable()
 export class VouchersService {
   constructor(private voucherRepository: VoucherRepository) {}
@@ -22,6 +26,9 @@ export class VouchersService {
     // but manually assigning to be safe
     const payload = {
       ...createDto,
+      code: createDto.code.trim().toUpperCase(),
+      voucherName: createDto.voucherName?.trim() ?? '',
+      description: createDto.description?.trim() ?? '',
       startDate: new Date(createDto.startDate),
       endDate: new Date(createDto.endDate),
     };
@@ -30,14 +37,30 @@ export class VouchersService {
   }
 
   async getAllVouchers(query: QueryVoucherDto) {
-    const page = parseInt(query.page || '1');
-    const limit = parseInt(query.limit || '20');
+    const page = Math.max(1, parseInt(query.page || '1', 10) || 1);
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(query.limit || '20', 10) || 20),
+    );
     const skip = (page - 1) * limit;
 
-    const match: any = {};
-    if (query.search) match.code = new RegExp(query.search, 'i');
-    if (query.isActive !== undefined)
+    const match: Record<string, unknown> = {};
+    const q = query.search?.trim();
+    if (q) {
+      const rx = new RegExp(escapeRegex(q), 'i');
+      match.$or = [{ code: rx }, { voucherName: rx }, { description: rx }];
+    }
+    if (query.isActive !== undefined && query.isActive !== '') {
       match.isActive = query.isActive === 'true';
+    }
+    const now = new Date();
+    if (query.isExpired !== undefined && query.isExpired !== '') {
+      if (query.isExpired === 'true') {
+        match.endDate = { $lt: now };
+      } else {
+        match.endDate = { $gte: now };
+      }
+    }
 
     const [vouchers, total] = await Promise.all([
       this.voucherRepository.findAll(match, skip, limit),
@@ -48,7 +71,7 @@ export class VouchersService {
       vouchers,
       pagination: {
         currentPage: page,
-        totalPages: Math.ceil(total / limit),
+        totalPages: total === 0 ? 0 : Math.ceil(total / limit),
         totalItems: total,
         limit,
       },
@@ -59,6 +82,10 @@ export class VouchersService {
     const voucher = await this.voucherRepository.findByCode(code);
     if (!voucher)
       throw new NotFoundException('Mã giảm giá không hợp lệ hoặc đã hết hạn');
+
+    if (!voucher.isActive) {
+      throw new BadRequestException('Mã giảm giá đã bị vô hiệu hóa');
+    }
 
     const now = new Date();
     if (now < voucher.startDate || now > voucher.endDate) {
@@ -92,8 +119,9 @@ export class VouchersService {
 
     return {
       message: 'Áp dụng mã thành công',
-      discountAmount,
+      discountAmount: Math.round(discountAmount),
       voucherCode: voucher.code,
+      voucherName: voucher.voucherName || '',
     };
   }
 
@@ -108,9 +136,9 @@ export class VouchersService {
   }
 
   async deleteVoucher(id: string) {
-    const voucher = await this.voucherRepository.delete(id);
+    const voucher = await this.voucherRepository.softDeactivate(id);
     if (!voucher) throw new NotFoundException('Không tìm thấy mã giảm giá');
-    return { message: 'Xóa mã giảm giá thành công' };
+    return { message: 'Đã vô hiệu hóa mã giảm giá' };
   }
 
   async getPublicVouchers() {

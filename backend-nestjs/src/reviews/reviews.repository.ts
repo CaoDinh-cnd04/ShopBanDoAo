@@ -16,9 +16,10 @@ export class ReviewRepository {
   ): Promise<ReviewDocument[]> {
     return this.reviewModel
       .find(match)
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate('userId', 'fullName')
+      .populate('userId', 'fullName email')
       .populate('productId', 'productName')
       .exec();
   }

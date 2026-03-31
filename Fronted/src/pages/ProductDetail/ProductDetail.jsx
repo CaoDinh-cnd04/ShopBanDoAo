@@ -1,11 +1,25 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Container, Row, Col } from 'react-bootstrap';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  FiShoppingCart, FiHeart, FiStar, FiZoomIn,
-  FiTruck, FiShield, FiRefreshCw, FiMinus, FiPlus
+  FiShoppingCart,
+  FiHeart,
+  FiStar,
+  FiZoomIn,
+  FiTruck,
+  FiShield,
+  FiRefreshCw,
+  FiMinus,
+  FiPlus,
+  FiChevronRight,
+  FiChevronLeft,
+  FiPackage,
+  FiLayers,
+  FiMapPin,
+  FiActivity,
+  FiX,
 } from 'react-icons/fi';
 import { fetchProductById } from '../../store/slices/productSlice';
 import { addToCart } from '../../store/slices/cartSlice';
@@ -15,15 +29,46 @@ import ReviewForm from '../../components/Reviews/ReviewForm';
 import ReviewList from '../../components/Reviews/ReviewList';
 import Loading from '../../components/Loading/Loading';
 import { toast } from 'react-toastify';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
+import { hexFromColorName } from '../../utils/productVariantUtils';
 import './ProductDetail.css';
 
-const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
+const fmt = (n) =>
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
 
 const PERKS = [
   { icon: FiTruck, label: 'Miễn phí vận chuyển\ncho đơn trên 500K' },
   { icon: FiShield, label: 'Bảo hành chính hãng\n12 tháng' },
   { icon: FiRefreshCw, label: 'Đổi trả miễn phí\ntrong 30 ngày' },
 ];
+
+function normColor(s) {
+  return String(s || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function getVariantSize(v) {
+  if (!v) return '';
+  const a = v.attributes || {};
+  return String(
+    v.size ?? a.size ?? a.Size ?? a.shoeSize ?? a.spec ?? a.type ?? '',
+  ).trim();
+}
+
+function getVariantColor(v) {
+  if (!v) return '';
+  const a = v.attributes || {};
+  return String(v.color ?? a.color ?? a.Color ?? '').trim();
+}
+
+function swatchHex(v) {
+  const c = getVariantColor(v);
+  const derived = hexFromColorName(c);
+  return derived ?? v?.colorHex ?? '#94a3b8';
+}
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -35,177 +80,443 @@ const ProductDetail = () => {
   const { items: wishlistItems } = useSelector((s) => s.wishlist);
   const { productReviews } = useSelector((s) => s.reviews);
 
-  const [selectedVariant, setSelectedVariant] = useState(null);
+  const [selSize, setSelSize] = useState('');
+  const [selColor, setSelColor] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [activeImg, setActiveImg] = useState(0);
   const [activeTab, setActiveTab] = useState('desc');
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   useEffect(() => {
     dispatch(fetchProductById(id));
     dispatch(fetchProductReviews(id));
     setActiveImg(0);
-    setSelectedVariant(null);
+    setQuantity(1);
+    setSelSize('');
+    setSelColor('');
   }, [id, dispatch]);
 
-  useEffect(() => {
-    if (product?.variants?.length > 0 && !selectedVariant) {
-      setSelectedVariant(product.variants[0]);
-    }
-  }, [product]);
-
-  if (isLoading) return <Loading />;
-  if (!product) return (
-    <div className="pd-not-found">
-      <p>Sản phẩm không tồn tại</p>
-      <button onClick={() => navigate('/products')} className="pd-back-btn">← Quay lại</button>
-    </div>
+  const variants = useMemo(
+    () => (Array.isArray(product?.variants) ? product.variants : []),
+    [product],
   );
 
-  const images = product.images?.length > 0
-    ? product.images.map((i) => i.imageUrl)
-    : ['/placeholder.jpg'];
+  const hasSize = useMemo(() => variants.some((v) => getVariantSize(v)), [variants]);
+  const hasColor = useMemo(() => variants.some((v) => getVariantColor(v)), [variants]);
 
-  const pid = product.id || product._id;
-  const isInWishlist = wishlistItems?.some((i) => i.productId === pid);
-  const price = selectedVariant?.price || product.variants?.[0]?.price || product.price || 0;
-  const stock = selectedVariant?.stockQuantity ?? 0;
-  const isOutOfStock = !selectedVariant || stock === 0;
+  const sizes = useMemo(() => {
+    const s = new Set(variants.map((v) => getVariantSize(v)).filter(Boolean));
+    return [...s];
+  }, [variants]);
+
+  const colorsForSelection = useMemo(() => {
+    let list = variants;
+    if (hasSize && selSize) list = list.filter((v) => getVariantSize(v) === selSize);
+    const c = new Set(list.map((v) => getVariantColor(v)).filter(Boolean));
+    return [...c];
+  }, [variants, hasSize, selSize]);
+
+  useEffect(() => {
+    if (!product) return;
+    const vars = product.variants || [];
+    if (!vars.length) {
+      setSelSize('');
+      setSelColor('');
+      return;
+    }
+    const v0 = vars[0];
+    if (vars.some((x) => getVariantSize(x))) setSelSize(getVariantSize(v0));
+    if (vars.some((x) => getVariantColor(x))) setSelColor(getVariantColor(v0));
+  }, [product, id]);
+
+  useEffect(() => {
+    if (!hasColor || !variants.length) return;
+    const ok = variants.some(
+      (v) =>
+        (!selSize || getVariantSize(v) === selSize) && getVariantColor(v) === selColor,
+    );
+    if (!ok && colorsForSelection.length) {
+      setSelColor(colorsForSelection[0]);
+    }
+  }, [selSize, variants, hasColor, selColor, colorsForSelection]);
+
+  const selectedVariant = useMemo(() => {
+    if (!variants.length) return null;
+    return (
+      variants.find(
+        (v) =>
+          (!hasSize || getVariantSize(v) === selSize) &&
+          (!hasColor || getVariantColor(v) === selColor),
+      ) || variants[0]
+    );
+  }, [variants, hasSize, hasColor, selSize, selColor]);
+
+  useEffect(() => {
+    setQuantity(1);
+  }, [selectedVariant?._id]);
+
+  const rawImageRows = useMemo(() => {
+    const raw = Array.isArray(product?.images) ? product.images : [];
+    return raw.map((img) => {
+      const url = resolveMediaUrl(typeof img === 'string' ? img : img?.imageUrl);
+      const color =
+        typeof img === 'object' && img?.color != null ? String(img.color).trim() : '';
+      return { url, color };
+    }).filter((r) => r.url);
+  }, [product?.images]);
+
+  const galleryImages = useMemo(() => {
+    if (!rawImageRows.length) return [resolveMediaUrl('/placeholder.jpg')];
+    const anyTagged = rawImageRows.some((r) => r.color);
+    if (!anyTagged || !hasColor || !selColor) {
+      return rawImageRows.map((r) => r.url);
+    }
+    const nc = normColor(selColor);
+    const filtered = rawImageRows.filter(
+      (r) => !r.color || normColor(r.color) === nc,
+    );
+    return filtered.length ? filtered.map((r) => r.url) : rawImageRows.map((r) => r.url);
+  }, [rawImageRows, hasColor, selColor]);
+
+  useEffect(() => {
+    setActiveImg(0);
+  }, [selColor, galleryImages.length]);
+
+  const goPrev = useCallback(() => {
+    setActiveImg((i) => Math.max(0, i - 1));
+  }, []);
+
+  const goNext = useCallback(() => {
+    setActiveImg((i) => Math.min(galleryImages.length - 1, i + 1));
+  }, [galleryImages.length]);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') setLightboxOpen(false);
+      if (lightboxOpen) return;
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        goPrev();
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        goNext();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [goPrev, goNext, lightboxOpen]);
+
+  useEffect(() => {
+    if (lightboxOpen) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [lightboxOpen]);
+
+  if (isLoading) return <Loading />;
+  if (!product) {
+    return (
+      <div className="pd-not-found">
+        <p>Sản phẩm không tồn tại</p>
+        <button type="button" onClick={() => navigate('/products')} className="pd-back-btn">
+          ← Quay lại
+        </button>
+      </div>
+    );
+  }
+
+  const pid = product._id || product.id;
+  const cat = product.categoryId;
+  const categoryName =
+    typeof cat === 'object' && cat?.categoryName ? cat.categoryName : '';
+  const categorySlug =
+    typeof cat === 'object' && cat?.categorySlug ? cat.categorySlug : '';
+
+  const isInWishlist = wishlistItems?.some((i) => {
+    const p = i.productId && typeof i.productId === 'object' ? i.productId._id : i.productId;
+    return p?.toString() === String(pid);
+  });
+
+  const priceNoVariant = Number(product.defaultPrice) || 0;
+  const displayPrice = variants.length
+    ? Number(selectedVariant?.price) || priceNoVariant
+    : priceNoVariant;
+  const displayOriginal = Number(product.originalPrice) || 0;
+
+  const stock = variants.length
+    ? Number(selectedVariant?.stockQuantity) || 0
+    : Number(product.stockQuantity) || 0;
+
+  const isOutOfStock = stock <= 0;
   const rating = product.rating || product.averageRating;
 
-  const availableSizes = [...new Set((product.variants || []).filter(v => v.size).map(v => v.size))];
-  const availableColors = [...new Set((product.variants || []).filter(v => v.color).map(v => v.color))];
+  const longDesc =
+    product.longDescription || product.description || product.shortDescription || '';
+  const variantIdForCart = selectedVariant?._id?.toString();
 
   const handleAddToCart = () => {
-    if (!isAuthenticated) { toast.info('Vui lòng đăng nhập'); navigate('/login'); return; }
-    const pid = product?._id || product?.id;
-    if (!pid) { toast.error('Không tìm thấy sản phẩm'); return; }
-    dispatch(addToCart({ productId: pid, quantity }));
-    toast.success('Đã thêm vào giỏ hàng 🛒');
+    if (!isAuthenticated) {
+      toast.info('Vui lòng đăng nhập');
+      navigate('/login');
+      return;
+    }
+    if (!pid) {
+      toast.error('Không tìm thấy sản phẩm');
+      return;
+    }
+    if (variants.length && !variantIdForCart) {
+      toast.error('Vui lòng chọn size / màu');
+      return;
+    }
+    dispatch(
+      addToCart({
+        productId: pid.toString(),
+        quantity,
+        variantId: variants.length ? variantIdForCart : undefined,
+      }),
+    );
+    toast.success('Đã thêm vào giỏ hàng');
   };
 
-  const handleBuyNow = () => { handleAddToCart(); navigate('/cart'); };
+  const handleBuyNow = () => {
+    if (!isAuthenticated) {
+      toast.info('Vui lòng đăng nhập');
+      navigate('/login');
+      return;
+    }
+    if (!pid) {
+      toast.error('Không tìm thấy sản phẩm');
+      return;
+    }
+    if (variants.length && !variantIdForCart) {
+      toast.error('Vui lòng chọn size / màu');
+      return;
+    }
+    dispatch(
+      addToCart({
+        productId: pid.toString(),
+        quantity,
+        variantId: variants.length ? variantIdForCart : undefined,
+      }),
+    );
+    toast.success('Đã thêm vào giỏ hàng');
+    navigate('/cart');
+  };
 
   const handleWishlist = () => {
-    if (!isAuthenticated) { toast.info('Vui lòng đăng nhập'); navigate('/login'); return; }
-    dispatch(toggleWishlist(pid));
-    toast.success(isInWishlist ? 'Đã xoá khỏi yêu thích' : 'Đã thêm vào yêu thích ❤️');
+    if (!isAuthenticated) {
+      toast.info('Vui lòng đăng nhập');
+      navigate('/login');
+      return;
+    }
+    dispatch(toggleWishlist(pid.toString()));
+    toast.success(isInWishlist ? 'Đã xoá khỏi yêu thích' : 'Đã thêm vào yêu thích');
   };
+
+  const mainSrc = galleryImages[activeImg] || galleryImages[0];
 
   return (
     <div className="pd-page">
-      <Container>
-        <Row className="g-5">
-          {/* ── LEFT: Gallery ── */}
-          <Col lg={6}>
+      <Container fluid="lg" className="pd-container">
+        <nav className="pd-breadcrumb" aria-label="Breadcrumb">
+          <Link to="/">Trang chủ</Link>
+          <FiChevronRight size={14} aria-hidden />
+          <Link to="/products">Sản phẩm</Link>
+          {categoryName && (
+            <>
+              <FiChevronRight size={14} aria-hidden />
+              <Link to={categorySlug ? `/products?category=${categorySlug}` : '/products'}>
+                {categoryName}
+              </Link>
+            </>
+          )}
+          <FiChevronRight size={14} aria-hidden />
+          <span className="pd-bc-current">{product.productName}</span>
+        </nav>
+
+        <Row className="pd-main-row g-4 g-xl-5">
+          <Col lg={7} xl={7}>
             <motion.div
-              initial={{ opacity: 0, x: -24 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.45 }}
+              className="pd-gallery"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
             >
-              {/* Main image */}
-              <div className="pd-main-img-wrap">
-                <motion.img
-                  key={activeImg}
-                  src={images[activeImg]}
-                  alt={product.productName}
-                  className="pd-main-img"
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3 }}
-                  onError={(e) => { e.currentTarget.src = '/placeholder.jpg'; }}
-                />
-                <button className="pd-zoom-btn" aria-label="Zoom"><FiZoomIn size={18} /></button>
-                {isOutOfStock && <div className="pd-oos-overlay">Hết hàng</div>}
+              <div className="pd-gallery-thumbs" role="tablist" aria-label="Ảnh sản phẩm">
+                {galleryImages.map((src, i) => (
+                  <button
+                    key={`${i}-${src.slice(0, 48)}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={i === activeImg}
+                    className={`pd-gallery-thumb ${i === activeImg ? 'is-active' : ''}`}
+                    onClick={() => setActiveImg(i)}
+                  >
+                    <img src={src} alt="" loading="lazy" />
+                  </button>
+                ))}
               </div>
 
-              {/* Thumbnails */}
-              {images.length > 1 && (
-                <div className="pd-thumbs">
-                  {images.map((src, i) => (
-                    <button
-                      key={i}
-                      className={`pd-thumb ${i === activeImg ? 'active' : ''}`}
-                      onClick={() => setActiveImg(i)}
-                    >
-                      <img src={src} alt="" onError={(e) => { e.currentTarget.src = '/placeholder.jpg'; }} />
-                    </button>
-                  ))}
+              <div className="pd-gallery-stage-wrap">
+                <div className="pd-gallery-stage">
+                  <AnimatePresence mode="wait">
+                    <motion.img
+                      key={`${mainSrc}-${activeImg}`}
+                      src={mainSrc}
+                      alt={product.productName}
+                      className="pd-gallery-main-img"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      onError={(e) => {
+                        e.currentTarget.src = '/placeholder.jpg';
+                      }}
+                    />
+                  </AnimatePresence>
+
+                  {galleryImages.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        className="pd-gallery-nav pd-gallery-nav--prev"
+                        aria-label="Ảnh trước"
+                        onClick={goPrev}
+                        disabled={activeImg <= 0}
+                      >
+                        <FiChevronLeft size={28} />
+                      </button>
+                      <button
+                        type="button"
+                        className="pd-gallery-nav pd-gallery-nav--next"
+                        aria-label="Ảnh sau"
+                        onClick={goNext}
+                        disabled={activeImg >= galleryImages.length - 1}
+                      >
+                        <FiChevronRight size={28} />
+                      </button>
+                    </>
+                  )}
+
+                  <button
+                    type="button"
+                    className="pd-gallery-zoom"
+                    aria-label="Phóng to ảnh"
+                    onClick={() => setLightboxOpen(true)}
+                  >
+                    <FiZoomIn size={20} />
+                  </button>
+
+                  {isOutOfStock && <div className="pd-oos-overlay">Hết hàng</div>}
                 </div>
-              )}
+                <p className="pd-gallery-hint d-none d-md-block">
+                  Dùng phím ← → để xem ảnh
+                </p>
+              </div>
             </motion.div>
           </Col>
 
-          {/* ── RIGHT: Detail ── */}
-          <Col lg={6}>
+          <Col lg={5} xl={5}>
             <motion.div
-              initial={{ opacity: 0, x: 24 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.45, delay: 0.1 }}
+              className="pd-buy"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.05 }}
             >
-              {/* Brand & Name */}
-              {product.brand?.brandName && (
-                <span className="pd-brand">{product.brand.brandName}</span>
+              {product.brand && (
+                <span className="pd-brand">
+                  {typeof product.brand === 'string' ? product.brand : product.brand?.brandName}
+                </span>
               )}
               <h1 className="pd-name">{product.productName}</h1>
 
-              {/* Rating */}
-              {rating && (
+              <div className="pd-meta-row">
+                {product.sku && (
+                  <span className="pd-meta">
+                    <FiPackage size={13} aria-hidden /> SKU: {product.sku}
+                  </span>
+                )}
+                {categoryName && (
+                  <span className="pd-meta">
+                    <FiLayers size={13} aria-hidden /> {categoryName}
+                  </span>
+                )}
+              </div>
+
+              {rating != null && Number(rating) > 0 && (
                 <div className="pd-rating">
-                  {[1,2,3,4,5].map(s => (
-                    <FiStar key={s} size={14}
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <FiStar
+                      key={s}
+                      size={14}
                       fill={s <= Math.round(rating) ? '#F59E0B' : 'none'}
                       color={s <= Math.round(rating) ? '#F59E0B' : '#CBD5E1'}
                     />
                   ))}
-                  <span className="pd-rating-text">{rating.toFixed(1)}</span>
-                  {product.reviewCount > 0 && <span className="pd-review-count">({product.reviewCount} đánh giá)</span>}
+                  <span className="pd-rating-text">{Number(rating).toFixed(1)}</span>
+                  {product.reviewCount > 0 && (
+                    <span className="pd-review-count">({product.reviewCount} đánh giá)</span>
+                  )}
                 </div>
               )}
 
-              {/* Price */}
               <div className="pd-price-block">
-                <span className="pd-price">{fmt(price)}</span>
-                {selectedVariant?.stockQuantity > 0 && (
-                  <span className="pd-in-stock">✓ Còn hàng ({stock})</span>
-                )}
+                <div className="pd-price-row">
+                  <span className="pd-price">{fmt(displayPrice)}</span>
+                  {displayOriginal > displayPrice && (
+                    <span className="pd-price-old">{fmt(displayOriginal)}</span>
+                  )}
+                </div>
+                {!isOutOfStock && <span className="pd-in-stock">Còn {stock} sản phẩm</span>}
               </div>
 
-              {/* Size picker */}
-              {availableSizes.length > 0 && (
-                <div className="pd-picker-group">
-                  <p className="pd-picker-label">Size</p>
-                  <div className="pd-picker-options">
-                    {availableSizes.map((size) => {
-                      const v = product.variants.find(v => v.size === size);
+              {(product.material || product.origin || product.weight != null) && (
+                <div className="pd-specs-mini">
+                  {product.material && (
+                    <span>
+                      <FiActivity size={13} aria-hidden /> Chất liệu: {product.material}
+                    </span>
+                  )}
+                  {product.origin && (
+                    <span>
+                      <FiMapPin size={13} aria-hidden /> Xuất xứ: {product.origin}
+                    </span>
+                  )}
+                  {product.weight != null && product.weight !== '' && (
+                    <span>
+                      <FiPackage size={13} aria-hidden /> Trọng lượng: {product.weight} kg
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {hasSize && (
+                <div className="pd-block">
+                  <div className="pd-block-head">
+                    <span className="pd-block-title">Chọn size</span>
+                    {selSize && (
+                      <span className="pd-block-selected">
+                        Đã chọn: <strong>{selSize}</strong>
+                      </span>
+                    )}
+                  </div>
+                  <div className="pd-size-grid" role="listbox" aria-label="Size">
+                    {sizes.map((size) => {
+                      const v = variants.find((x) => getVariantSize(x) === size);
+                      const disabled = !v || (v.stockQuantity ?? 0) <= 0;
                       return (
                         <button
                           key={size}
-                          className={`pd-size-btn ${selectedVariant?.size === size ? 'active' : ''}`}
-                          onClick={() => setSelectedVariant(v)}
-                          disabled={v?.stockQuantity === 0}
-                        >{size}</button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Color picker */}
-              {availableColors.length > 0 && (
-                <div className="pd-picker-group">
-                  <p className="pd-picker-label">Màu sắc</p>
-                  <div className="pd-picker-options">
-                    {availableColors.map((color) => {
-                      const v = product.variants.find(v => v.color === color);
-                      return (
-                        <button
-                          key={color}
-                          className={`pd-color-btn ${selectedVariant?.color === color ? 'active' : ''}`}
-                          onClick={() => setSelectedVariant(v)}
-                          disabled={v?.stockQuantity === 0}
-                          title={color}
+                          type="button"
+                          role="option"
+                          aria-selected={selSize === size}
+                          className={`pd-size-pill ${selSize === size ? 'is-active' : ''}`}
+                          onClick={() => setSelSize(size)}
+                          disabled={disabled}
                         >
-                          <span>{color}</span>
+                          {size}
                         </button>
                       );
                     })}
@@ -213,57 +524,106 @@ const ProductDetail = () => {
                 </div>
               )}
 
-              {/* Quantity */}
-              <div className="pd-picker-group">
-                <p className="pd-picker-label">Số lượng</p>
-                <div className="pd-qty-row">
-                  <div className="pd-qty-ctrl">
-                    <button className="pd-qty-btn" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
-                      <FiMinus size={14} />
-                    </button>
-                    <span className="pd-qty-num">{quantity}</span>
-                    <button className="pd-qty-btn" onClick={() => setQuantity(Math.min(stock || 1, quantity + 1))}>
-                      <FiPlus size={14} />
-                    </button>
+              {hasColor && (
+                <div className="pd-block">
+                  <div className="pd-block-head">
+                    <span className="pd-block-title">Màu sắc</span>
+                    {selColor && (
+                      <span className="pd-block-selected">
+                        {selColor}
+                      </span>
+                    )}
                   </div>
-                  {stock > 0 && <span className="pd-stock-hint">Còn {stock} sản phẩm</span>}
+                  <div className="pd-color-swatches" role="listbox" aria-label="Màu">
+                    {colorsForSelection.map((color) => {
+                      const v = variants.find(
+                        (x) =>
+                          getVariantColor(x) === color &&
+                          (!hasSize || !selSize || getVariantSize(x) === selSize),
+                      );
+                      const disabled = !v || (v.stockQuantity ?? 0) <= 0;
+                      const active = selColor === color;
+                      const hx = v ? swatchHex(v) : hexFromColorName(color) || '#94a3b8';
+                      return (
+                        <button
+                          key={color}
+                          type="button"
+                          role="option"
+                          title={color}
+                          aria-label={color}
+                          aria-selected={active}
+                          className={`pd-swatch ${active ? 'is-active' : ''} ${disabled ? 'is-disabled' : ''}`}
+                          onClick={() => !disabled && setSelColor(color)}
+                          disabled={disabled}
+                        >
+                          <span className="pd-swatch-ring">
+                            <span
+                              className="pd-swatch-fill"
+                              style={{ background: hx }}
+                            />
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="pd-block">
+                <span className="pd-block-title">Số lượng</span>
+                <div className="pd-qty">
+                  <button
+                    type="button"
+                    className="pd-qty-btn"
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    aria-label="Giảm"
+                  >
+                    <FiMinus size={16} />
+                  </button>
+                  <span className="pd-qty-val">{quantity}</span>
+                  <button
+                    type="button"
+                    className="pd-qty-btn"
+                    onClick={() => setQuantity((q) => Math.min(stock || 1, q + 1))}
+                    disabled={isOutOfStock}
+                    aria-label="Tăng"
+                  >
+                    <FiPlus size={16} />
+                  </button>
                 </div>
               </div>
 
-              {/* Action buttons */}
               <div className="pd-actions">
-                <motion.button
-                  className="pd-btn-cart"
+                <button
+                  type="button"
+                  className="pd-btn pd-btn--outline"
                   onClick={handleAddToCart}
                   disabled={isOutOfStock}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
                 >
-                  <FiShoppingCart size={18} /> Thêm vào giỏ
-                </motion.button>
-                <motion.button
-                  className="pd-btn-buy"
+                  <FiShoppingCart size={20} /> Thêm vào giỏ
+                </button>
+                <button
+                  type="button"
+                  className="pd-btn pd-btn--primary"
                   onClick={handleBuyNow}
                   disabled={isOutOfStock}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
                 >
                   Mua ngay
-                </motion.button>
-                <motion.button
-                  className={`pd-btn-wish ${isInWishlist ? 'wished' : ''}`}
+                </button>
+                <button
+                  type="button"
+                  className={`pd-btn pd-btn--icon ${isInWishlist ? 'is-wished' : ''}`}
                   onClick={handleWishlist}
-                  whileTap={{ scale: 0.9 }}
+                  aria-label="Yêu thích"
                 >
-                  <FiHeart size={18} fill={isInWishlist ? 'currentColor' : 'none'} />
-                </motion.button>
+                  <FiHeart size={22} fill={isInWishlist ? 'currentColor' : 'none'} />
+                </button>
               </div>
 
-              {/* Perks */}
               <div className="pd-perks">
                 {PERKS.map(({ icon: Icon, label }) => (
                   <div key={label} className="pd-perk">
-                    <Icon size={18} />
+                    <Icon size={20} aria-hidden />
                     <span>{label}</span>
                   </div>
                 ))}
@@ -272,16 +632,18 @@ const ProductDetail = () => {
           </Col>
         </Row>
 
-        {/* ── TABS: Description + Reviews ── */}
         <div className="pd-tabs-section">
           <div className="pd-tab-nav">
             {['desc', 'reviews'].map((tab) => (
               <button
                 key={tab}
-                className={`pd-tab-btn ${activeTab === tab ? 'active' : ''}`}
+                type="button"
+                className={`pd-tab-btn ${activeTab === tab ? 'is-active' : ''}`}
                 onClick={() => setActiveTab(tab)}
               >
-                {tab === 'desc' ? 'Mô tả sản phẩm' : `Đánh giá${productReviews?.length ? ` (${productReviews.length})` : ''}`}
+                {tab === 'desc'
+                  ? 'Mô tả chi tiết'
+                  : `Đánh giá${productReviews?.length ? ` (${productReviews.length})` : ''}`}
               </button>
             ))}
           </div>
@@ -289,18 +651,20 @@ const ProductDetail = () => {
           <div className="pd-tab-content">
             {activeTab === 'desc' && (
               <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 className="pd-description"
               >
-                {product.description || 'Chưa có mô tả cho sản phẩm này.'}
+                {longDesc ? (
+                  <div className="pd-desc-html">{longDesc}</div>
+                ) : (
+                  <p className="pd-desc-empty">Chưa có mô tả chi tiết cho sản phẩm này.</p>
+                )}
               </motion.div>
             )}
             {activeTab === 'reviews' && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <ReviewForm
-                  productId={pid}
-                  onSuccess={() => dispatch(fetchProductReviews(id))}
-                />
+                <ReviewForm productId={pid} onSuccess={() => dispatch(fetchProductReviews(id))} />
                 <div className="pd-reviews-list">
                   <ReviewList reviews={productReviews} />
                 </div>
@@ -309,6 +673,31 @@ const ProductDetail = () => {
           </div>
         </div>
       </Container>
+
+      {lightboxOpen && (
+        <div
+          className="pd-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Ảnh phóng to"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <button
+            type="button"
+            className="pd-lightbox-close"
+            onClick={() => setLightboxOpen(false)}
+            aria-label="Đóng"
+          >
+            <FiX size={28} />
+          </button>
+          <img
+            src={mainSrc}
+            alt=""
+            className="pd-lightbox-img"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 };

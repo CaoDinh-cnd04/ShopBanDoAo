@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight } from 'react-icons/fi';
-import { login } from '../../store/slices/authSlice';
+import { login, isAdminUser } from '../../store/slices/authSlice';
 import { toast } from 'react-toastify';
 import { isGoogleAuthConfigured } from '../../config/googleAuth';
 import GoogleLoginButton from '../../components/Auth/GoogleLoginButton';
@@ -34,16 +34,16 @@ const Login = () => {
 
   const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(schema) });
 
-  const redirect = (role) => {
+  const redirectAfterLogin = (user) => {
     const back = safeReturn(searchParams.get('returnUrl'));
-    navigate(back || (role === 'Admin' ? '/admin' : '/'), { replace: true });
+    navigate(back || (isAdminUser(user) ? '/admin' : '/'), { replace: true });
   };
 
   const onSubmit = async (data) => {
     const res = await dispatch(login(data));
     if (login.fulfilled.match(res)) {
       toast.success('Đăng nhập thành công! 🎉');
-      redirect(res.payload?.user?.role);
+      redirectAfterLogin(res.payload?.user);
     } else {
       toast.error(res.payload || 'Đăng nhập thất bại');
     }
@@ -122,7 +122,7 @@ const Login = () => {
               <>
                 <div className="auth-divider"><span>hoặc</span></div>
                 <GoogleLoginButton
-                  onSuccess={(res) => redirect(res.payload?.user?.role)}
+                  onSuccess={(res) => redirectAfterLogin(res.payload?.user)}
                   disabled={isLoading}
                 />
               </>

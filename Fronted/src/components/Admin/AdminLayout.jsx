@@ -14,7 +14,8 @@ import {
   FiX,
   FiLayers,
   FiMapPin,
-  FiTag
+  FiTag,
+  FiImage
 } from 'react-icons/fi';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
@@ -50,7 +51,8 @@ const navGroups = [
     title: 'Vận hành',
     items: [
       { to: '/admin/bookings', end: false, icon: FiCalendar, label: 'Đặt sân' },
-      { to: '/admin/courts', end: false, icon: FiMapPin, label: 'Sân' }
+      { to: '/admin/courts', end: false, icon: FiMapPin, label: 'Sân' },
+      { to: '/admin/banner', end: false, icon: FiImage, label: 'Banner trang chủ' }
     ]
   },
   {

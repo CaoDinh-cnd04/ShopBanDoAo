@@ -1,4 +1,4 @@
-﻿/* ================================================================
+/* ================================================================
    CART PAGE
    ================================================================ */
 .cart-page { padding: 2.5rem 0 4rem; min-height: 80vh; }
@@ -79,6 +79,12 @@
   text-overflow: ellipsis;
 }
 .cart-item-name:hover { color: #2563EB; }
+
+.cart-item-variant {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
 
 .cart-item-variant {
   display: flex;
@@ -187,6 +193,17 @@
   white-space: nowrap;
 }
 .voucher-apply:hover { opacity: 0.9; }
+.voucher-apply:disabled { opacity: 0.6; cursor: not-allowed; }
+.voucher-applied { padding: 0 2px; }
+.voucher-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.voucher-remove:hover { color: var(--text-primary); }
 
 /* Summary rows */
 .summary-rows { display: flex; flex-direction: column; gap: 10px; }

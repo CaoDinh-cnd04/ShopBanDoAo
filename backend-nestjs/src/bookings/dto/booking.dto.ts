@@ -30,4 +30,9 @@ export class QueryBookingDto {
   @IsOptional() @IsString() paymentStatus?: string;
   @IsOptional() @IsMongoId() courtId?: string;
   @IsOptional() @IsMongoId() userId?: string;
+  /** Alias frontend AdminBookings */
+  @IsOptional() @IsString() status?: string;
+  @IsOptional() @IsString() search?: string;
+  @IsOptional() @IsString() startDate?: string;
+  @IsOptional() @IsString() endDate?: string;
 }
