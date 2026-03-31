@@ -104,30 +104,7 @@ export const register = createAsyncThunk(
   }
 );
 
-/**
- * Google OAuth2: gửi access_token → backend xác thực qua Google UserInfo API.
- * Trả về:
- *   { isNewUser: false, token, user }  – đăng nhập bình thường
- *   { isNewUser: true, email, fullName } – chuyển sang trang đăng ký bổ sung
- */
-export const googleLogin = createAsyncThunk(
-  'auth/googleLogin',
-  async (accessToken, { rejectWithValue }) => {
-    try {
-      const response = await api.post('/auth/google-login', { accessToken });
-      // Backend luôn trả { token, user } — tự tạo user nếu chưa tồn tại
-      const { token, user } = response.data.data;
-      const normalized = normalizeUser(user);
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(normalized));
-      return { token, user: normalized };
-    } catch (error) {
-      return rejectWithValue(messageFromApiError(error, 'Đăng nhập Google thất bại'));
-    }
-  }
-);
-
-/** JWT credential từ nút GoogleLogin (khuyến nghị — không popup OAuth) */
+/** JWT credential từ nút GoogleLogin (Sign In With Google) — POST /api/auth/google-id-token */
 export const googleIdTokenLogin = createAsyncThunk(
   'auth/googleIdTokenLogin',
   async (idToken, { rejectWithValue }) => {
@@ -271,17 +248,6 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(register.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
-
-      // Google Login — backend luôn tạo/đăng nhập user, trả { token, user }
-      .addCase(googleLogin.pending, (state) => { state.isLoading = true; state.error = null; })
-      .addCase(googleLogin.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.isAuthenticated = true;
-        state.user = action.payload.user;
-        state.token = action.payload.token;
-        state.error = null;
-      })
-      .addCase(googleLogin.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
 
       .addCase(googleIdTokenLogin.pending, (state) => { state.isLoading = true; state.error = null; })
       .addCase(googleIdTokenLogin.fulfilled, (state, action) => {

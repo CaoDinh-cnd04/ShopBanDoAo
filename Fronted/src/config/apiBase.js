@@ -1,21 +1,24 @@
 /**
- * Base URL API — luôn kết thúc bằng /api (Nest route dạng /api/auth/login).
+ * Base URL API — luôn là URL tuyệt đối https://.../api trong production.
  *
- * Production: nếu build thiếu VITE_API_BASE_URL, axios gọi cùng origin (ndsports.id.vn)
- * → không có route /auth/* → 404, không lưu DB. Dùng fallback API Render.
- * Nên vẫn set VITE_API_BASE_URL trên GitHub Variables khi đổi host.
+ * Lỗi thường gặp: VITE_API_BASE_URL = `/api` hoặc trùng domain site tĩnh (GitHub Pages)
+ * → axios gọi nhầm ndsports.id.vn/api → 404 login/register.
+ * Hoặc build cũ vẫn gọi /auth/google-login — dùng google-id-token + GOOGLE_CLIENT_ID trên Render.
  */
 const DEFAULT_PRODUCTION_API = 'https://shopbandoao.onrender.com/api';
 
-function normalizeApiRoot(raw) {
-  let v = raw.trim().replace(/\/+$/, '');
+function normalizeAbsoluteApiRoot(raw) {
+  const v = raw.trim().replace(/\/+$/, '');
+  if (!v) return '';
+  if (!/^https?:\/\//i.test(v)) {
+    return v;
+  }
   if (!/\/api$/i.test(v)) {
-    v = `${v}/api`;
+    return `${v}/api`;
   }
   return v;
 }
 
-/** Tránh gọi /api lên chính domain tĩnh (GitHub Pages) → 404 register/google-login */
 function isSameHostAsBrowser(apiRoot) {
   if (typeof window === 'undefined') return false;
   try {
@@ -27,18 +30,35 @@ function isSameHostAsBrowser(apiRoot) {
 
 export function getApiBaseUrl() {
   const fromEnv = import.meta.env.VITE_API_BASE_URL?.trim();
-  if (fromEnv) {
-    const normalized = normalizeApiRoot(fromEnv);
-    if (import.meta.env.PROD && isSameHostAsBrowser(normalized)) {
+
+  if (import.meta.env.DEV) {
+    return 'http://localhost:3000/api';
+  }
+
+  if (import.meta.env.PROD) {
+    // URL tương đối (/api, ...) — không dùng được làm baseURL axios (sẽ gọi vào domain tĩnh)
+    if (fromEnv && (fromEnv.startsWith('/') || /^api\/?$/i.test(fromEnv))) {
+      return DEFAULT_PRODUCTION_API;
+    }
+    if (!fromEnv) {
+      return DEFAULT_PRODUCTION_API;
+    }
+    const normalized = normalizeAbsoluteApiRoot(fromEnv);
+    if (!normalized.startsWith('http')) {
+      return DEFAULT_PRODUCTION_API;
+    }
+    if (isSameHostAsBrowser(normalized)) {
       return DEFAULT_PRODUCTION_API;
     }
     return normalized;
   }
-  if (import.meta.env.DEV) {
-    return 'http://localhost:3000/api';
-  }
-  if (import.meta.env.PROD) {
-    return DEFAULT_PRODUCTION_API;
-  }
-  return '';
+
+  return fromEnv ? normalizeAbsoluteApiRoot(fromEnv) : '';
+}
+
+/** Origin backend (uploads, ảnh) — không có /api */
+export function getApiOrigin() {
+  const base = getApiBaseUrl();
+  if (!base) return '';
+  return base.replace(/\/api\/?$/, '');
 }
