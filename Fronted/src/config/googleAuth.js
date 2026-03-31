@@ -3,6 +3,28 @@ export const GOOGLE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID || '').tr
 
 export const isGoogleAuthConfigured = GOOGLE_CLIENT_ID.length > 0;
 
+/** Khớp backend `normalizeOAuthRedirectUri` — tránh lệch token exchange (400). */
+function normalizeOAuthRedirectUri(url) {
+  let v = String(url).trim();
+  try {
+    if (/%[0-9A-Fa-f]{2}/.test(v)) {
+      v = decodeURIComponent(v);
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    const u = new URL(v);
+    let path = u.pathname;
+    if (path.length > 1 && path.endsWith('/')) {
+      path = path.replace(/\/+$/, '');
+    }
+    return `${u.origin}${path}${u.search}${u.hash}`;
+  } catch {
+    return v;
+  }
+}
+
 /**
  * Redirect URI — phải khớp chính xác mục "Authorized redirect URIs" trong Google Cloud.
  * Ví dụ: https://ndsports.id.vn/auth/google/callback
@@ -13,7 +35,7 @@ export function getGoogleRedirectUri() {
   const base = import.meta.env.BASE_URL || '/';
   const trimmed = base.replace(/\/$/, '') || '';
   const path = `${trimmed}/auth/google/callback`;
-  return `${window.location.origin}${path}`;
+  return normalizeOAuthRedirectUri(`${window.location.origin}${path}`);
 }
 
 /**

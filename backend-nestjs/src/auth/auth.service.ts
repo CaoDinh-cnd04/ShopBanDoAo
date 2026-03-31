@@ -17,6 +17,8 @@ import {
   ChangePasswordDto,
 } from './dto/auth.dto';
 import * as bcrypt from 'bcrypt';
+import { normalizeOAuthRedirectUri } from './oauth-redirect.util';
+import type { UserDocument } from '../users/schemas/user.schema';
 
 @Injectable()
 export class AuthService {
@@ -45,7 +47,10 @@ export class AuthService {
       this.configService.get<string>('GOOGLE_CLIENT_ID') ??
       process.env.GOOGLE_CLIENT_ID;
     if (raw == null || typeof raw !== 'string') return undefined;
-    const v = raw.replace(/^["']|["']$/g, '').trim();
+    const v = raw
+      .replace(/^["']|["']$/g, '')
+      .trim()
+      .replace(/[\r\n\t]/g, '');
     return v || undefined;
   }
 
@@ -55,8 +60,27 @@ export class AuthService {
       this.configService.get<string>('GOOGLE_CLIENT_SECRET') ??
       process.env.GOOGLE_CLIENT_SECRET;
     if (raw == null || typeof raw !== 'string') return undefined;
-    const v = raw.replace(/^["']|["']$/g, '').trim();
+    const v = raw
+      .replace(/^["']|["']$/g, '')
+      .trim()
+      .replace(/[\r\n\t]/g, '');
     return v || undefined;
+  }
+
+  /** Tài khoản chỉ tạo qua Google (chưa đặt mật khẩu app). */
+  private isGoogleOnlyUser(user: UserDocument | null | undefined): boolean {
+    const h = user?.passwordHash;
+    return typeof h === 'string' && h.startsWith('GOOGLE_OAUTH_');
+  }
+
+  private duplicateRegisterMessage(existing: UserDocument): string {
+    if (this.isGoogleOnlyUser(existing)) {
+      return (
+        'Email này đã được tạo khi đăng nhập Google trước đó. Không cần đăng ký lại — ' +
+        'hãy dùng nút «Đăng nhập với Google». (Nếu muốn có mật khẩu riêng: đăng nhập Google rồi vào Hồ sơ → Đổi mật khẩu.)'
+      );
+    }
+    return 'Email đã có trong hệ thống. Hãy đăng nhập bằng mật khẩu hoặc Đăng nhập Google nếu bạn đã liên kết.';
   }
 
   private isDuplicateKeyError(err: unknown): boolean {
@@ -88,8 +112,11 @@ export class AuthService {
       });
     } catch (err: unknown) {
       if (this.isDuplicateKeyError(err)) {
+        const again = await this.authRepository.findByEmail(email);
         throw new BadRequestException(
-          'Email đã có trong hệ thống (có thể đã đăng ký trước đó hoặc đã đăng nhập Google lần đầu). Hãy dùng Đăng nhập hoặc Đăng nhập Google.',
+          again
+            ? this.duplicateRegisterMessage(again)
+            : 'Email đã được sử dụng. Thử đăng nhập hoặc Đăng nhập Google.',
         );
       }
       this.logger.error(
@@ -229,7 +256,7 @@ export class AuthService {
     if (!rawCode) {
       throw new BadRequestException('Code không được để trống');
     }
-    const rawRedirect = redirectUri?.trim();
+    const rawRedirect = normalizeOAuthRedirectUri(redirectUri ?? '');
     if (!rawRedirect) {
       throw new BadRequestException('redirectUri không được để trống');
     }

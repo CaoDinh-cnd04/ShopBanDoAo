@@ -1,4 +1,5 @@
 import { Transform } from 'class-transformer';
+import { normalizeOAuthRedirectUri } from '../oauth-redirect.util';
 import {
   IsEmail,
   IsNotEmpty,
@@ -48,7 +49,9 @@ export class GoogleAuthCodeDto {
   @IsNotEmpty({ message: 'Code không được để trống' })
   code: string;
 
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value }) =>
+    typeof value === 'string' ? normalizeOAuthRedirectUri(value) : value,
+  )
   @IsString()
   @IsNotEmpty({ message: 'redirectUri không được để trống' })
   redirectUri: string;
