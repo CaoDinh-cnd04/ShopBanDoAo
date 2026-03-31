@@ -110,6 +110,11 @@ export class AuthService {
     );
   }
 
+  /** Username unique trên DB — dùng email (đã unique) để tránh E11000 khi username null */
+  private usernameForNewUser(email: string): string {
+    return email.trim().toLowerCase();
+  }
+
   async register(registerDto: RegisterDto) {
     const { email, password, fullName, phone } = registerDto;
 
@@ -124,6 +129,7 @@ export class AuthService {
     try {
       user = await this.authRepository.create({
         email,
+        username: this.usernameForNewUser(email),
         fullName: fullName.trim(),
         passwordHash: hashedPassword,
         phone: phone?.trim() ? phone.trim() : undefined,
@@ -400,6 +406,7 @@ export class AuthService {
       try {
         user = await this.authRepository.create({
           email,
+          username: this.usernameForNewUser(email),
           fullName,
           passwordHash: `GOOGLE_OAUTH_${Date.now()}`,
           role: 'User',
