@@ -1,13 +1,16 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
+import {
+  readToken,
+  readUserRaw,
+  persistSession,
+  clearSessionStorage,
+} from '../../auth/sessionStorage';
 
 /**
- * Backend (NestJS + TransformInterceptor) trả về:
- *   { success, message, data: <service_return> }
- * Đọc: response.data.data = giá trị từ service
+ * API: TransformInterceptor → response.data.data = payload từ service
  */
 
-/** Chuẩn hóa role: DB/API đôi khi trả "admin", "ADMIN" — AdminRoute cần 'Admin'. */
 const canonicalRole = (value) => {
   if (value == null || value === '') return 'User';
   const s = String(value).trim();
@@ -42,7 +45,7 @@ export const isAdminUser = (user) => {
   return false;
 };
 
-const normalizeUser = (user) => {
+export const normalizeUser = (user) => {
   if (!user) return user;
   const u = { ...user };
   if (u.role != null && u.role !== '') {
@@ -58,8 +61,6 @@ const normalizeUser = (user) => {
   return u;
 };
 
-// ─── Async thunks ───────────────────────────────────────────────────────────
-
 function messageFromApiError(error, fallback) {
   const m = error.response?.data?.message;
   if (m != null) {
@@ -71,21 +72,23 @@ function messageFromApiError(error, fallback) {
   return fallback;
 }
 
+function saveAuthPayload(payload) {
+  const { token, user } = payload;
+  const normalized = normalizeUser(user);
+  persistSession(token, normalized);
+  return { token, user: normalized };
+}
+
 export const login = createAsyncThunk(
   'auth/login',
   async ({ email, password }, { rejectWithValue }) => {
     try {
       const response = await api.post('/auth/login', { email, password });
-      // TransformInterceptor: response.data = { success, message, data: { token, user } }
-      const { token, user } = response.data.data;
-      const normalized = normalizeUser(user);
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(normalized));
-      return { token, user: normalized };
+      return saveAuthPayload(response.data.data);
     } catch (error) {
       return rejectWithValue(messageFromApiError(error, 'Đăng nhập thất bại'));
     }
-  }
+  },
 );
 
 export const register = createAsyncThunk(
@@ -93,35 +96,23 @@ export const register = createAsyncThunk(
   async (userData, { rejectWithValue }) => {
     try {
       const response = await api.post('/auth/register', userData);
-      const { token, user } = response.data.data;
-      const normalized = normalizeUser(user);
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(normalized));
-      return { token, user: normalized };
+      return saveAuthPayload(response.data.data);
     } catch (error) {
       return rejectWithValue(messageFromApiError(error, 'Đăng ký thất bại'));
     }
-  }
+  },
 );
 
-/** OAuth2 redirect: code + redirectUri — POST /api/auth/google-auth-code */
 export const googleAuthCodeExchange = createAsyncThunk(
   'auth/googleAuthCodeExchange',
   async ({ code, redirectUri }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/auth/google-auth-code', {
-        code,
-        redirectUri,
-      });
-      const { token, user } = response.data.data;
-      const normalized = normalizeUser(user);
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(normalized));
-      return { token, user: normalized };
+      const response = await api.post('/auth/google-auth-code', { code, redirectUri });
+      return saveAuthPayload(response.data.data);
     } catch (error) {
       return rejectWithValue(messageFromApiError(error, 'Đăng nhập Google thất bại'));
     }
-  }
+  },
 );
 
 export const getProfile = createAsyncThunk(
@@ -133,7 +124,7 @@ export const getProfile = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to get profile');
     }
-  }
+  },
 );
 
 export const updateProfile = createAsyncThunk(
@@ -142,12 +133,13 @@ export const updateProfile = createAsyncThunk(
     try {
       const response = await api.put('/auth/profile', profileData);
       const user = normalizeUser(response.data.data);
-      localStorage.setItem('user', JSON.stringify(user));
+      const t = readToken();
+      if (t) persistSession(t, user);
       return user;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update profile');
     }
-  }
+  },
 );
 
 export const changePassword = createAsyncThunk(
@@ -162,56 +154,50 @@ export const changePassword = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to change password');
     }
-  }
+  },
 );
 
-export const checkAuth = createAsyncThunk('auth/checkAuth', async (_) => {
-  const token = localStorage.getItem('token');
-  const userStr = localStorage.getItem('user');
+export const checkAuth = createAsyncThunk('auth/checkAuth', async () => {
+  const token = readToken();
+  const userRaw = readUserRaw();
 
-  if (!token || token === 'undefined' || !userStr || userStr === 'undefined') {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  if (!token || !userRaw) {
+    clearSessionStorage();
     return null;
   }
 
   try {
-    let user = JSON.parse(userStr);
-    const profileRes = await api.get('/auth/profile');
+    let user = normalizeUser(userRaw);
+    const profileRes = await api.get('/auth/profile', { skipAuthRedirect: true });
     const profile = profileRes.data?.data;
     if (profile) {
       user = normalizeUser({ ...user, ...profile });
     } else if (!user.role) {
       user = normalizeUser(user);
     }
-    localStorage.setItem('user', JSON.stringify(user));
+    persistSession(token, user);
     return { token, user };
   } catch {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearSessionStorage();
     return null;
   }
 });
 
-// ─── Initial state từ localStorage (sync, để AdminRoute/ProtectedRoute không flicker) ──
-
 const getInitialAuthState = () => {
-  try {
-    const token = localStorage.getItem('token');
-    const userStr = localStorage.getItem('user');
-    if (token && token !== 'undefined' && userStr && userStr !== 'undefined') {
-      const user = normalizeUser(JSON.parse(userStr));
+  const token = readToken();
+  const userRaw = readUserRaw();
+  if (token && userRaw) {
+    try {
+      const user = normalizeUser(userRaw);
       return { user, token, isAuthenticated: true, isLoading: false, error: null };
+    } catch {
+      /* fallthrough */
     }
-  } catch {
-    // ignore
   }
   return { user: null, token: null, isAuthenticated: false, isLoading: false, error: null };
 };
 
 const initialState = getInitialAuthState();
-
-// ─── Slice ───────────────────────────────────────────────────────────────────
 
 const authSlice = createSlice({
   name: 'auth',
@@ -221,8 +207,7 @@ const authSlice = createSlice({
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      clearSessionStorage();
     },
     clearError: (state) => {
       state.error = null;
@@ -230,8 +215,10 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Login
-      .addCase(login.pending, (state) => { state.isLoading = true; state.error = null; })
+      .addCase(login.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
       .addCase(login.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
@@ -239,10 +226,14 @@ const authSlice = createSlice({
         state.token = action.payload.token;
         state.error = null;
       })
-      .addCase(login.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
-
-      // Register
-      .addCase(register.pending, (state) => { state.isLoading = true; state.error = null; })
+      .addCase(login.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(register.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
       .addCase(register.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
@@ -250,9 +241,14 @@ const authSlice = createSlice({
         state.token = action.payload.token;
         state.error = null;
       })
-      .addCase(register.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
-
-      .addCase(googleAuthCodeExchange.pending, (state) => { state.isLoading = true; state.error = null; })
+      .addCase(register.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(googleAuthCodeExchange.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
       .addCase(googleAuthCodeExchange.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
@@ -260,9 +256,10 @@ const authSlice = createSlice({
         state.token = action.payload.token;
         state.error = null;
       })
-      .addCase(googleAuthCodeExchange.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
-
-      // Check Auth
+      .addCase(googleAuthCodeExchange.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
       .addCase(checkAuth.fulfilled, (state, action) => {
         if (action.payload) {
           state.isAuthenticated = true;
@@ -274,23 +271,25 @@ const authSlice = createSlice({
           state.token = null;
         }
       })
-
-      // Get Profile
       .addCase(getProfile.fulfilled, (state, action) => {
         const normalized = normalizeUser({ ...state.user, ...action.payload });
         state.user = normalized;
-        localStorage.setItem('user', JSON.stringify(normalized));
+        if (state.token) persistSession(state.token, normalized);
       })
-
-      // Update Profile
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.user = normalizeUser(action.payload);
       })
-
-      // Change Password
-      .addCase(changePassword.pending, (state) => { state.isLoading = true; })
-      .addCase(changePassword.fulfilled, (state) => { state.isLoading = false; state.error = null; })
-      .addCase(changePassword.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; });
+      .addCase(changePassword.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(changePassword.fulfilled, (state) => {
+        state.isLoading = false;
+        state.error = null;
+      })
+      .addCase(changePassword.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      });
   },
 });
 

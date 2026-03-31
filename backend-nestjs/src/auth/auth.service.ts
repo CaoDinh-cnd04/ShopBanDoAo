@@ -128,50 +128,9 @@ export class AuthService {
   }
 
   /**
-   * Đăng nhập Google qua OAuth2 access_token (frontend: @react-oauth/google useGoogleLogin).
-   * Xác thực bằng Google UserInfo API — không dùng Firebase.
+   * Xác thực id_token Google (OAuth2 redirect → getToken) rồi cấp JWT app.
    */
-  async googleLogin(accessToken: string) {
-    const token = accessToken?.trim();
-    if (!token) {
-      throw new BadRequestException('Access token không được để trống');
-    }
-
-    let profile: {
-      email?: string;
-      name?: string;
-      email_verified?: boolean;
-      verified_email?: boolean;
-    };
-
-    try {
-      profile = await this.fetchGoogleProfile(token);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      this.logger.warn(`Google UserInfo failed: ${msg}`);
-      throw new UnauthorizedException(
-        'Không xác thực được token Google. Thử đăng nhập lại.',
-      );
-    }
-
-    const email = profile.email?.trim().toLowerCase();
-    if (!email) {
-      throw new UnauthorizedException('Google không cung cấp email');
-    }
-
-    const ev = profile.email_verified ?? profile.verified_email;
-    if (ev === false) {
-      throw new UnauthorizedException('Email Google chưa được xác minh');
-    }
-
-    const fullName = profile.name?.trim() || email.split('@')[0];
-    return this.findOrCreateGoogleUserAndReturnJwt(email, fullName);
-  }
-
-  /**
-   * Đăng nhập qua JWT credential (Sign In With Google — nút GoogleLogin, không popup OAuth).
-   */
-  async googleLoginWithIdToken(idToken: string) {
+  private async verifyGoogleIdTokenAndIssueSession(idToken: string) {
     const raw = idToken?.trim();
     if (!raw) {
       throw new BadRequestException('ID token không được để trống');
@@ -248,7 +207,7 @@ export class AuthService {
       if (!tokens?.id_token) {
         throw new BadRequestException('Google không trả id_token');
       }
-      return this.googleLoginWithIdToken(tokens.id_token);
+      return this.verifyGoogleIdTokenAndIssueSession(tokens.id_token);
     } catch (e: unknown) {
       if (e instanceof HttpException) {
         throw e;
@@ -321,49 +280,6 @@ export class AuthService {
       const errMsg = e instanceof Error ? e.message : String(e);
       this.logger.error(`Google JWT failed: ${errMsg}`);
       throw new BadRequestException('Không tạo được phiên đăng nhập. Thử lại.');
-    }
-  }
-
-  /** Gọi Google UserInfo (v3, fallback v2) — throw nếu không lấy được profile hợp lệ */
-  private async fetchGoogleProfile(accessToken: string) {
-    const tryFetch = async (url: string) => {
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(`HTTP ${res.status} ${text.slice(0, 200)}`);
-      }
-      let data: Record<string, unknown>;
-      try {
-        data = (await res.json()) as Record<string, unknown>;
-      } catch {
-        throw new Error('Invalid JSON from Google UserInfo');
-      }
-      return data;
-    };
-
-    try {
-      const data = await tryFetch(
-        'https://www.googleapis.com/oauth2/v3/userinfo',
-      );
-      return {
-        email: data.email as string | undefined,
-        name: data.name as string | undefined,
-        email_verified: data.email_verified as boolean | undefined,
-        verified_email: data.verified_email as boolean | undefined,
-      };
-    } catch (first) {
-      this.logger.debug(`userinfo v3 failed, try v2: ${first}`);
-      const data = await tryFetch(
-        'https://www.googleapis.com/oauth2/v2/userinfo',
-      );
-      return {
-        email: data.email as string | undefined,
-        name: data.name as string | undefined,
-        email_verified: undefined,
-        verified_email: data.verified_email as boolean | undefined,
-      };
     }
   }
 

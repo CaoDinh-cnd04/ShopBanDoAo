@@ -62,11 +62,14 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       const url = error.config?.url || '';
+      // checkAuth dùng GET /auth/profile — token hết hạn/không khớp JWT_SECRET: để thunk tự xóa storage, không logout+redirect toàn cục
+      if (error.config?.skipAuthRedirect) {
+        return Promise.reject(error);
+      }
       const isAuthRoute =
         url.includes('/auth/login') ||
         url.includes('/auth/register') ||
-        url.includes('/auth/google-auth-code') ||
-        url.includes('/auth/google-id-token');
+        url.includes('/auth/google-auth-code');
       if (!isAuthRoute) {
         store.dispatch(logout());
         const path = `${window.location.pathname}${window.location.search}`;

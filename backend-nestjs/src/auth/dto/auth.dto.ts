@@ -35,21 +35,6 @@ export class LoginDto {
   password: string;
 }
 
-/** OAuth2 access_token từ @react-oauth/google (useGoogleLogin) */
-export class GoogleLoginDto {
-  @IsString()
-  @IsNotEmpty({ message: 'Access token không được để trống' })
-  accessToken: string;
-}
-
-/** JWT credential (legacy / mobile) */
-export class GoogleIdTokenDto {
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  @IsString()
-  @IsNotEmpty({ message: 'ID token không được để trống' })
-  idToken: string;
-}
-
 /** OAuth2 authorization code sau redirect — đổi lấy id_token trên server */
 export class GoogleAuthCodeDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
