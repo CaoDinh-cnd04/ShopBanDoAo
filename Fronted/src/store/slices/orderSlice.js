@@ -1,6 +1,13 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 
+function apiErrorMessage(error, fallback) {
+  const m = error.response?.data?.message;
+  if (Array.isArray(m)) return m.join('. ');
+  if (typeof m === 'string' && m.trim()) return m;
+  return fallback;
+}
+
 export const createOrder = createAsyncThunk(
   'orders/createOrder',
   async (orderData, { rejectWithValue }) => {
@@ -9,7 +16,7 @@ export const createOrder = createAsyncThunk(
       return response.data.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to create order'
+        apiErrorMessage(error, 'Đặt hàng thất bại — kiểm tra thông tin và thử lại'),
       );
     }
   }
@@ -44,6 +51,20 @@ export const fetchOrderById = createAsyncThunk(
   }
 );
 
+export const cancelOrder = createAsyncThunk(
+  'orders/cancelOrder',
+  async (orderId, { rejectWithValue }) => {
+    try {
+      const response = await api.put(`/orders/cancel/${orderId}`);
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(
+        apiErrorMessage(error, 'Không thể hủy đơn'),
+      );
+    }
+  }
+);
+
 const initialState = {
   orders: [],
   currentOrder: null,
@@ -66,8 +87,10 @@ const orderSlice = createSlice({
       })
       .addCase(createOrder.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.currentOrder = action.payload;
-        state.orders.unshift(action.payload);
+        const p = action.payload;
+        const order = p?.order ?? p;
+        state.currentOrder = order;
+        if (order) state.orders.unshift(order);
       })
       .addCase(createOrder.rejected, (state, action) => {
         state.isLoading = false;
@@ -86,6 +109,15 @@ const orderSlice = createSlice({
       })
       .addCase(fetchOrderById.fulfilled, (state, action) => {
         state.currentOrder = action.payload;
+      })
+      .addCase(cancelOrder.fulfilled, (state, action) => {
+        const ord = action.payload?.order;
+        if (ord && Array.isArray(state.orders)) {
+          const id = ord._id || ord.id;
+          state.orders = state.orders.map((o) =>
+            String(o._id || o.id) === String(id) ? { ...o, orderStatus: ord.orderStatus ?? 'Cancelled' } : o
+          );
+        }
       });
   },
 });

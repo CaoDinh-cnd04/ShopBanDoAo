@@ -26,3 +26,16 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
+      # VNPay — TMN + Hash Secret chỉ nhập trên Render (không commit)
+      # VNPAY_RETURN_URL = https://<api-host>/api/payment/vnpay-return (đăng ký trên cổng VNPay)
+      # FRONTEND_URL = https://ndsports.id.vn (hoặc nhiều origin: localhost,ndsports — trên Render dùng domain public)
+      - key: VNPAY_TMN_CODE
+        sync: false
+      - key: VNPAY_HASH_SECRET
+        sync: false
+      - key: VNPAY_RETURN_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: VNPAY_SANDBOX
+        value: "true"

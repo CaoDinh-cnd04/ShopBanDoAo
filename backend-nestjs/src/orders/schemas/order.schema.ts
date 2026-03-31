@@ -18,6 +18,10 @@ const OrderItemSchema = SchemaFactory.createForClass(OrderItem);
 
 @Schema({ timestamps: true })
 export class Order {
+  /** Mã hiển thị — bắt buộc duy nhất (tránh E11000 khi index unique orderCode trên DB) */
+  @Prop({ required: true, unique: true })
+  orderCode: string;
+
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   userId: Types.ObjectId;
 
@@ -36,8 +40,32 @@ export class Order {
   @Prop({ required: true })
   shippingAddress: string;
 
-  @Prop({ default: 'Pending' }) // Pending, Processing, Shipped, Delivered, Cancelled
+  /** Pending, AwaitingPayment (VNPay chưa trả), Processing, Shipped, Delivered, Cancelled */
+  @Prop({ default: 'Pending' })
   orderStatus: string;
+
+  @Prop()
+  note?: string;
+
+  @Prop()
+  shippingMethod?: string;
+
+  /** Mã giảm giá (mỗi user chỉ dùng 1 lần / mã — lưu khi đặt hàng có voucher) */
+  @Prop()
+  voucherCode?: string;
+
+  @Prop()
+  voucherDiscountAmount?: number;
+
+  /** Sau khi VNPay IPN/return thành công */
+  @Prop()
+  vnpTransactionNo?: string;
+
+  @Prop()
+  vnpPayDate?: string;
+
+  @Prop()
+  vnpBankCode?: string;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

@@ -3,19 +3,28 @@ import { Card, Form, Button, Alert } from 'react-bootstrap';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useTranslation } from 'react-i18next';
-import { useDispatch, useSelector } from 'react-redux';
-import { createProductReview, createCourtReview } from '../../store/slices/reviewSlice';
+import { useSelector, useDispatch } from 'react-redux';
+import {
+  createProductReview,
+  createSiteReview,
+  createCourtReview,
+} from '../../store/slices/reviewSlice';
 import { toast } from 'react-toastify';
 import { FiStar } from 'react-icons/fi';
 
 const reviewSchema = z.object({
   rating: z.number().min(1).max(5),
-  comment: z.string().min(1, 'Comment is required'),
+  comment: z.string().max(2000).optional(),
 });
 
-const ReviewForm = ({ productId, courtId, onSuccess }) => {
-  const { t } = useTranslation();
+const ReviewForm = ({
+  productId,
+  siteMode,
+  courtMode,
+  courtId,
+  bookingId,
+  onSuccess,
+}) => {
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((state) => state.auth);
   const [rating, setRating] = useState(0);
@@ -37,51 +46,85 @@ const ReviewForm = ({ productId, courtId, onSuccess }) => {
 
   if (!isAuthenticated) {
     return (
-      <Alert variant="info">Please login to write a review</Alert>
+      <Alert variant="info" className="mb-0">
+        Đăng nhập để gửi đánh giá. Nội dung sẽ hiển thị sau khi được quản trị viên duyệt.
+      </Alert>
+    );
+  }
+
+  if (courtMode && (!courtId || !bookingId)) {
+    return (
+      <Alert variant="secondary" className="mb-0">
+        Bạn cần có lịch đặt sân đã thanh toán cọc VNPAY tại sân này để gửi đánh giá.
+      </Alert>
     );
   }
 
   const onSubmit = async (data) => {
+    if (!data.rating || data.rating < 1) {
+      toast.error('Chọn số sao từ 1 đến 5');
+      return;
+    }
     try {
-      if (productId) {
+      if (siteMode) {
         await dispatch(
-          createProductReview({
-            productId,
-            reviewData: { rating: data.rating, comment: data.comment },
-          })
-        );
-      } else if (courtId) {
+          createSiteReview({
+            rating: data.rating,
+            comment: data.comment?.trim() || undefined,
+          }),
+        ).unwrap();
+      } else if (courtMode && courtId && bookingId) {
         await dispatch(
           createCourtReview({
             courtId,
-            reviewData: { rating: data.rating, comment: data.comment },
-          })
-        );
+            bookingId,
+            reviewData: {
+              rating: data.rating,
+              comment: data.comment?.trim() || undefined,
+            },
+          }),
+        ).unwrap();
+      } else if (productId) {
+        await dispatch(
+          createProductReview({
+            productId,
+            reviewData: {
+              rating: data.rating,
+              comment: data.comment?.trim() || undefined,
+            },
+          }),
+        ).unwrap();
       }
-      toast.success('Review submitted successfully!');
+      toast.success(
+        'Đã gửi đánh giá. Nội dung sẽ hiển thị sau khi được duyệt.',
+      );
       reset();
       setRating(0);
       if (onSuccess) onSuccess();
-    } catch (error) {
-      toast.error('Failed to submit review');
+    } catch (err) {
+      toast.error(typeof err === 'string' ? err : 'Gửi đánh giá thất bại');
     }
   };
 
   const handleRatingClick = (value) => {
     setRating(value);
-    setValue('rating', value);
+    setValue('rating', value, { shouldValidate: true });
   };
 
+  const title = siteMode
+    ? 'Đánh giá trang web / dịch vụ'
+    : courtMode
+      ? 'Đánh giá sân'
+      : 'Viết đánh giá sản phẩm';
+
   return (
-    <Card>
-      <Card.Header>
-        <h5 className="mb-0">{t('product.writeReview')}</h5>
-      </Card.Header>
+    <Card className="border-0 shadow-sm mb-4">
+      <Card.Header className="bg-white fw-semibold">{title}</Card.Header>
       <Card.Body>
         <Form onSubmit={handleSubmit(onSubmit)}>
           <Form.Group className="mb-3">
-            <Form.Label>Rating *</Form.Label>
-            <div className="d-flex gap-1">
+            <Form.Label>Điểm đánh giá *</Form.Label>
+            <div className="d-flex gap-1 align-items-center">
               {[1, 2, 3, 4, 5].map((star) => (
                 <FiStar
                   key={star}
@@ -95,19 +138,19 @@ const ReviewForm = ({ productId, courtId, onSuccess }) => {
                 />
               ))}
             </div>
-            <input type="hidden" {...register('rating')} />
+            <input type="hidden" {...register('rating', { valueAsNumber: true })} />
             {errors.rating && (
-              <Form.Text className="text-danger">{errors.rating.message}</Form.Text>
+              <Form.Text className="text-danger d-block">{errors.rating.message}</Form.Text>
             )}
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label>Comment *</Form.Label>
+            <Form.Label>Nhận xét (tuỳ chọn)</Form.Label>
             <Form.Control
               as="textarea"
               rows={4}
               {...register('comment')}
-              placeholder="Write your review..."
+              placeholder="Chia sẻ trải nghiệm của bạn..."
             />
             {errors.comment && (
               <Form.Text className="text-danger">{errors.comment.message}</Form.Text>
@@ -115,7 +158,7 @@ const ReviewForm = ({ productId, courtId, onSuccess }) => {
           </Form.Group>
 
           <Button type="submit" variant="primary">
-            Submit Review
+            Gửi đánh giá
           </Button>
         </Form>
       </Card.Body>

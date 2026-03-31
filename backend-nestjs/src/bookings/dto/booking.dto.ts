@@ -5,22 +5,48 @@ import {
   IsNumber,
   IsMongoId,
   IsDateString,
+  IsArray,
+  ArrayMinSize,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class BookingSlotDto {
+  @IsString() @IsNotEmpty()
+  startTime: string;
+
+  @IsString() @IsNotEmpty()
+  endTime: string;
+}
 
 export class CreateBookingDto {
-  @IsMongoId() @IsNotEmpty() courtId: string;
+  @IsMongoId() @IsNotEmpty()
+  courtId: string;
+
   @IsDateString({}, { message: 'bookingDate phải là định dạng ISO8601' })
   @IsNotEmpty()
   bookingDate: string;
-  @IsString() @IsNotEmpty() startTime: string;
-  @IsString() @IsNotEmpty() endTime: string;
-  @IsNumber() @IsNotEmpty() totalAmount: number;
+
+  @IsArray()
+  @ArrayMinSize(1, { message: 'Chọn ít nhất một khung giờ' })
+  @ValidateNested({ each: true })
+  @Type(() => BookingSlotDto)
+  slots: BookingSlotDto[];
 }
 
 export class UpdateBookingStatusDto {
   @IsOptional() @IsString() bookingStatus?: string;
   @IsOptional() @IsString() paymentStatus?: string;
   @IsOptional() @IsString() statusName?: string;
+}
+
+export class AvailableSlotsQueryDto {
+  @IsMongoId() @IsNotEmpty()
+  courtId: string;
+
+  @IsDateString()
+  @IsNotEmpty()
+  date: string;
 }
 
 export class QueryBookingDto {

@@ -24,7 +24,19 @@ import { Roles } from '../core/decorators/roles.decorator';
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
-  /** PDP: GET /api/reviews/products/:productId — đặt trước @Get() */
+  /** Đánh giá trang web đã duyệt — công khai */
+  @Get('site')
+  async getSiteReviews() {
+    return this.reviewsService.getVisibleSiteReviews();
+  }
+
+  /** Chi tiết sân — đánh giá đã duyệt */
+  @Get('courts/:courtId')
+  async getReviewsByCourt(@Param('courtId') courtId: string) {
+    return this.reviewsService.getReviewsByCourt(courtId);
+  }
+
+  /** PDP: GET /api/reviews/products/:productId */
   @Get('products/:productId')
   async getReviewsByProduct(@Param('productId') productId: string) {
     return this.reviewsService.getReviewsByProduct(productId);

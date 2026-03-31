@@ -53,7 +53,10 @@ const Notifications = () => {
             <h2 className="profile-section-title">Thông báo</h2>
           </div>
           <p className="profile-section-sub">
-            {unreadCount > 0 ? `${unreadCount} thông báo chưa đọc` : 'Tất cả đã đọc'}
+            {unreadCount > 0
+              ? `${unreadCount} thông báo chưa đọc`
+              : 'Tất cả đã đọc'}{' '}
+            · ND Sports (ndsports.id.vn)
           </p>
         </div>
         {unreadCount > 0 && (

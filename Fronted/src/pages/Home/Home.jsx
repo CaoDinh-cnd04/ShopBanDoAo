@@ -12,6 +12,7 @@ import Loading from '../../components/Loading/Loading';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import adminService from '../../services/adminService';
 import { DEFAULT_BANNER } from '../../config/bannerDefaults';
+import SiteReviewsSection from '../../components/Reviews/SiteReviewsSection';
 import './Home.css';
 
 const PLACEHOLDER = '/placeholder-category.svg';
@@ -183,7 +184,7 @@ const Home = () => {
                   }
                   alt=""
                   className="hero-image"
-                  fetchPriority="high"
+                  fetchpriority="high"
                   decoding="async"
                 />
                 {(bannerMerged?.showBadge !== false || !bannerMerged) && (
@@ -373,6 +374,8 @@ const Home = () => {
           </Container>
         </section>
       )}
+
+      <SiteReviewsSection />
 
       {/* ══════════════ CTA BANNER ══════════════ */}
       <section className="cta-section">

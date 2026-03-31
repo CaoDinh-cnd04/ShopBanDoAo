@@ -18,7 +18,6 @@ import { CourtsModule } from './courts/courts.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { UploadModule } from './upload/upload.module';
 import { SiteSettingsModule } from './site-settings/site-settings.module';
-
 @Module({
   imports: [
     ConfigModule.forRoot({

@@ -20,7 +20,7 @@ const Booking = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { court } = useSelector((s) => s.courts);
-  const { availableSlots, isLoading } = useSelector((s) => s.bookings);
+  const { availableSlots, slotMeta, isLoading } = useSelector((s) => s.bookings);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedSlots, setSelectedSlots] = useState([]);
 
@@ -42,17 +42,42 @@ const Booking = () => {
     );
   };
 
-  const totalPrice = (court?.pricePerHour || 0) * selectedSlots.length;
+  const pricePerHour =
+    court?.pricePerHour ?? slotMeta?.pricePerHour ?? 0;
+  const totalPrice = pricePerHour * selectedSlots.length;
+  const depositPct = Number(import.meta.env.VITE_BOOKING_DEPOSIT_PERCENT) || 30;
+  const depositEstimate = Math.max(
+    1,
+    Math.round((totalPrice * depositPct) / 100),
+  );
 
   const handleSubmit = async () => {
-    if (selectedSlots.length === 0) { toast.error('Vui lòng chọn ít nhất 1 khung giờ'); return; }
-    const res = await dispatch(createBooking({
-      courtId: parseInt(courtId),
-      bookingDate: selectedDate.toISOString().split('T')[0],
-      timeSlotIds: selectedSlots,
-    }));
+    if (selectedSlots.length === 0) {
+      toast.error('Vui lòng chọn ít nhất 1 khung giờ');
+      return;
+    }
+    const selected = availableSlots.filter((s) =>
+      selectedSlots.includes(s.id || s._id),
+    );
+    const res = await dispatch(
+      createBooking({
+        courtId: String(courtId),
+        bookingDate: selectedDate.toISOString().split('T')[0],
+        slots: selected.map((s) => ({
+          startTime: s.startTime,
+          endTime: s.endTime,
+        })),
+      }),
+    );
     if (createBooking.fulfilled.match(res)) {
-      toast.success('Đặt sân thành công! 🎉');
+      const payload = res.payload;
+      const payUrl = payload?.paymentUrl;
+      if (payUrl) {
+        toast.info('Chuyển đến VNPAY để thanh toán cọc...');
+        window.location.href = payUrl;
+        return;
+      }
+      toast.success('Đặt sân thành công!');
       navigate('/profile/bookings');
     } else {
       toast.error(res.payload || 'Đặt sân thất bại');
@@ -171,15 +196,22 @@ const Booking = () => {
               </div>
               <div className="bs-row">
                 <span>Giá/giờ</span>
-                <span>{fmt(court?.pricePerHour)}</span>
+                <span>{fmt(pricePerHour)}</span>
               </div>
 
               <hr className="bs-divider" />
 
               <div className="bs-row bs-total">
-                <span>Tổng tiền</span>
+                <span>Tổng tiền sân</span>
                 <span className="bs-total-amount">{fmt(totalPrice)}</span>
               </div>
+              <div className="bs-row text-muted small">
+                <span>Cọc VNPAY (~{depositPct}%)</span>
+                <span>{fmt(depositEstimate)}</span>
+              </div>
+              <p className="text-muted small mb-0 mt-2">
+                Không có COD: bạn thanh toán cọc qua VNPAY; phần còn lại trả tại sân.
+              </p>
 
               {/* Selected slots */}
               <AnimatePresence>
@@ -209,7 +241,7 @@ const Booking = () => {
                 whileTap={{ scale: 0.97 }}
               >
                 {isLoading ? <span className="auth-spinner" /> : (
-                  <><FiCheck size={16} /> Xác nhận đặt sân</>
+                  <><FiCheck size={16} /> Thanh toán cọc VNPAY</>
                 )}
               </motion.button>
 

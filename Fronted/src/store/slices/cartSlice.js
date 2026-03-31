@@ -69,7 +69,9 @@ export const addToCart = createAsyncThunk(
       const res = await api.post('/cart/items', body);
       return normalizeCart(res.data?.data);
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || 'Lỗi thêm vào giỏ hàng');
+      const m = err.response?.data?.message;
+      const msg = Array.isArray(m) ? m.join(', ') : m;
+      return rejectWithValue(msg || 'Lỗi thêm vào giỏ hàng');
     }
   }
 );

@@ -3,12 +3,15 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { ClientSession } from 'mongoose';
 import { VoucherRepository } from './vouchers.repository';
+import { VoucherUsageRepository } from './voucher-usage.repository';
 import {
   CreateVoucherDto,
   UpdateVoucherDto,
   QueryVoucherDto,
 } from './dto/voucher.dto';
+import { VoucherDocument } from './schemas/voucher.schema';
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -16,14 +19,15 @@ function escapeRegex(s: string): string {
 
 @Injectable()
 export class VouchersService {
-  constructor(private voucherRepository: VoucherRepository) {}
+  constructor(
+    private voucherRepository: VoucherRepository,
+    private voucherUsageRepository: VoucherUsageRepository,
+  ) {}
 
   async createVoucher(createDto: CreateVoucherDto) {
     const existing = await this.voucherRepository.findByCode(createDto.code);
     if (existing) throw new BadRequestException('Mã voucher đã tồn tại');
 
-    // cast date string to date object if necessary, handled automatically by class-validator if configured,
-    // but manually assigning to be safe
     const payload = {
       ...createDto,
       code: createDto.code.trim().toUpperCase(),
@@ -78,7 +82,33 @@ export class VouchersService {
     };
   }
 
-  async applyVoucher(code: string, orderValue: number) {
+  private computeDiscountAmount(
+    voucher: VoucherDocument,
+    orderValue: number,
+  ): number {
+    let discountAmount = 0;
+    if (voucher.discountType === 'fixed') {
+      discountAmount = voucher.discountValue;
+    } else if (voucher.discountType === 'percent') {
+      discountAmount = (orderValue * voucher.discountValue) / 100;
+      if (
+        voucher.maxDiscountAmount &&
+        discountAmount > voucher.maxDiscountAmount
+      ) {
+        discountAmount = voucher.maxDiscountAmount;
+      }
+    }
+    return Math.round(discountAmount);
+  }
+
+  /**
+   * Kiểm tra mã + (nếu có userId) user chưa từng dùng mã này.
+   */
+  private async evaluateVoucher(
+    code: string,
+    orderValue: number,
+    userId?: string,
+  ): Promise<{ voucher: VoucherDocument; discountAmount: number }> {
     const voucher = await this.voucherRepository.findByCode(code);
     if (!voucher)
       throw new NotFoundException('Mã giảm giá không hợp lệ hoặc đã hết hạn');
@@ -104,25 +134,63 @@ export class VouchersService {
       );
     }
 
-    let discountAmount = 0;
-    if (voucher.discountType === 'fixed') {
-      discountAmount = voucher.discountValue;
-    } else if (voucher.discountType === 'percent') {
-      discountAmount = (orderValue * voucher.discountValue) / 100;
-      if (
-        voucher.maxDiscountAmount &&
-        discountAmount > voucher.maxDiscountAmount
-      ) {
-        discountAmount = voucher.maxDiscountAmount;
+    if (userId) {
+      const used = await this.voucherUsageRepository.hasUsed(
+        userId,
+        voucher._id,
+      );
+      if (used) {
+        throw new BadRequestException(
+          'Bạn đã sử dụng mã này cho một đơn hàng trước đó. Mỗi tài khoản chỉ được dùng mỗi voucher một lần.',
+        );
       }
     }
 
+    const discountAmount = this.computeDiscountAmount(voucher, orderValue);
+    return { voucher, discountAmount };
+  }
+
+  async applyVoucher(code: string, orderValue: number, userId: string) {
+    const { voucher, discountAmount } = await this.evaluateVoucher(
+      code,
+      orderValue,
+      userId,
+    );
     return {
       message: 'Áp dụng mã thành công',
-      discountAmount: Math.round(discountAmount),
+      discountAmount,
       voucherCode: voucher.code,
       voucherName: voucher.voucherName || '',
     };
+  }
+
+  /** Dùng khi tạo đơn — đảm bảo user chưa dùng mã và trả về số tiền giảm. */
+  async validateForOrder(
+    userId: string,
+    code: string,
+    itemsSubtotal: number,
+  ): Promise<{ voucher: VoucherDocument; discountAmount: number }> {
+    return this.evaluateVoucher(code, itemsSubtotal, userId);
+  }
+
+  /** Ghi nhận sau khi đơn đã tạo (cùng transaction nếu có session). */
+  async recordUsageAfterOrder(
+    userId: string,
+    voucherId: string,
+    orderId: string,
+    voucherCode: string,
+    session?: ClientSession,
+  ): Promise<void> {
+    await this.voucherUsageRepository.create(
+      {
+        userId,
+        voucherId,
+        orderId,
+        voucherCode,
+      },
+      session,
+    );
+    await this.voucherRepository.incrementUsedCount(voucherId, session);
   }
 
   async updateVoucher(id: string, updateDto: UpdateVoucherDto) {

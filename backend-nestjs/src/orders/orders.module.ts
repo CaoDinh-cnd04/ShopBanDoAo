@@ -5,6 +5,10 @@ import { User, UserSchema } from '../users/schemas/user.schema';
 import { OrderRepository } from './orders.repository';
 import { OrdersService } from './orders.service';
 import { OrdersController } from './orders.controller';
+import { PaymentsModule } from '../payments/payments.module';
+import { OrderEventsModule } from '../order-events/order-events.module';
+import { ReviewsModule } from '../reviews/reviews.module';
+import { VouchersModule } from '../vouchers/vouchers.module';
 
 @Module({
   imports: [
@@ -12,6 +16,10 @@ import { OrdersController } from './orders.controller';
       { name: Order.name, schema: OrderSchema },
       { name: User.name, schema: UserSchema },
     ]),
+    PaymentsModule,
+    OrderEventsModule,
+    ReviewsModule,
+    VouchersModule,
   ],
   controllers: [OrdersController],
   providers: [OrderRepository, OrdersService],

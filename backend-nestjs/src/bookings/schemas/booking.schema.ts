@@ -8,11 +8,22 @@ export class Booking {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   userId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Court', required: true }) // Giả định liên kết bảng Sân (Court)
+  @Prop({ type: Types.ObjectId, ref: 'Court', required: true })
   courtId: Types.ObjectId;
+
+  /** Mã hiển thị — duy nhất */
+  @Prop({ unique: true, sparse: true, trim: true })
+  bookingCode?: string;
 
   @Prop({ required: true })
   bookingDate: Date;
+
+  /** Các khung giờ đã chọn (mỗi khung 1 giờ hoặc theo bước slot) */
+  @Prop({
+    type: [{ startTime: { type: String }, endTime: { type: String } }],
+    default: [],
+  })
+  slots: { startTime: string; endTime: string }[];
 
   @Prop({ required: true })
   startTime: string;
@@ -20,14 +31,36 @@ export class Booking {
   @Prop({ required: true })
   endTime: string;
 
+  /** Tổng tiền thuê sân (toàn bộ ca) */
   @Prop({ required: true, min: 0 })
   totalAmount: number;
 
-  @Prop({ default: 'Pending' }) // Pending, Confirmed, Cancelled, Completed
+  /** Số tiền khách cọc qua VNPAY (bắt buộc để giữ chỗ) */
+  @Prop({ required: true, min: 0 })
+  depositAmount: number;
+
+  /** Phần còn lại thanh toán tại sân (không COD online) */
+  @Prop({ required: true, min: 0 })
+  remainingAmount: number;
+
+  /** Chỉ VNPAY cho luồng đặt sân mới */
+  @Prop({ default: 'VNPAY' })
+  paymentMethod: string;
+
+  @Prop({ default: 'Pending' })
   bookingStatus: string;
 
-  @Prop({ default: 'Unpaid' }) // Unpaid, Paid, Refunded
+  @Prop({ default: 'Unpaid' })
   paymentStatus: string;
+
+  @Prop()
+  vnpTransactionNo?: string;
+
+  @Prop()
+  vnpPayDate?: string;
+
+  @Prop()
+  vnpBankCode?: string;
 }
 
 export const BookingSchema = SchemaFactory.createForClass(Booking);

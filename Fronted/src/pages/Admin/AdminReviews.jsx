@@ -130,6 +130,12 @@ const AdminReviews = () => {
   };
 
   const productLabel = (review) => {
+    if (review.reviewType === 'site') return 'Trang web / dịch vụ';
+    if (review.reviewType === 'court') {
+      const c = review.courtId;
+      if (c && typeof c === 'object') return c.courtName ?? 'Sân';
+      return 'Sân';
+    }
     const p = review.productId;
     if (p && typeof p === 'object') return p.productName ?? p.name ?? '—';
     return review.itemName ?? review.ItemName ?? '—';
@@ -157,6 +163,7 @@ const AdminReviews = () => {
               >
                 <option value="all">Tất cả</option>
                 <option value="product">Sản phẩm</option>
+                <option value="site">Trang web</option>
                 <option value="court">Sân</option>
               </Form.Select>
             </Col>
@@ -205,7 +212,8 @@ const AdminReviews = () => {
             {reviews.length > 0 ? (
               reviews.map((review, idx) => {
                 const id = reviewMongoId(review);
-                const isCourt = false;
+                const isSite = review.reviewType === 'site';
+                const isCourt = review.reviewType === 'court';
                 const visible = review.isVisible !== false && review.IsVisible !== false;
                 const created = review.createdAt ?? review.createdDate ?? review.CreatedDate;
                 const t = created ? new Date(created) : null;
@@ -219,7 +227,9 @@ const AdminReviews = () => {
                         <div className="d-flex justify-content-between align-items-start flex-wrap gap-2">
                           <div className="flex-grow-1">
                             <div className="d-flex align-items-center mb-2 flex-wrap gap-2">
-                              <Badge bg={isCourt ? 'warning' : 'info'}>Sản phẩm</Badge>
+                              <Badge bg={isSite ? 'primary' : isCourt ? 'success' : 'info'}>
+                                {isSite ? 'Trang web' : isCourt ? 'Sân' : 'Sản phẩm'}
+                              </Badge>
                               {renderStars(rating)}
                               <span className="text-muted small">
                                 {t && !Number.isNaN(t.getTime()) ? t.toLocaleString('vi-VN') : '—'}

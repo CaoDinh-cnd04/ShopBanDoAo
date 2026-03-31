@@ -6,13 +6,29 @@ export const fetchProductReviews = createAsyncThunk(
   async (productId, { rejectWithValue }) => {
     try {
       const response = await api.get(`/reviews/products/${productId}`);
-      return response.data.data;
+      const d = response.data?.data;
+      return Array.isArray(d) ? d : d?.reviews ?? [];
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to fetch reviews'
+        error.response?.data?.message || 'Không tải được đánh giá',
       );
     }
-  }
+  },
+);
+
+export const fetchSiteReviews = createAsyncThunk(
+  'reviews/fetchSiteReviews',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/reviews/site');
+      const d = response.data?.data;
+      return Array.isArray(d) ? d : d?.reviews ?? [];
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Không tải được đánh giá trang web',
+      );
+    }
+  },
 );
 
 export const createProductReview = createAsyncThunk(
@@ -21,36 +37,73 @@ export const createProductReview = createAsyncThunk(
     try {
       const response = await api.post('/reviews/products', {
         productId,
+        reviewType: 'product',
         ...reviewData,
       });
-      return response.data.data;
+      return response.data?.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to create review'
+        error.response?.data?.message || 'Gửi đánh giá thất bại',
       );
     }
-  }
+  },
+);
+
+export const createSiteReview = createAsyncThunk(
+  'reviews/createSiteReview',
+  async (reviewData, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/reviews', {
+        reviewType: 'site',
+        ...reviewData,
+      });
+      return response.data?.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Gửi đánh giá thất bại',
+      );
+    }
+  },
+);
+
+export const fetchCourtReviews = createAsyncThunk(
+  'reviews/fetchCourtReviews',
+  async (courtId, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/reviews/courts/${courtId}`);
+      const d = response.data?.data;
+      return Array.isArray(d) ? d : d?.reviews ?? [];
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Không tải được đánh giá sân',
+      );
+    }
+  },
 );
 
 export const createCourtReview = createAsyncThunk(
   'reviews/createCourtReview',
-  async ({ courtId, reviewData }, { rejectWithValue }) => {
+  async ({ courtId, bookingId, reviewData }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/reviews/courts', {
+      const response = await api.post('/reviews', {
+        reviewType: 'court',
         courtId,
+        bookingId,
         ...reviewData,
       });
-      return response.data.data;
+      return response.data?.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to create review'
+        error.response?.data?.message || 'Gửi đánh giá thất bại',
       );
     }
-  }
+  },
 );
 
 const initialState = {
   productReviews: [],
+  siteReviews: [],
+  courtReviews: [],
   isLoading: false,
   error: null,
 };
@@ -73,17 +126,26 @@ const reviewSlice = createSlice({
       })
       .addCase(fetchProductReviews.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.productReviews = action.payload;
+        state.productReviews = Array.isArray(action.payload) ? action.payload : [];
       })
       .addCase(fetchProductReviews.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })
-      .addCase(createProductReview.fulfilled, (state, action) => {
-        state.productReviews.unshift(action.payload);
+      .addCase(fetchSiteReviews.fulfilled, (state, action) => {
+        state.siteReviews = Array.isArray(action.payload) ? action.payload : [];
       })
-      .addCase(createCourtReview.fulfilled, (_state) => {
-        // Court reviews handled separately if needed
+      .addCase(fetchCourtReviews.fulfilled, (state, action) => {
+        state.courtReviews = Array.isArray(action.payload) ? action.payload : [];
+      })
+      .addCase(createProductReview.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(createSiteReview.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(createCourtReview.fulfilled, (state) => {
+        state.isLoading = false;
       });
   },
 });

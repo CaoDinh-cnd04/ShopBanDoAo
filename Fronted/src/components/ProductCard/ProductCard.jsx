@@ -6,6 +6,7 @@ import { toggleWishlist } from '../../store/slices/wishlistSlice';
 import { addToCart } from '../../store/slices/cartSlice';
 import { toast } from 'react-toastify';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
+import { getDefaultVariantIdForProduct } from '../../utils/cartVariant';
 import './ProductCard.css';
 
 const formatPrice = (price) =>
@@ -36,14 +37,26 @@ const ProductCard = ({ product }) => {
     toast.success(isInWishlist ? 'Đã xoá khỏi yêu thích' : 'Đã thêm vào yêu thích ❤️');
   };
 
-  const handleAddToCart = (e) => {
-    e.preventDefault(); e.stopPropagation();
-    if (!isAuthenticated) { toast.info('Vui lòng đăng nhập để thêm vào giỏ'); return; }
+  const handleAddToCart = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isAuthenticated) {
+      toast.info('Vui lòng đăng nhập để thêm vào giỏ');
+      return;
+    }
     if (isOutOfStock) return;
     const pid = product._id || product.id;
     if (!pid) return;
-    dispatch(addToCart({ productId: pid.toString(), quantity: 1 }));
-    toast.success('Đã thêm vào giỏ hàng 🛒');
+    const variantId = getDefaultVariantIdForProduct(product);
+    const body = { productId: pid.toString(), quantity: 1 };
+    if (variantId) body.variantId = variantId;
+    const res = await dispatch(addToCart(body));
+    if (addToCart.fulfilled.match(res)) {
+      toast.success('Đã thêm vào giỏ hàng 🛒');
+    } else {
+      const msg = res.payload;
+      toast.error(typeof msg === 'string' ? msg : 'Không thêm được vào giỏ hàng');
+    }
   };
 
   return (

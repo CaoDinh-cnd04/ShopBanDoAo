@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Row, Col } from 'react-bootstrap';
 import { motion } from 'framer-motion';
@@ -8,6 +8,8 @@ import {
   FiChevronLeft, FiArrowRight
 } from 'react-icons/fi';
 import { fetchCourtById } from '../../store/slices/courtSlice';
+import { fetchUserBookings } from '../../store/slices/bookingSlice';
+import { fetchCourtReviews } from '../../store/slices/reviewSlice';
 import ReviewForm from '../../components/Reviews/ReviewForm';
 import ReviewList from '../../components/Reviews/ReviewList';
 import Loading from '../../components/Loading/Loading';
@@ -21,12 +23,30 @@ const CourtDetail = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { court, isLoading } = useSelector((s) => s.courts);
+  const { isAuthenticated } = useSelector((s) => s.auth);
+  const { bookings } = useSelector((s) => s.bookings);
+  const { courtReviews } = useSelector((s) => s.reviews);
   const [activeTab, setActiveTab] = useState('info');
   const [activeImg, setActiveImg] = useState(0);
 
   useEffect(() => {
     dispatch(fetchCourtById(id));
+    dispatch(fetchCourtReviews(id));
   }, [id, dispatch]);
+
+  useEffect(() => {
+    if (isAuthenticated) dispatch(fetchUserBookings());
+  }, [isAuthenticated, dispatch]);
+
+  const courtIdStr = court ? String(court._id || court.id) : '';
+  const eligibleBooking = useMemo(() => {
+    if (!court || !bookings?.length) return null;
+    return bookings.find((b) => {
+      const cid = String(b.courtId?._id ?? b.courtId ?? '');
+      const paid = b.paymentStatus === 'DepositPaid';
+      return cid === courtIdStr && paid;
+    });
+  }, [bookings, court, courtIdStr]);
 
   if (isLoading) return <Loading />;
   if (!court) return (
@@ -145,9 +165,22 @@ const CourtDetail = () => {
 
               {activeTab === 'reviews' && (
                 <div>
-                  <ReviewForm courtId={courtId} onSuccess={() => dispatch(fetchCourtById(id))} />
+                  <ReviewForm
+                    courtMode
+                    courtId={courtId}
+                    bookingId={eligibleBooking?._id || eligibleBooking?.id}
+                    onSuccess={() => {
+                      dispatch(fetchCourtReviews(id));
+                      dispatch(fetchUserBookings());
+                    }}
+                  />
+                  {isAuthenticated && !eligibleBooking && (
+                    <p className="text-muted small mt-2 mb-3">
+                      Đặt sân và thanh toán cọc VNPAY thành công để gửi đánh giá.
+                    </p>
+                  )}
                   <div style={{ marginTop: '1.5rem' }}>
-                    <ReviewList reviews={court.reviews || []} />
+                    <ReviewList reviews={courtReviews} />
                   </div>
                 </div>
               )}

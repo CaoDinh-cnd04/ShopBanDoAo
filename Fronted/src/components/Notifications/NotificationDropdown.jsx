@@ -21,13 +21,14 @@ const NotificationDropdown = () => {
   }, [dispatch, isAuthenticated]);
 
   const handleNotificationClick = async (notification) => {
-    if (!notification.isRead) {
-      await dispatch(markAsRead(notification.id));
+    const nid = notification._id || notification.id;
+    if (!notification.isRead && nid) {
+      await dispatch(markAsRead(nid));
     }
-    // Navigate based on notification type
-    if (notification.type === 'order') {
+    const t = String(notification.type || '').toLowerCase();
+    if (t === 'order') {
       navigate('/profile/orders');
-    } else if (notification.type === 'booking') {
+    } else if (t === 'booking') {
       navigate('/profile/bookings');
     }
   };
@@ -52,27 +53,30 @@ const NotificationDropdown = () => {
       </Dropdown.Toggle>
 
       <Dropdown.Menu className="notification-dropdown">
-        <Dropdown.Header>
-          <div className="d-flex justify-content-between align-items-center">
-            <span>Notifications</span>
+        <Dropdown.Header className="notification-dropdown-header">
+          <div className="d-flex justify-content-between align-items-start gap-2">
+            <div>
+              <div className="fw-semibold text-dark">Thông báo</div>
+              <div className="notification-brand-sub small text-muted">ND Sports · ndsports.id.vn</div>
+            </div>
             <span
-              className="text-primary small"
-              style={{ cursor: 'pointer' }}
+              className="notification-view-all small"
+              style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}
               onClick={() => navigate('/profile/notifications')}
             >
-              View All
+              Xem tất cả
             </span>
           </div>
         </Dropdown.Header>
         {recentNotifications.length === 0 ? (
-          <Dropdown.ItemText className="text-muted text-center py-3">
-            No notifications
+          <Dropdown.ItemText className="text-muted text-center py-4 px-3">
+            Chưa có thông báo mới
           </Dropdown.ItemText>
         ) : (
           <ListGroup variant="flush">
             {recentNotifications.map((notification) => (
               <ListGroup.Item
-                key={notification.id}
+                key={notification._id || notification.id}
                 className={`notification-item ${!notification.isRead ? 'unread' : ''}`}
                 onClick={() => handleNotificationClick(notification)}
                 style={{ cursor: 'pointer' }}
@@ -86,7 +90,7 @@ const NotificationDropdown = () => {
                     </small>
                   </div>
                   {!notification.isRead && (
-                    <span className="badge bg-primary rounded-pill ms-2"></span>
+                    <span className="badge rounded-pill ms-2 notification-unread-dot" />
                   )}
                 </div>
               </ListGroup.Item>

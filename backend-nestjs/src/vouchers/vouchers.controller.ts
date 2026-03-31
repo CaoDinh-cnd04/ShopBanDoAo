@@ -8,7 +8,9 @@ import {
   Param,
   Query,
   UseGuards,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { VouchersService } from './vouchers.service';
 import {
   CreateVoucherDto,
@@ -33,8 +35,15 @@ export class VouchersController {
   // USER ROUTES — cần đăng nhập
   @Post('apply')
   @UseGuards(JwtAuthGuard)
-  async applyVoucher(@Body() dto: ApplyVoucherDto) {
-    return this.vouchersService.applyVoucher(dto.code, dto.orderValue);
+  async applyVoucher(
+    @Body() dto: ApplyVoucherDto,
+    @Req() req: Request & { user: { userId: string } },
+  ) {
+    return this.vouchersService.applyVoucher(
+      dto.code,
+      dto.orderValue,
+      req.user.userId,
+    );
   }
 
   // ADMIN ROUTES

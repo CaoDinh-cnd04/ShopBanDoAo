@@ -613,6 +613,14 @@
 
 .order-detail-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
 
+.order-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 .order-cancel-btn {
   display: inline-flex;
   align-items: center;

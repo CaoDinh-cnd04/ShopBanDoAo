@@ -1,16 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
 import {
   FiShoppingBag, FiSearch, FiX, FiEye, FiPackage,
   FiClock, FiCheck, FiTruck, FiXCircle,
 } from 'react-icons/fi';
-import { fetchUserOrders } from '../../store/slices/orderSlice';
+import { fetchUserOrders, cancelOrder } from '../../store/slices/orderSlice';
+import { fetchNotifications } from '../../store/slices/notificationSlice';
+import { clearCart, fetchCart } from '../../store/slices/cartSlice';
 import Loading from '../../components/Loading/Loading';
 
 const STATUS_CONFIG = {
   pending:   { label: 'Chờ xác nhận', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', icon: FiClock },
+  vnpaywait: { label: 'Chờ thanh toán VNPay', color: '#D97706', bg: 'rgba(217,119,6,0.14)', icon: FiClock },
   confirmed: { label: 'Đã xác nhận',  color: '#3B82F6', bg: 'rgba(59,130,246,0.12)', icon: FiCheck },
   shipping:  { label: 'Đang giao',    color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)', icon: FiTruck },
   delivered: { label: 'Đã giao',      color: '#10B981', bg: 'rgba(16,185,129,0.12)', icon: FiCheck },
@@ -22,6 +26,7 @@ const getStatusConfig = (status) => {
   const key = status.toLowerCase().replace(/\s+/g, '');
   const map = {
     pending: 'pending', 'chờxácnhận': 'pending',
+    awaitingpayment: 'vnpaywait',
     confirmed: 'confirmed', 'đãxácnhận': 'confirmed',
     shipping: 'shipping', 'đanggiao': 'shipping',
     delivered: 'delivered', 'đãgiao': 'delivered',
@@ -45,7 +50,7 @@ const FILTERS = [
   { value: 'cancelled', label: 'Đã hủy' },
 ];
 
-const OrderRow = ({ order, onClick }) => {
+const OrderRow = ({ order, onClick, onCancel }) => {
   const status = order.orderStatus || order.status || order.Status || '';
   const cfg = getStatusConfig(status);
   const StatusIcon = cfg.icon;
@@ -53,6 +58,8 @@ const OrderRow = ({ order, onClick }) => {
   const total = order.totalAmount || order.TotalAmount || 0;
   const date = order.createdAt || order.orderDate || order.OrderDate;
   const items = Array.isArray(order.items) ? order.items : [];
+  const stTrim = String(status).trim();
+  const canCancel = stTrim === 'Pending' || stTrim === 'AwaitingPayment';
 
   return (
     <motion.div
@@ -90,9 +97,20 @@ const OrderRow = ({ order, onClick }) => {
         <span className="order-status-badge" style={{ color: cfg.color, background: cfg.bg }}>
           <StatusIcon size={12} /> {cfg.label}
         </span>
-        <button className="order-detail-btn">
-          <FiEye size={14} /> Chi tiết
-        </button>
+        <div className="order-row-actions" onClick={(e) => e.stopPropagation()}>
+          {canCancel && onCancel && (
+            <button
+              type="button"
+              className="order-cancel-btn"
+              onClick={() => onCancel(id)}
+            >
+              Hủy đơn
+            </button>
+          )}
+          <button type="button" className="order-detail-btn" onClick={onClick}>
+            <FiEye size={14} /> Chi tiết
+          </button>
+        </div>
       </div>
     </motion.div>
   );
@@ -101,11 +119,37 @@ const OrderRow = ({ order, onClick }) => {
 const Orders = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const paymentSuccessHandled = useRef(false);
   const { orders, isLoading } = useSelector((s) => s.orders);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
 
   useEffect(() => { dispatch(fetchUserOrders()); }, [dispatch]);
+
+  /** Sau khi VNPay redirect về /profile/orders?payment=success (hoặc /profile/orders/:id?payment=success) */
+  useEffect(() => {
+    if (paymentSuccessHandled.current) return;
+    if (searchParams.get('payment') !== 'success') return;
+    paymentSuccessHandled.current = true;
+    toast.success('Thanh toán VNPay thành công. Đơn hàng đã được ghi nhận trong lịch sử.');
+    setSearchParams({}, { replace: true });
+    dispatch(clearCart());
+    dispatch(fetchCart());
+    dispatch(fetchUserOrders());
+    dispatch(fetchNotifications());
+  }, [searchParams, setSearchParams, dispatch]);
+
+  const handleCancelOrder = async (orderId) => {
+    if (!window.confirm('Bạn có chắc muốn hủy đơn hàng này? Chỉ áp dụng khi shop chưa xác nhận.')) return;
+    const res = await dispatch(cancelOrder(orderId));
+    if (cancelOrder.fulfilled.match(res)) {
+      toast.success('Đã hủy đơn hàng');
+      dispatch(fetchUserOrders());
+    } else {
+      toast.error(res.payload || 'Không thể hủy đơn');
+    }
+  };
 
   const filtered = (Array.isArray(orders) ? orders : []).filter((o) => {
     const status = (o.orderStatus || o.status || o.Status || '').toLowerCase();
@@ -173,6 +217,7 @@ const Orders = () => {
               key={order._id || order.id}
               order={order}
               onClick={() => navigate(`/profile/orders/${order._id || order.id}`)}
+              onCancel={handleCancelOrder}
             />
           ))}
         </div>

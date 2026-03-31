@@ -14,6 +14,7 @@ const orderStatus = (o) =>
 /** Giá trị gửi API / DB — đồng bộ backend */
 const ORDER_STATUS_OPTIONS = [
   { value: 'Pending', label: 'Chờ xử lý' },
+  { value: 'AwaitingPayment', label: 'Chờ thanh toán VNPay (chưa trả)' },
   { value: 'Confirmed', label: 'Đã xác nhận' },
   { value: 'Processing', label: 'Đang xử lý' },
   { value: 'Shipped', label: 'Đang giao' },

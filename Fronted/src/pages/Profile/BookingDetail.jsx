@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Container, Card, Row, Col, Badge, Spinner, Table, Button } from 'react-bootstrap';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 
@@ -29,6 +29,21 @@ const BookingDetail = () => {
     useEffect(() => {
         fetchBookingDetail();
     }, [fetchBookingDetail]);
+
+    useEffect(() => {
+        const pay = searchParams.get('payment');
+        if (pay === 'success') {
+            toast.success('Thanh toán cọc VNPAY thành công!');
+            searchParams.delete('payment');
+            setSearchParams(searchParams, { replace: true });
+        } else if (pay === 'failed') {
+            toast.error('Thanh toán không thành công. Vui lòng thử lại.');
+            searchParams.delete('payment');
+            searchParams.delete('reason');
+            searchParams.delete('code');
+            setSearchParams(searchParams, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
 
     const getStatusBadge = (status) => {
         const variants = {

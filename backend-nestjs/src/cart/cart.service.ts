@@ -29,20 +29,31 @@ export class CartService {
     const variants = Array.isArray(p.variants) ? p.variants : [];
 
     let variantIdObj: Types.ObjectId | undefined;
+    let resolvedVariantId: string | undefined;
 
     if (variants.length > 0) {
-      if (!addDto.variantId) {
-        throw new BadRequestException('Vui lòng chọn size / màu');
+      resolvedVariantId = addDto.variantId;
+      if (!resolvedVariantId) {
+        const first =
+          variants.find(
+            (x: any) => (x.stockQuantity ?? 0) >= addDto.quantity,
+          ) ||
+          variants.find((x: any) => (x.stockQuantity ?? 0) > 0) ||
+          variants[0];
+        if (!first) {
+          throw new BadRequestException('Sản phẩm không còn biến thể');
+        }
+        resolvedVariantId = first._id.toString();
       }
       const v = variants.find(
-        (x: any) => x._id?.toString() === addDto.variantId,
+        (x: any) => x._id?.toString() === resolvedVariantId,
       );
       if (!v) throw new BadRequestException('Biến thể không tồn tại');
       const stock = v.stockQuantity ?? 0;
       if (stock < addDto.quantity) {
         throw new BadRequestException('Không đủ hàng trong kho');
       }
-      variantIdObj = new Types.ObjectId(addDto.variantId);
+      variantIdObj = new Types.ObjectId(resolvedVariantId);
     } else {
       const stock = p.stockQuantity ?? 0;
       if (stock < addDto.quantity) {
@@ -58,7 +69,7 @@ export class CartService {
     const itemIndex = cart.items.findIndex((item: any) => {
       const pid = item.productId?._id?.toString() || item.productId?.toString();
       const vid = item.variantId?.toString() || '';
-      const dtoVid = addDto.variantId || '';
+      const dtoVid = resolvedVariantId || '';
       return pid === addDto.productId && vid === dtoVid;
     });
 

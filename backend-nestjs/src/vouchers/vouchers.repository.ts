@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { ClientSession, Model } from 'mongoose';
 import { Voucher, VoucherDocument } from './schemas/voucher.schema';
 
 @Injectable()
@@ -31,7 +31,16 @@ export class VoucherRepository {
   }
 
   async findByCode(code: string): Promise<VoucherDocument | null> {
-    return this.voucherModel.findOne({ code, isActive: true }).exec();
+    const c = code.trim().toUpperCase();
+    return this.voucherModel.findOne({ code: c, isActive: true }).exec();
+  }
+
+  async incrementUsedCount(id: string, session?: ClientSession): Promise<void> {
+    await this.voucherModel.updateOne(
+      { _id: id },
+      { $inc: { usedCount: 1 } },
+      session ? { session } : {},
+    );
   }
 
   async create(data: Partial<Voucher>): Promise<VoucherDocument> {

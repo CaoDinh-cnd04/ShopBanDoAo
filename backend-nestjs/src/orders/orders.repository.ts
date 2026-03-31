@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { ClientSession, Model } from 'mongoose';
 import { Order, OrderDocument } from './schemas/order.schema';
 
 @Injectable()
@@ -19,7 +19,7 @@ export class OrderRepository {
       .skip(skip)
       .limit(limit)
       .populate('userId', 'fullName email phone')
-      .populate('items.productId', 'productName defaultPrice')
+      .populate('items.productId', 'productName defaultPrice images')
       .exec();
   }
 
@@ -31,13 +31,21 @@ export class OrderRepository {
     return this.orderModel
       .findById(id)
       .populate('userId', 'fullName email phone')
-      .populate('items.productId', 'productName defaultPrice')
+      .populate('items.productId', 'productName defaultPrice images')
       .exec();
   }
 
-  async create(data: Partial<Order>): Promise<OrderDocument> {
+  /** Không populate — dùng khi chỉ cần khớp userId / thanh toán */
+  async findByIdRaw(id: string): Promise<OrderDocument | null> {
+    return this.orderModel.findById(id).exec();
+  }
+
+  async create(
+    data: Partial<Order>,
+    session?: ClientSession,
+  ): Promise<OrderDocument> {
     const newOrder = new this.orderModel(data);
-    return newOrder.save();
+    return newOrder.save(session ? { session } : {});
   }
 
   async update(

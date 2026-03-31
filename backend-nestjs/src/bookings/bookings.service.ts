@@ -3,9 +3,13 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { Request } from 'express';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { randomBytes } from 'crypto';
 import { BookingRepository } from './bookings.repository';
 import {
   CreateBookingDto,
@@ -13,17 +17,138 @@ import {
   QueryBookingDto,
 } from './dto/booking.dto';
 import { User, UserDocument } from '../users/schemas/user.schema';
+import { Court, CourtDocument } from '../courts/schemas/court.schema';
+import { VnpayService } from '../payments/vnpay.service';
+import { buildBookingVnpTxnRef } from '../payments/vnpay-booking.util';
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/** Tránh String(object) → '[object Object]' (eslint no-base-to-string). */
+function primitiveString(v: unknown): string {
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' && Number.isFinite(v)) return String(v);
+  if (typeof v === 'boolean') return v ? 'true' : 'false';
+  return '';
+}
+
+function normalizeTime(t: string): string {
+  const p = String(t || '')
+    .trim()
+    .split(':');
+  const h = Math.min(23, Math.max(0, Number(p[0]) || 0));
+  const m = Math.min(59, Math.max(0, Number(p[1] ?? 0) || 0));
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function slotKey(s: { startTime: string; endTime: string }): string {
+  return `${normalizeTime(s.startTime)}-${normalizeTime(s.endTime)}`;
+}
+
+function parseMinutes(t: string): number {
+  const [h, m] = normalizeTime(t).split(':').map(Number);
+  return h * 60 + m;
+}
+
+/** Sinh các khung 1 giờ từ mở cửa đến đóng cửa (end là giờ bắt đầu ca cuối) */
+function generateHourlySlots(
+  openTime: string,
+  closeTime: string,
+): { startTime: string; endTime: string }[] {
+  const openM = parseMinutes(openTime || '06:00');
+  const closeM = parseMinutes(closeTime || '22:00');
+  const out: { startTime: string; endTime: string }[] = [];
+  for (let t = openM; t + 60 <= closeM; t += 60) {
+    const sH = Math.floor(t / 60);
+    const sM = t % 60;
+    const eH = Math.floor((t + 60) / 60);
+    const eM = (t + 60) % 60;
+    out.push({
+      startTime: `${String(sH).padStart(2, '0')}:${String(sM).padStart(2, '0')}`,
+      endTime: `${String(eH).padStart(2, '0')}:${String(eM).padStart(2, '0')}`,
+    });
+  }
+  return out;
+}
+
+function bookingSlotsFromDoc(b: {
+  slots?: { startTime: string; endTime: string }[];
+  startTime?: string;
+  endTime?: string;
+}): { startTime: string; endTime: string }[] {
+  if (Array.isArray(b.slots) && b.slots.length > 0) {
+    return b.slots.map((s) => ({
+      startTime: normalizeTime(s.startTime),
+      endTime: normalizeTime(s.endTime),
+    }));
+  }
+  if (b.startTime && b.endTime) {
+    return [
+      {
+        startTime: normalizeTime(b.startTime),
+        endTime: normalizeTime(b.endTime),
+      },
+    ];
+  }
+  return [];
+}
+
 @Injectable()
 export class BookingsService {
+  private readonly logger = new Logger(BookingsService.name);
+
   constructor(
     private bookingRepository: BookingRepository,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Court.name) private courtModel: Model<CourtDocument>,
+    private readonly config: ConfigService,
+    private readonly vnpayService: VnpayService,
   ) {}
+
+  private clientIp(req?: Request): string {
+    if (!req) return '127.0.0.1';
+    const xf = req.headers['x-forwarded-for'];
+    if (typeof xf === 'string' && xf.trim()) {
+      return xf.split(',')[0].trim();
+    }
+    const ip = req.ip || req.socket?.remoteAddress;
+    if (typeof ip === 'string' && ip.startsWith('::ffff:')) {
+      return ip.replace('::ffff:', '');
+    }
+    return typeof ip === 'string' ? ip : '127.0.0.1';
+  }
+
+  private generateBookingCode(): string {
+    const t = Date.now().toString(36).toUpperCase();
+    const r = randomBytes(3).toString('hex').toUpperCase();
+    return `BK-${t}-${r}`;
+  }
+
+  private computeDeposit(totalVnd: number): number {
+    const pct = Math.min(
+      100,
+      Math.max(
+        1,
+        parseInt(
+          this.config.get<string>('BOOKING_DEPOSIT_PERCENT') || '30',
+          10,
+        ),
+      ),
+    );
+    const minDep = Math.max(
+      0,
+      parseInt(
+        this.config.get<string>('BOOKING_DEPOSIT_MIN_VND') || '10000',
+        10,
+      ),
+    );
+    let dep = Math.round((totalVnd * pct) / 100);
+    if (dep < minDep) dep = Math.min(totalVnd, minDep);
+    if (dep > totalVnd) dep = totalVnd;
+    return Math.max(1, dep);
+  }
 
   private extractUser(b: Record<string, unknown>): {
     fullName?: string;
@@ -59,7 +184,6 @@ export class BookingsService {
     return {};
   }
 
-  /** Danh sách admin — field khớp AdminBookings.jsx */
   private mapBookingForAdminList(b: Record<string, unknown>) {
     const u = this.extractUser(b);
     const c = this.extractCourt(b);
@@ -69,18 +193,23 @@ export class BookingsService {
     return {
       _id: oid,
       bookingId: oid,
-      bookingCode: ts ? `BK${ts}` : `BK${String(oid).slice(-12)}`,
+      bookingCode:
+        b.bookingCode ?? (ts ? `BK${ts}` : `BK${String(oid).slice(-12)}`),
       customerName: u.fullName ?? '',
       customerEmail: u.email ?? '',
       customerPhone: u.phone ?? '',
       courtName: c.courtName ?? '—',
       courtType: c.courtType ?? '',
       bookingDate: bd,
-      timeSlotCount: 1,
-      timeRange: `${String(b.startTime ?? '')} — ${String(b.endTime ?? '')}`,
+      timeSlotCount: Array.isArray(b.slots) ? (b.slots as unknown[]).length : 1,
+      timeRange: `${primitiveString(b.startTime)} — ${primitiveString(b.endTime)}`,
       totalAmount: b.totalAmount,
+      depositAmount: b.depositAmount,
+      remainingAmount: b.remainingAmount,
+      paymentMethod: b.paymentMethod ?? 'VNPAY',
       statusName: b.bookingStatus,
       bookingStatus: b.bookingStatus,
+      paymentStatus: b.paymentStatus,
     };
   }
 
@@ -91,12 +220,36 @@ export class BookingsService {
     const bd = b.bookingDate as Date | undefined;
     const ts = bd ? new Date(bd).getTime() : 0;
     const total = Number(b.totalAmount) || 0;
+    const deposit = Number(b.depositAmount) || 0;
+    const remNum = Number(b.remainingAmount);
+    const remaining =
+      Number.isFinite(remNum) && remNum >= 0
+        ? remNum
+        : Math.max(0, total - deposit);
+    const slots = bookingSlotsFromDoc(
+      b as { slots?: { startTime: string; endTime: string }[] },
+    );
+    const paySt = primitiveString(b.paymentStatus);
+    const payments: { paymentMethodName: string; amount: number }[] = [];
+    if (
+      paySt === 'DepositPaid' ||
+      paySt.toLowerCase().includes('paid') ||
+      paySt.includes('Đã')
+    ) {
+      payments.push({
+        paymentMethodName: 'VNPAY (cọc)',
+        amount: deposit,
+      });
+    }
+
     return {
       _id: oid,
       bookingId: oid,
-      bookingCode: ts ? `BK${ts}` : `BK${String(oid).slice(-12)}`,
+      bookingCode:
+        b.bookingCode ?? (ts ? `BK${ts}` : `BK${String(oid).slice(-12)}`),
       statusName: b.bookingStatus,
       bookingStatus: b.bookingStatus,
+      paymentStatus: b.paymentStatus,
       customerName: u.fullName ?? '',
       customerEmail: u.email ?? '',
       customerPhone: u.phone ?? '',
@@ -105,40 +258,152 @@ export class BookingsService {
       location: c.location || c.address || '',
       note: '',
       bookingDate: bd,
-      timeSlots: [
-        {
-          bookingDetailId: '1',
-          slotName: 'Ca đặt',
-          startTime: b.startTime,
-          endTime: b.endTime,
-          price: total,
-        },
-      ],
       totalAmount: total,
-      payments:
-        String(b.paymentStatus || '')
-          .toLowerCase()
-          .includes('paid') ||
-        String(b.paymentStatus || '').includes('Đã thanh toán')
-          ? [
-              {
-                paymentMethodName: 'Thanh toán',
-                amount: total,
-              },
-            ]
-          : [],
+      depositAmount: deposit,
+      remainingAmount: remaining,
+      paymentMethod: b.paymentMethod ?? 'VNPAY',
+      timeSlots: slots.map((s, i) => ({
+        bookingDetailId: String(i + 1),
+        slotName: `Ca ${i + 1}`,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        price: total / Math.max(1, slots.length),
+      })),
+      payments,
     };
   }
 
-  async createBooking(userId: string, createDto: CreateBookingDto) {
+  async getAvailableSlots(courtId: string, dateStr: string) {
+    const court = await this.courtModel.findById(courtId).exec();
+    if (!court) throw new NotFoundException('Không tìm thấy sân');
+
+    const dayStart = new Date(`${dateStr}T00:00:00.000Z`);
+    const dayEnd = new Date(`${dateStr}T23:59:59.999Z`);
+
+    const occupied = await this.bookingRepository.findOccupiedForCourtOnDate(
+      courtId,
+      dayStart,
+      dayEnd,
+    );
+
+    const bookedKeys = new Set<string>();
+    for (const ob of occupied) {
+      for (const s of bookingSlotsFromDoc(ob)) {
+        bookedKeys.add(slotKey(s));
+      }
+    }
+
+    const openT = court.openTime || '06:00';
+    const closeT = court.closeTime || '22:00';
+    const template = generateHourlySlots(openT, closeT);
+
+    const slots = template.map((s, i) => {
+      const k = slotKey(s);
+      return {
+        id: `slot_${dateStr}_${i}_${k.replace(':', '')}`,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        isBooked: bookedKeys.has(k),
+      };
+    });
+
+    return { slots, pricePerHour: court.pricePerHour ?? 0 };
+  }
+
+  async createBooking(
+    userId: string,
+    createDto: CreateBookingDto,
+    req?: Request,
+  ) {
+    const court = await this.courtModel.findById(createDto.courtId).exec();
+    if (!court) throw new NotFoundException('Không tìm thấy sân');
+    if (court.isActive === false) {
+      throw new BadRequestException('Sân không còn hoạt động');
+    }
+
+    const dateStr = createDto.bookingDate.slice(0, 10);
+    const { slots: available } = await this.getAvailableSlots(
+      createDto.courtId,
+      dateStr,
+    );
+    const allowed = new Set(
+      available.filter((a) => !a.isBooked).map((a) => slotKey(a)),
+    );
+
+    const chosen = createDto.slots.map((s) => ({
+      startTime: normalizeTime(s.startTime),
+      endTime: normalizeTime(s.endTime),
+    }));
+
+    for (const s of chosen) {
+      if (!allowed.has(slotKey(s))) {
+        throw new BadRequestException(
+          `Khung giờ ${s.startTime}–${s.endTime} không còn trống hoặc không hợp lệ`,
+        );
+      }
+    }
+
+    const sorted = [...chosen].sort(
+      (a, b) => parseMinutes(a.startTime) - parseMinutes(b.startTime),
+    );
+    const pricePerHour = Number(court.pricePerHour) || 0;
+    const totalAmount = Math.round(pricePerHour * sorted.length);
+    if (totalAmount < 1) {
+      throw new BadRequestException('Không tính được tổng tiền');
+    }
+
+    const depositAmount = this.computeDeposit(totalAmount);
+    const remainingAmount = Math.max(0, totalAmount - depositAmount);
+
+    const bookingCode = this.generateBookingCode();
+
+    if (!this.vnpayService.isConfigured()) {
+      throw new BadRequestException(
+        'Chưa cấu hình VNPay (BOOKING chỉ thanh toán cọc qua VNPAY)',
+      );
+    }
+
     const payload = {
-      ...createDto,
-      bookingDate: new Date(createDto.bookingDate),
       userId: new Types.ObjectId(userId),
       courtId: new Types.ObjectId(createDto.courtId),
+      bookingCode,
+      bookingDate: new Date(dateStr + 'T12:00:00.000Z'),
+      slots: sorted,
+      startTime: sorted[0].startTime,
+      endTime: sorted[sorted.length - 1].endTime,
+      totalAmount,
+      depositAmount,
+      remainingAmount,
+      paymentMethod: 'VNPAY',
+      bookingStatus: 'AwaitingPayment',
+      paymentStatus: 'Unpaid',
     };
+
     const booking = await this.bookingRepository.create(payload);
-    return { message: 'Đặt sân thành công', booking };
+
+    const txnRef = buildBookingVnpTxnRef(String(booking._id));
+    let paymentUrl: string | undefined;
+    try {
+      paymentUrl = this.vnpayService.buildPaymentUrl({
+        orderId: txnRef,
+        amountVnd: depositAmount,
+        orderDescription: `Coc dat san ${bookingCode}`,
+        ipAddr: this.clientIp(req),
+      });
+    } catch (e) {
+      this.logger.error(e);
+      await this.bookingRepository.delete(String(booking._id));
+      throw e;
+    }
+
+    return {
+      message: 'Tạo lịch đặt sân — chuyển đến VNPay để thanh toán cọc',
+      booking,
+      paymentUrl,
+      depositAmount,
+      remainingAmount,
+      totalAmount,
+    };
   }
 
   async getMyBookings(userId: string) {
@@ -158,7 +423,8 @@ export class BookingsService {
     const match: any = {};
     const statusVal = (query.status || query.bookingStatus || '').trim();
     if (statusVal) match.bookingStatus = statusVal;
-    if (query.paymentStatus?.trim()) match.paymentStatus = query.paymentStatus.trim();
+    if (query.paymentStatus?.trim())
+      match.paymentStatus = query.paymentStatus.trim();
     if (query.courtId) match.courtId = query.courtId;
     if (query.userId) match.userId = query.userId;
 
@@ -187,6 +453,7 @@ export class BookingsService {
       const or: Record<string, unknown>[] = [
         { bookingStatus: rx },
         { paymentStatus: rx },
+        { bookingCode: rx },
         { startTime: rx },
         { endTime: rx },
       ];
@@ -273,13 +540,18 @@ export class BookingsService {
     if (ownerId !== userId)
       throw new ForbiddenException('Bạn không có quyền hủy lịch này');
 
-    const status = (booking.bookingStatus || '').toLowerCase();
-    if (!['pending', 'chờ xác nhận'].includes(status)) {
-      throw new BadRequestException('Chỉ có thể hủy lịch đang chờ xác nhận');
+    const bStatus = (booking.bookingStatus || '').toLowerCase();
+    const pStatus = (booking.paymentStatus || '').toLowerCase();
+    const awaitingOnly = bStatus === 'awaitingpayment' || bStatus === 'pending';
+
+    if (!awaitingOnly || pStatus !== 'unpaid') {
+      throw new BadRequestException(
+        'Chỉ hủy được khi chưa thanh toán cọc VNPAY',
+      );
     }
 
     const updated = await this.bookingRepository.update(bookingId, {
-      bookingStatus: 'cancelled',
+      bookingStatus: 'Cancelled',
     });
     return { message: 'Hủy lịch đặt sân thành công', booking: updated };
   }
@@ -298,17 +570,17 @@ export class BookingsService {
     ] = await Promise.all([
       this.bookingRepository.count({}),
       this.bookingRepository.count({
-        bookingStatus: { $in: ['Pending', 'Chờ xác nhận'] },
+        bookingStatus: { $in: ['Pending', 'AwaitingPayment', 'Chờ xác nhận'] },
       }),
       this.bookingRepository.count({
         bookingStatus: { $in: ['Confirmed', 'Đã xác nhận'] },
       }),
       this.bookingRepository.count({
-        bookingStatus: { $in: ['Cancelled', 'Đã hủy'] },
+        bookingStatus: { $in: ['Cancelled', 'cancelled', 'Đã hủy'] },
       }),
       this.bookingRepository.aggregate([
-        { $match: { paymentStatus: { $in: ['Paid', 'Đã thanh toán'] } } },
-        { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+        { $match: { paymentStatus: 'DepositPaid' } },
+        { $group: { _id: null, total: { $sum: '$depositAmount' } } },
       ]),
       this.bookingRepository.aggregate([
         { $match: { createdAt: { $gte: startOfMonth } } },

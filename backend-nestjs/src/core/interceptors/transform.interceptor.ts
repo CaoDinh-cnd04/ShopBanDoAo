@@ -22,6 +22,12 @@ export class TransformInterceptor<T> implements NestInterceptor<
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<Response<T>> {
+    const req = context.switchToHttp().getRequest<{ path?: string; url?: string }>();
+    const p = req?.path ?? req?.url ?? '';
+    /** VNPay redirect / IPN: không bọc { success, data } — IPN cần JSON phẳng */
+    if (typeof p === 'string' && p.includes('/vnpay/')) {
+      return next.handle();
+    }
     return next.handle().pipe(
       map((data) => {
         // Handle case where custom message is provided from service

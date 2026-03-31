@@ -8,13 +8,15 @@ export const fetchAvailableSlots = createAsyncThunk(
       const response = await api.get('/bookings/available-slots', {
         params: { courtId, date },
       });
-      return response.data.data;
+      const d = response.data?.data;
+      const slots = Array.isArray(d?.slots) ? d.slots : [];
+      return { slots, pricePerHour: d?.pricePerHour ?? 0 };
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to fetch available slots'
+        error.response?.data?.message || 'Không tải được khung giờ',
       );
     }
-  }
+  },
 );
 
 export const createBooking = createAsyncThunk(
@@ -22,13 +24,13 @@ export const createBooking = createAsyncThunk(
   async (bookingData, { rejectWithValue }) => {
     try {
       const response = await api.post('/bookings', bookingData);
-      return response.data.data;
+      return response.data?.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to create booking'
+        error.response?.data?.message || 'Đặt sân thất bại',
       );
     }
-  }
+  },
 );
 
 export const fetchUserBookings = createAsyncThunk(
@@ -37,13 +39,13 @@ export const fetchUserBookings = createAsyncThunk(
     try {
       const response = await api.get('/bookings/my-bookings');
       const data = response.data.data;
-      return Array.isArray(data) ? data : (data?.bookings ?? []);
+      return Array.isArray(data) ? data : data?.bookings ?? [];
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to fetch bookings'
+        error.response?.data?.message || 'Không tải được lịch đặt',
       );
     }
-  }
+  },
 );
 
 export const cancelBooking = createAsyncThunk(
@@ -54,14 +56,15 @@ export const cancelBooking = createAsyncThunk(
       return response.data.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to cancel booking'
+        error.response?.data?.message || 'Hủy lịch thất bại',
       );
     }
-  }
+  },
 );
 
 const initialState = {
   availableSlots: [],
+  slotMeta: { pricePerHour: 0 },
   bookings: [],
   currentBooking: null,
   isLoading: false,
@@ -83,15 +86,23 @@ const bookingSlice = createSlice({
       })
       .addCase(fetchAvailableSlots.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.availableSlots = Array.isArray(action.payload) ? action.payload : [];
+        state.availableSlots = Array.isArray(action.payload?.slots)
+          ? action.payload.slots
+          : [];
+        state.slotMeta = {
+          pricePerHour: action.payload?.pricePerHour ?? 0,
+        };
       })
       .addCase(fetchAvailableSlots.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })
       .addCase(createBooking.fulfilled, (state, action) => {
-        state.currentBooking = action.payload;
-        state.bookings.unshift(action.payload);
+        const payload = action.payload;
+        state.currentBooking = payload?.booking ?? payload;
+        if (state.currentBooking && payload?.booking) {
+          state.bookings.unshift(payload.booking);
+        }
       })
       .addCase(fetchUserBookings.pending, (state) => {
         state.isLoading = true;
@@ -105,12 +116,13 @@ const bookingSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(cancelBooking.fulfilled, (state, action) => {
+        const booking = action.payload?.booking;
+        if (!booking) return;
+        const id = booking._id ?? booking.id;
         const index = state.bookings.findIndex(
-          (b) => b.id === action.payload.id
+          (b) => String(b._id ?? b.id) === String(id),
         );
-        if (index !== -1) {
-          state.bookings[index] = action.payload;
-        }
+        if (index !== -1) state.bookings[index] = booking;
       });
   },
 });

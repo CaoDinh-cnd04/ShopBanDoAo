@@ -7,6 +7,7 @@ import { toggleWishlist } from '../../store/slices/wishlistSlice';
 import { addToCart } from '../../store/slices/cartSlice';
 import { toast } from 'react-toastify';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
+import { getDefaultVariantIdForProduct } from '../../utils/cartVariant';
 import './WishlistCard.css';
 
 const WishlistCard = ({ item }) => {
@@ -41,7 +42,10 @@ const WishlistCard = ({ item }) => {
 
   const handleAddToCart = async () => {
     if (!productId) return;
-    const result = await dispatch(addToCart({ productId, quantity: 1 }));
+    const variantId = getDefaultVariantIdForProduct(product);
+    const body = { productId, quantity: 1 };
+    if (variantId) body.variantId = variantId;
+    const result = await dispatch(addToCart(body));
     if (addToCart.fulfilled.match(result)) {
       toast.success('Đã thêm vào giỏ hàng!');
     } else {

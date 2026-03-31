@@ -70,6 +70,7 @@ async function bootstrap(): Promise<void> {
       /** false: tránh 400 khi client gửi thêm field (extension, bản build cũ) — vẫn strip qua whitelist */
       forbidNonWhitelisted: false,
       transform: true,
+      transformOptions: { enableImplicitConversion: true },
     }),
   );
 

@@ -1,4 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { randomBytes } from 'crypto';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import type { Request } from 'express';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { OrderRepository } from './orders.repository';
@@ -8,6 +15,10 @@ import {
   QueryOrderDto,
 } from './dto/order.dto';
 import { User, UserDocument } from '../users/schemas/user.schema';
+import { VnpayService } from '../payments/vnpay.service';
+import { OrderEventsService } from '../order-events/order-events.service';
+import { ReviewsService } from '../reviews/reviews.service';
+import { VouchersService } from '../vouchers/vouchers.service';
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -15,10 +26,91 @@ function escapeRegex(s: string): string {
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private orderRepository: OrderRepository,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    private readonly vnpayService: VnpayService,
+    private readonly orderEvents: OrderEventsService,
+    private readonly reviewsService: ReviewsService,
+    private readonly vouchersService: VouchersService,
   ) {}
+
+  /** Khớp Cart / Checkout: giao nhanh 60k; tiêu chuẩn 30k hoặc miễn phí khi tạm tính > 500k */
+  private computeShippingFee(
+    shippingMethod: string | undefined,
+    itemsSubtotal: number,
+  ): number {
+    if (shippingMethod === 'express') return 60000;
+    return itemsSubtotal > 500000 ? 0 : 30000;
+  }
+
+  /** Đọc giá trị đã lưu (DB) — không throw; null nếu rỗng/không nhận diện. */
+  private parsePaymentMethod(pm: string | undefined): string | null {
+    const s = (pm || '').trim().toLowerCase();
+    if (!s) return null;
+    if (s === 'vnpay') return 'VNPAY';
+    if (s === 'cod') return 'COD';
+    if (s === 'banking') return 'Banking';
+    if (s === 'momo') return 'MoMo';
+    return null;
+  }
+
+  /** Chỉ dùng khi tạo đơn từ API — bắt buộc cod / vnpay (hoặc banking/momo nếu mở sau). */
+  private requirePaymentMethodForCreate(pm: string): string {
+    const m = this.parsePaymentMethod(pm);
+    if (!m) {
+      throw new BadRequestException(
+        'Chọn phương thức thanh toán (cod hoặc vnpay).',
+      );
+    }
+    return m;
+  }
+
+  private generateOrderCode(): string {
+    const t = Date.now().toString(36).toUpperCase();
+    const r = randomBytes(4).toString('hex').toUpperCase();
+    return `ORD-${t}-${r}`;
+  }
+
+  /** Khách chỉ hủy khi đơn còn Chờ xử lý / chờ VNPay (chưa xác nhận). */
+  private canUserCancelOrder(order: { orderStatus?: string }): boolean {
+    const st = (order.orderStatus || '').trim();
+    const low = st.toLowerCase();
+    return low === 'pending' || st === 'Chờ xử lý' || low === 'awaitingpayment';
+  }
+
+  /**
+   * findById populate userId → có thể là ObjectId hoặc object { _id, fullName, ... }.
+   * Không dùng String(order.userId) — sẽ thành "[object Object]".
+   */
+  private extractOrderOwnerUserId(order: { userId?: unknown }): string {
+    const uid = order.userId;
+    if (uid == null) return '';
+    if (typeof uid === 'string') return uid;
+    if (uid instanceof Types.ObjectId) return uid.toHexString();
+    if (typeof uid === 'object' && '_id' in uid) {
+      const inner = (uid as { _id: unknown })._id;
+      if (inner == null) return '';
+      if (typeof inner === 'string') return inner;
+      if (inner instanceof Types.ObjectId) return inner.toHexString();
+    }
+    return '';
+  }
+
+  private clientIp(req?: Request): string {
+    if (!req) return '127.0.0.1';
+    const xf = req.headers['x-forwarded-for'];
+    if (typeof xf === 'string' && xf.trim()) {
+      return xf.split(',')[0].trim();
+    }
+    const ip = req.ip || req.socket?.remoteAddress;
+    if (typeof ip === 'string' && ip.startsWith('::ffff:')) {
+      return ip.replace('::ffff:', '');
+    }
+    return typeof ip === 'string' ? ip : '127.0.0.1';
+  }
 
   /** Chuẩn hóa đơn Mongo → dữ liệu admin (danh sách) */
   private mapOrderForAdminList(order: Record<string, unknown>) {
@@ -115,6 +207,9 @@ export class OrdersService {
       district: '',
       city: '',
       shippingMethodName: payMethod,
+      voucherCode: order.voucherCode,
+      voucherName: '',
+      voucherDiscountAmount: order.voucherDiscountAmount,
       items,
       payments: [
         {
@@ -125,18 +220,120 @@ export class OrdersService {
     };
   }
 
-  async createOrder(userId: string, createDto: CreateOrderDto) {
+  async createOrder(userId: string, createDto: CreateOrderDto, req?: Request) {
+    const paymentMethod = this.requirePaymentMethodForCreate(
+      createDto.paymentMethod,
+    );
+
+    const itemsSubtotal = createDto.items.reduce(
+      (s, it) => s + Number(it.price) * Number(it.quantity),
+      0,
+    );
+    const shippingFee = this.computeShippingFee(
+      createDto.shippingMethod,
+      itemsSubtotal,
+    );
+
+    const voucherCodeRaw = createDto.voucherCode?.trim();
+    let voucherSnapshot: {
+      code: string;
+      discountAmount: number;
+      voucherId: string;
+    } | null = null;
+
+    if (voucherCodeRaw) {
+      const v = await this.vouchersService.validateForOrder(
+        userId,
+        voucherCodeRaw,
+        itemsSubtotal,
+      );
+      const expectedTotal = Math.round(
+        itemsSubtotal - v.discountAmount + shippingFee,
+      );
+      if (Math.abs(expectedTotal - Number(createDto.totalAmount)) > 2) {
+        throw new BadRequestException(
+          'Số tiền không khớp với mã giảm giá. Vui lòng làm mới giỏ hàng và thử lại.',
+        );
+      }
+      voucherSnapshot = {
+        code: v.voucher.code,
+        discountAmount: v.discountAmount,
+        voucherId: String(v.voucher._id),
+      };
+    }
+
     const payload = {
-      ...createDto,
-      userId: new Types.ObjectId(userId),
       items: createDto.items.map((item) => ({
         ...item,
         productId: new Types.ObjectId(item.productId),
       })),
+      shippingAddress: createDto.shippingAddress,
+      totalAmount: createDto.totalAmount,
+      orderCode: this.generateOrderCode(),
+      paymentMethod,
+      userId: new Types.ObjectId(userId),
+      /** VNPay: chỉ vào hàng chờ admin sau khi thanh toán thành công */
+      orderStatus: paymentMethod === 'VNPAY' ? 'AwaitingPayment' : 'Pending',
+      paymentStatus: 'Pending',
+      note: createDto.note?.trim() || undefined,
+      shippingMethod: createDto.shippingMethod?.trim() || undefined,
+      voucherCode: voucherSnapshot?.code,
+      voucherDiscountAmount: voucherSnapshot?.discountAmount,
     } as any;
 
     const order = await this.orderRepository.create(payload);
-    return { message: 'Tạo đơn hàng thành công', order };
+
+    if (voucherSnapshot) {
+      try {
+        await this.vouchersService.recordUsageAfterOrder(
+          userId,
+          voucherSnapshot.voucherId,
+          String(order._id),
+          voucherSnapshot.code,
+        );
+      } catch (e: unknown) {
+        await this.orderRepository.delete(String(order._id));
+        const code =
+          e && typeof e === 'object' && 'code' in e
+            ? (e as { code?: number }).code
+            : undefined;
+        if (code === 11000) {
+          throw new BadRequestException(
+            'Mã voucher không áp dụng được (đã sử dụng hoặc trùng lượt).',
+          );
+        }
+        throw e;
+      }
+    }
+
+    let paymentUrl: string | undefined;
+    if (paymentMethod === 'VNPAY') {
+      if (!this.vnpayService.isConfigured()) {
+        throw new BadRequestException(
+          'Chưa cấu hình VNPay (VNPAY_TMN_CODE, VNPAY_HASH_SECRET, VNPAY_RETURN_URL trên server)',
+        );
+      }
+      paymentUrl = this.vnpayService.buildPaymentUrl({
+        orderId: String(order._id),
+        amountVnd: Math.round(Number(createDto.totalAmount)),
+        orderDescription: `Thanh toan don hang ${String(order._id)}`,
+        ipAddr: this.clientIp(req),
+      });
+    }
+
+    void this.orderEvents
+      .onOrderCreated(order, { paymentUrl })
+      .catch((e) =>
+        this.logger.error(
+          `orderEvents.onOrderCreated: ${e instanceof Error ? e.message : e}`,
+        ),
+      );
+
+    return {
+      message: 'Tạo đơn hàng thành công',
+      order,
+      paymentUrl,
+    };
   }
 
   async getMyOrders(userId: string) {
@@ -155,7 +352,12 @@ export class OrdersService {
 
     const match: any = {};
     const statusVal = (query.status || query.orderStatus || '').trim();
-    if (statusVal) match.orderStatus = statusVal;
+    if (statusVal) {
+      match.orderStatus = statusVal;
+    } else {
+      /** Ẩn đơn VNPay chưa trả — admin chỉ thấy sau khi thanh toán hoặc chuyển COD */
+      match.orderStatus = { $nin: ['AwaitingPayment'] };
+    }
     const pay = query.paymentStatus?.trim();
     if (pay) match.paymentStatus = pay;
 
@@ -247,10 +449,159 @@ export class OrdersService {
       );
     }
 
+    if (userId && ownerId === userId) {
+      const reviewByProductId = await this.reviewsService.findMapForOrder(
+        userId,
+        id,
+      );
+      return {
+        ...plain,
+        reviewByProductId,
+      };
+    }
+
     return order;
   }
 
+  /**
+   * Tạo lại URL VNPay cho đơn chưa thanh toán (hết tiền / hủy cổng / lỗi).
+   */
+  async getVnpayRetryUrl(
+    userId: string,
+    orderId: string,
+    req?: Request,
+  ): Promise<{ message: string; paymentUrl: string }> {
+    if (!Types.ObjectId.isValid(orderId)) {
+      throw new BadRequestException('Mã đơn hàng không hợp lệ');
+    }
+    const order = await this.orderRepository.findByIdRaw(orderId);
+    if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
+    if (this.extractOrderOwnerUserId(order) !== userId) {
+      throw new NotFoundException(
+        'Không tìm thấy đơn hàng thuộc quyền của bạn',
+      );
+    }
+    if (
+      this.parsePaymentMethod(String(order.paymentMethod ?? '')) !== 'VNPAY'
+    ) {
+      throw new BadRequestException('Đơn không dùng thanh toán VNPay');
+    }
+    if (String(order.paymentStatus || '').toLowerCase() === 'paid') {
+      throw new BadRequestException(
+        'Đơn đã thanh toán, không cần thanh toán lại',
+      );
+    }
+    const ost = String(order.orderStatus || '')
+      .trim()
+      .toLowerCase();
+    if (ost !== 'awaitingpayment' && ost !== 'pending') {
+      throw new BadRequestException(
+        'Đơn không còn ở trạng thái chờ thanh toán VNPay',
+      );
+    }
+    if (!this.vnpayService.isConfigured()) {
+      throw new BadRequestException(
+        'Chưa cấu hình VNPay trên server (VNPAY_TMN_CODE, VNPAY_HASH_SECRET, VNPAY_RETURN_URL)',
+      );
+    }
+    const paymentUrl = this.vnpayService.buildPaymentUrl({
+      orderId: String(order._id),
+      amountVnd: Math.round(Number(order.totalAmount)),
+      orderDescription: `Thanh toan don hang ${String(order._id)}`,
+      ipAddr: this.clientIp(req),
+    });
+    return { message: 'Đang chuyển tới VNPay', paymentUrl };
+  }
+
+  /**
+   * Đổi sang COD khi VNPay chưa thành công — đơn vào hàng chờ admin như đặt COD thường.
+   */
+  async switchUnpaidVnpayToCod(userId: string, orderId: string) {
+    if (!Types.ObjectId.isValid(orderId)) {
+      throw new BadRequestException('Mã đơn hàng không hợp lệ');
+    }
+    const order = await this.orderRepository.findByIdRaw(orderId);
+    if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
+    if (this.extractOrderOwnerUserId(order) !== userId) {
+      throw new NotFoundException(
+        'Không tìm thấy đơn hàng thuộc quyền của bạn',
+      );
+    }
+    if (
+      this.parsePaymentMethod(String(order.paymentMethod ?? '')) !== 'VNPAY'
+    ) {
+      throw new BadRequestException('Chỉ đổi được khi đơn đang chọn VNPay');
+    }
+    if (String(order.paymentStatus || '').toLowerCase() === 'paid') {
+      throw new BadRequestException('Đơn đã thanh toán');
+    }
+    const ost = String(order.orderStatus || '')
+      .trim()
+      .toLowerCase();
+    if (ost !== 'awaitingpayment' && ost !== 'pending') {
+      throw new BadRequestException(
+        'Đơn không còn ở trạng thái chờ thanh toán',
+      );
+    }
+    const updated = await this.orderRepository.update(orderId, {
+      paymentMethod: 'COD',
+      orderStatus: 'Pending',
+      paymentStatus: 'Pending',
+    } as any);
+    if (!updated) throw new NotFoundException('Không tìm thấy đơn hàng');
+
+    void this.orderEvents
+      .notifyAdminsOrderPendingReview(updated)
+      .catch((e) =>
+        this.logger.error(
+          `notifyAdminsOrderPendingReview: ${e instanceof Error ? e.message : e}`,
+        ),
+      );
+
+    return {
+      message:
+        'Đã chuyển sang thanh toán khi nhận hàng (COD). Shop sẽ xác nhận đơn.',
+      order: updated,
+    };
+  }
+
+  async cancelMyOrder(userId: string, orderId: string) {
+    if (!Types.ObjectId.isValid(orderId)) {
+      throw new BadRequestException('Mã đơn hàng không hợp lệ');
+    }
+    const order = await this.orderRepository.findById(orderId);
+    if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
+    const ownerId = this.extractOrderOwnerUserId(order);
+    if (ownerId !== userId) {
+      throw new NotFoundException(
+        'Không tìm thấy đơn hàng thuộc quyền của bạn',
+      );
+    }
+    if (!this.canUserCancelOrder(order)) {
+      throw new BadRequestException(
+        'Chỉ hủy được đơn khi trạng thái là Chờ xử lý (chưa xác nhận). Đơn đã xác nhận hoặc đã thanh toán không thể hủy tại đây.',
+      );
+    }
+    const updated = await this.orderRepository.update(orderId, {
+      orderStatus: 'Cancelled',
+    });
+    if (!updated) {
+      throw new NotFoundException('Không tìm thấy đơn hàng');
+    }
+    void this.orderEvents
+      .onOrderCancelled(String(updated._id), 'user')
+      .catch((e) =>
+        this.logger.error(
+          `onOrderCancelled user: ${e instanceof Error ? e.message : e}`,
+        ),
+      );
+    return { message: 'Đã hủy đơn hàng', order: updated };
+  }
+
   async updateOrderStatus(id: string, updateDto: UpdateOrderStatusDto) {
+    const before = await this.orderRepository.findById(id);
+    if (!before) throw new NotFoundException('Không tìm thấy đơn hàng');
+
     const payload: any = { ...updateDto };
     // Map statusName → orderStatus nếu frontend gửi field cũ
     if (updateDto.statusName && !updateDto.orderStatus) {
@@ -259,6 +610,23 @@ export class OrdersService {
     }
     const order = await this.orderRepository.update(id, payload);
     if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
+
+    const prevSt = String(before.orderStatus || '')
+      .trim()
+      .toLowerCase();
+    const newSt = String(order.orderStatus || '')
+      .trim()
+      .toLowerCase();
+    if (newSt === 'cancelled' && prevSt !== 'cancelled') {
+      void this.orderEvents
+        .onOrderCancelled(String(order._id), 'admin')
+        .catch((e) =>
+          this.logger.error(
+            `onOrderCancelled admin: ${e instanceof Error ? e.message : e}`,
+          ),
+        );
+    }
+
     return { message: 'Cập nhật trạng thái đơn hàng thành công', order };
   }
 

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Booking, BookingDocument } from './schemas/booking.schema';
 
 @Injectable()
@@ -55,5 +55,22 @@ export class BookingRepository {
 
   async aggregate(pipeline: any[]): Promise<any[]> {
     return this.bookingModel.aggregate(pipeline).exec();
+  }
+
+  /** Lịch đặt trong ngày (không populate) — kiểm tra trùng slot */
+  async findOccupiedForCourtOnDate(
+    courtId: string,
+    dayStart: Date,
+    dayEnd: Date,
+  ) {
+    return this.bookingModel
+      .find({
+        courtId: new Types.ObjectId(courtId),
+        bookingDate: { $gte: dayStart, $lte: dayEnd },
+        bookingStatus: { $nin: ['cancelled', 'Cancelled', 'Đã hủy'] },
+      })
+      .select('slots startTime endTime bookingStatus')
+      .lean()
+      .exec();
   }
 }
