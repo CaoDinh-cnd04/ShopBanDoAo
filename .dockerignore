@@ -1,0 +1,9 @@
+Fronted
+.git
+.github
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+*.md
+SQLQuery2.sql
