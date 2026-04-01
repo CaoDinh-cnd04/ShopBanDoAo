@@ -40,5 +40,20 @@ services:
       # Origin API (không /api) — URL ảnh trong DB: https://<host>/uploads/...
       - key: API_PUBLIC_URL
         sync: false
+      # Email đơn hàng (khách + admin) — không đặt = không gửi mail (chỉ thông báo trong app)
+      # Gmail: App Password → SMTP_HOST=smtp.gmail.com SMTP_PORT=587 SMTP_USER=... SMTP_PASS=...
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      # Tuỳ chọn: email admin nhận bản sao (nhiều địa chỉ phân tách phẩy). Trống = dùng email user role Admin trong DB
+      - key: ADMIN_NOTIFY_EMAIL
+        sync: false
       - key: VNPAY_SANDBOX
         value: "true"

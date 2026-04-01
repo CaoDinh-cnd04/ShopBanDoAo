@@ -2,6 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 
+/** Tránh spam log khi SMTP tắt — chỉ cảnh báo một lần mỗi process */
+let warnedSkippedSendBecauseNoSmtp = false;
+
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
@@ -18,9 +21,7 @@ export class MailService {
       this.config.get<string>('EMAIL_PASS')?.trim() ||
       '';
     const hostFromEnv = this.config.get<string>('SMTP_HOST')?.trim();
-    const host =
-      hostFromEnv ||
-      (user && pass ? 'smtp.gmail.com' : '');
+    const host = hostFromEnv || (user && pass ? 'smtp.gmail.com' : '');
     const port = parseInt(this.config.get<string>('SMTP_PORT') || '587', 10);
     if (host && user && pass) {
       const secure =
@@ -50,7 +51,15 @@ export class MailService {
     html: string;
     text?: string;
   }): Promise<void> {
-    if (!this.transporter) return;
+    if (!this.transporter) {
+      if (!warnedSkippedSendBecauseNoSmtp) {
+        warnedSkippedSendBecauseNoSmtp = true;
+        this.logger.warn(
+          `Không gửi email tới "${opts.to}" (${opts.subject.slice(0, 40)}…) — SMTP chưa cấu hình. Trên Render: đặt SMTP_HOST, SMTP_USER, SMTP_PASS (hoặc EMAIL_USER + EMAIL_PASS cho Gmail). Thông báo trong website vẫn hoạt động.`,
+        );
+      }
+      return;
+    }
     const from =
       this.config.get<string>('MAIL_FROM')?.trim() ||
       this.config.get<string>('SMTP_USER')?.trim() ||
