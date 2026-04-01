@@ -5,7 +5,7 @@ import api from '../../services/api';
 import adminService from '../../services/adminService';
 import ImageUploadField from '../../components/Upload/ImageUploadField';
 import { VARIANT_PROFILES } from '../../config/variantProfileConfig';
-import { resolveMediaUrl } from '../../utils/mediaUrl';
+import { resolveMediaUrl, normalizeUploadUrlForDb } from '../../utils/mediaUrl';
 
 const tabKey = { cats: 'cats', subs: 'subs', brands: 'brands' };
 
@@ -216,7 +216,7 @@ const AdminCategories = () => {
       const payload = {
         brandName: brandForm.brandName.trim(),
         brandSlug: brandForm.brandSlug.trim() || brandForm.brandName.trim().toLowerCase().replace(/\s+/g, '-'),
-        logoUrl: brandForm.logoUrl.trim() || null,
+        logoUrl: normalizeUploadUrlForDb(brandForm.logoUrl) || null,
         description: brandForm.description.trim() || null,
         website: brandForm.website.trim() || null
       };
@@ -492,6 +492,17 @@ const AdminCategories = () => {
                 onChange={(url) => setCatForm((p) => ({ ...p, imageUrl: url }))}
                 placeholder="Chưa có ảnh"
                 previewSize={100}
+                persistImageAfterUpload={
+                  catModal.editing
+                    ? async (imageUrl) => {
+                        await adminService.categories.updateCategory(
+                          catModal.editing,
+                          { imageUrl },
+                        );
+                        await loadAll();
+                      }
+                    : undefined
+                }
               />
             </Col>
             {catModal.editing && (
@@ -600,6 +611,17 @@ const AdminCategories = () => {
                 onChange={(url) => setBrandForm((p) => ({ ...p, logoUrl: url }))}
                 placeholder="Chưa có logo"
                 previewSize={90}
+                persistImageAfterUpload={
+                  brandModal.editing
+                    ? async (logoUrl) => {
+                        await adminService.categories.updateBrand(
+                          brandModal.editing,
+                          { logoUrl },
+                        );
+                        await loadAll();
+                      }
+                    : undefined
+                }
               />
             </Col>
             <Col md={12}>

@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import { FiSave, FiRefreshCw, FiEye, FiShoppingBag, FiCalendar, FiPackage, FiStar, FiUsers } from 'react-icons/fi';
 import adminService from '../../services/adminService';
 import ImageUploadField from '../../components/Upload/ImageUploadField';
-import { resolveMediaUrl } from '../../utils/mediaUrl';
+import { resolveMediaUrl, normalizeUploadUrlForDb } from '../../utils/mediaUrl';
 import { DEFAULT_BANNER } from '../../config/bannerDefaults';
 
 const ICON_OPTIONS = [
@@ -56,7 +56,12 @@ const AdminBanner = () => {
 
   const handleSave = async () => {
     try {
-      await adminService.banner.saveBanner(banner);
+      const payload = {
+        ...banner,
+        imageUrl: normalizeUploadUrlForDb(banner.imageUrl) || banner.imageUrl || '',
+        heroImageUrl: normalizeUploadUrlForDb(banner.heroImageUrl) || banner.heroImageUrl || '',
+      };
+      await adminService.banner.saveBanner(payload);
       toast.success('Đã lưu cài đặt banner!');
       setSaved(true);
     } catch {

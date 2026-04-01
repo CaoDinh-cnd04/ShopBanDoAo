@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Card, Table, Button, Form, Row, Col, Spinner,
-  Badge, Modal, Nav
+  Badge, Modal, Nav, Alert
 } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import { FiMapPin, FiCalendar, FiLayers } from 'react-icons/fi';
 import StatCard from '../../components/Admin/StatCard';
 import ImageUploadField from '../../components/Upload/ImageUploadField';
-import { resolveMediaUrl } from '../../utils/mediaUrl';
+import { resolveMediaUrl, normalizeUploadUrlForDb } from '../../utils/mediaUrl';
 import api from '../../services/api';
 import adminService from '../../services/adminService';
+import './AdminCourts.css';
 
 const TAB = { courts: 'courts', types: 'types' };
 
@@ -20,6 +21,38 @@ const emptyCourt = {
 };
 
 const emptyType = { typeName: '', description: '' };
+
+/** Mongo CourtType chỉ có _id, không có courtTypeId */
+function getCourtTypeOptionId(t) {
+  if (!t) return '';
+  const id = t.courtTypeId ?? t._id;
+  return id != null ? String(id) : '';
+}
+
+/** Gán value cho Form.Select khi DB chỉ có courtType (tên) hoặc courtType populate */
+function inferCourtTypeId(c, types) {
+  const list = Array.isArray(types) ? types : [];
+  const raw = c?.courtTypeId;
+  if (raw != null && typeof raw !== 'object') {
+    const s = String(raw);
+    if (list.some((t) => getCourtTypeOptionId(t) === s)) return s;
+  }
+  if (raw && typeof raw === 'object' && raw._id) {
+    const s = String(raw._id);
+    if (list.some((t) => getCourtTypeOptionId(t) === s)) return s;
+  }
+  const name =
+    typeof c?.courtType === 'string'
+      ? c.courtType
+      : c?.courtType?.typeName;
+  if (name) {
+    const match = list.find(
+      (t) => (t.typeName || '').trim() === (name || '').trim(),
+    );
+    if (match) return getCourtTypeOptionId(match);
+  }
+  return '';
+}
 
 const AdminCourts = () => {
   const [tab, setTab] = useState(TAB.courts);
@@ -36,11 +69,20 @@ const AdminCourts = () => {
   const [typeModal, setTypeModal] = useState({ open: false, editing: null });
   const [typeForm, setTypeForm] = useState(emptyType);
 
+  const validCourtTypeIds = new Set(
+    courtTypes.map((t) => getCourtTypeOptionId(t)),
+  );
+  const courtTypeSelectValue = validCourtTypeIds.has(courtForm.courtTypeId)
+    ? courtForm.courtTypeId
+    : '';
+
   /* ---- Loaders ---- */
   const loadCourtTypes = useCallback(async () => {
     const res = await api.get('/courts/types');
     const data = res.data?.data;
-    setCourtTypes(Array.isArray(data) ? data : []);
+    const list = Array.isArray(data) ? data : [];
+    setCourtTypes(list);
+    return list;
   }, []);
 
   const loadCourts = useCallback(async () => {
@@ -84,15 +126,26 @@ const AdminCourts = () => {
   }, [loadCourtTypes, loadCourts, loadStats]);
 
   /* ---- Court CRUD ---- */
-  const openNewCourt = () => {
+  const openNewCourt = async () => {
+    try {
+      await loadCourtTypes();
+    } catch {
+      /* ignore */
+    }
     setCourtForm(emptyCourt);
     setCourtModal({ open: true, editing: null });
   };
 
-  const openEditCourt = (c) => {
+  const openEditCourt = async (c) => {
+    let types = courtTypes;
+    try {
+      types = await loadCourtTypes();
+    } catch {
+      /* dùng state cũ */
+    }
     const id = c.courtId || c._id?.toString();
     setCourtForm({
-      courtTypeId: c.courtTypeId || '',
+      courtTypeId: inferCourtTypeId(c, types),
       courtName: c.courtName || '',
       courtCode: c.courtCode || '',
       location: c.location || '',
@@ -111,9 +164,21 @@ const AdminCourts = () => {
 
   const saveCourt = async () => {
     if (!courtForm.courtName.trim()) { toast.error('Nhập tên sân'); return; }
-    if (!courtForm.courtTypeId) { toast.error('Chọn loại sân'); return; }
+    if (courtTypes.length === 0) {
+      toast.error('Chưa có loại sân — thêm ở tab «Loại sân» trước.');
+      return;
+    }
+    if (!courtTypeSelectValue) {
+      toast.error('Chọn loại sân');
+      return;
+    }
+    const selectedType = courtTypes.find(
+      (t) => getCourtTypeOptionId(t) === courtTypeSelectValue
+    );
+    const courtTypeName = (selectedType?.typeName || '').trim();
     const payload = {
-      courtTypeId: courtForm.courtTypeId,
+      courtTypeId: courtTypeSelectValue,
+      courtType: courtTypeName || undefined,
       courtName: courtForm.courtName.trim(),
       courtCode: courtForm.courtCode.trim(),
       location: courtForm.location.trim(),
@@ -124,7 +189,7 @@ const AdminCourts = () => {
       pricePerHour: courtForm.pricePerHour === '' ? null : Number(courtForm.pricePerHour),
       openTime: courtForm.openTime.trim(),
       closeTime: courtForm.closeTime.trim(),
-      imageUrl: courtForm.imageUrl.trim() || null,
+      imageUrl: normalizeUploadUrlForDb(courtForm.imageUrl) || null,
     };
     if (Number.isNaN(payload.capacity)) { toast.error('Sức chứa không hợp lệ'); return; }
     try {
@@ -208,7 +273,7 @@ const AdminCourts = () => {
   const typeNameOptions = courtTypes.map((t) => ({ value: t.typeName, label: t.typeName }));
 
   return (
-    <div className="admin-page">
+    <div className="admin-page admin-courts-page">
       <div className="admin-page-header">
         <div>
           <h1 className="admin-page-title">Sân thể thao</h1>
@@ -375,97 +440,225 @@ const AdminCourts = () => {
       )}
 
       {/* ===== MODAL: COURT ===== */}
-      <Modal show={courtModal.open} onHide={() => setCourtModal({ open: false, editing: null })} size="lg" centered>
-        <Modal.Header closeButton>
+      <Modal
+        show={courtModal.open}
+        onHide={() => setCourtModal({ open: false, editing: null })}
+        size="lg"
+        centered
+        className="admin-court-modal"
+        backdrop="static"
+      >
+        <Modal.Header closeButton className="admin-court-modal__header">
           <Modal.Title>{courtModal.editing ? 'Sửa sân' : 'Thêm sân'}</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
-          <Row className="g-2">
-            <Col md={6}>
-              <Form.Label>Loại sân *</Form.Label>
-              <Form.Select required value={courtForm.courtTypeId}
-                onChange={(e) => setCourtForm((p) => ({ ...p, courtTypeId: e.target.value }))}>
-                <option value="">— Chọn —</option>
-                {courtTypes.map((t) => {
-                  const tid = t.courtTypeId || t._id?.toString();
-                  return <option key={tid} value={tid}>{t.typeName}</option>;
-                })}
-              </Form.Select>
-            </Col>
-            <Col md={6}>
-              <Form.Label>Mã sân *</Form.Label>
-              <Form.Control value={courtForm.courtCode}
-                onChange={(e) => setCourtForm((p) => ({ ...p, courtCode: e.target.value }))}
-                disabled={!!courtModal.editing} placeholder="VD: SAN-01" />
-            </Col>
-            <Col md={12}>
-              <Form.Label>Tên sân *</Form.Label>
-              <Form.Control value={courtForm.courtName}
-                onChange={(e) => setCourtForm((p) => ({ ...p, courtName: e.target.value }))} />
-            </Col>
-            <Col md={6}>
-              <Form.Label>Địa điểm / khu vực *</Form.Label>
-              <Form.Control value={courtForm.location}
-                onChange={(e) => setCourtForm((p) => ({ ...p, location: e.target.value }))} />
-            </Col>
-            <Col md={6}>
-              <Form.Label>Địa chỉ chi tiết</Form.Label>
-              <Form.Control value={courtForm.address}
-                onChange={(e) => setCourtForm((p) => ({ ...p, address: e.target.value }))} />
-            </Col>
-            <Col md={4}>
-              <Form.Label>Giờ mở cửa *</Form.Label>
-              <Form.Control placeholder="VD: 06:00" value={courtForm.openTime}
-                onChange={(e) => setCourtForm((p) => ({ ...p, openTime: e.target.value }))} />
-            </Col>
-            <Col md={4}>
-              <Form.Label>Giờ đóng cửa *</Form.Label>
-              <Form.Control placeholder="VD: 22:00" value={courtForm.closeTime}
-                onChange={(e) => setCourtForm((p) => ({ ...p, closeTime: e.target.value }))} />
-            </Col>
-            <Col md={4}>
-              <Form.Label>Giá/giờ (VND)</Form.Label>
-              <Form.Control type="number" min={0} value={courtForm.pricePerHour}
-                onChange={(e) => setCourtForm((p) => ({ ...p, pricePerHour: e.target.value }))}
-                placeholder="VD: 150000" />
-            </Col>
-            <Col md={6}>
-              <Form.Label>Sức chứa (người)</Form.Label>
-              <Form.Control type="number" min={0} value={courtForm.capacity}
-                onChange={(e) => setCourtForm((p) => ({ ...p, capacity: e.target.value }))} />
-            </Col>
-            <Col md={6}>
-              <Form.Label>Tiện ích (mô tả ngắn)</Form.Label>
-              <Form.Control value={courtForm.facilities}
-                onChange={(e) => setCourtForm((p) => ({ ...p, facilities: e.target.value }))}
-                placeholder="VD: Đèn LED, phòng thay đồ, wifi..." />
-            </Col>
-            <Col md={12}>
-              <Form.Label>Mô tả</Form.Label>
-              <Form.Control as="textarea" rows={2} value={courtForm.description}
-                onChange={(e) => setCourtForm((p) => ({ ...p, description: e.target.value }))} />
-            </Col>
-            <Col md={12}>
-              <ImageUploadField
-                label="Ảnh sân (upload từ máy tính)"
-                value={courtForm.imageUrl}
-                onChange={(url) => setCourtForm((p) => ({ ...p, imageUrl: url }))}
-                placeholder="Chưa có ảnh sân"
-                previewSize={120}
-              />
-            </Col>
-            {courtModal.editing && (
-              <Col md={12}>
-                <Form.Check type="switch" label="Đang hoạt động"
-                  checked={courtForm.isActive}
-                  onChange={(e) => setCourtForm((p) => ({ ...p, isActive: e.target.checked }))} />
+        <Modal.Body className="admin-court-modal__body">
+          {courtTypes.length === 0 && (
+            <Alert variant="warning" className="mb-3 py-2">
+              Chưa có loại sân. Vào tab <strong>Loại sân</strong>, tạo ít nhất một loại rồi mở lại form này.
+            </Alert>
+          )}
+          <div className="admin-court-modal__section">
+            <div className="admin-court-modal__section-title">Phân loại và mã</div>
+            <Row className="g-3">
+              <Col md={6}>
+                <Form.Label>Loại sân *</Form.Label>
+                <Form.Select
+                  required
+                  value={courtTypeSelectValue}
+                  onChange={(e) =>
+                    setCourtForm((p) => ({ ...p, courtTypeId: e.target.value }))
+                  }
+                  disabled={courtTypes.length === 0}
+                  aria-label="Chọn loại sân"
+                >
+                  <option value="">— Chọn loại sân —</option>
+                  {courtTypes.map((t) => {
+                    const tid = getCourtTypeOptionId(t);
+                    return (
+                      <option key={tid} value={tid}>
+                        {t.typeName}
+                      </option>
+                    );
+                  })}
+                </Form.Select>
+                {courtModal.editing &&
+                  courtTypes.length > 0 &&
+                  !courtTypeSelectValue && (
+                    <Form.Text className="text-warning">
+                      Không khớp loại trong danh sách — chọn lại loại sân.
+                    </Form.Text>
+                  )}
               </Col>
-            )}
-          </Row>
+              <Col md={6}>
+                <Form.Label>Mã sân *</Form.Label>
+                <Form.Control
+                  value={courtForm.courtCode}
+                  onChange={(e) =>
+                    setCourtForm((p) => ({ ...p, courtCode: e.target.value }))
+                  }
+                  disabled={!!courtModal.editing}
+                  placeholder="VD: SAN-01"
+                />
+                <Form.Text className="text-muted">Mã không đổi sau khi tạo.</Form.Text>
+              </Col>
+              <Col md={12}>
+                <Form.Label>Tên sân *</Form.Label>
+                <Form.Control
+                  value={courtForm.courtName}
+                  onChange={(e) =>
+                    setCourtForm((p) => ({ ...p, courtName: e.target.value }))
+                  }
+                  placeholder="Tên hiển thị cho khách"
+                />
+              </Col>
+            </Row>
+          </div>
+
+          <div className="admin-court-modal__section">
+            <div className="admin-court-modal__section-title">Vị trí</div>
+            <Row className="g-3">
+              <Col md={6}>
+                <Form.Label>Địa điểm / khu vực *</Form.Label>
+                <Form.Control
+                  value={courtForm.location}
+                  onChange={(e) =>
+                    setCourtForm((p) => ({ ...p, location: e.target.value }))
+                  }
+                />
+              </Col>
+              <Col md={6}>
+                <Form.Label>Địa chỉ chi tiết</Form.Label>
+                <Form.Control
+                  value={courtForm.address}
+                  onChange={(e) =>
+                    setCourtForm((p) => ({ ...p, address: e.target.value }))
+                  }
+                />
+              </Col>
+            </Row>
+          </div>
+
+          <div className="admin-court-modal__section">
+            <div className="admin-court-modal__section-title">Giờ hoạt động và giá</div>
+            <Row className="g-3">
+              <Col md={4}>
+                <Form.Label>Giờ mở cửa *</Form.Label>
+                <Form.Control
+                  type="time"
+                  value={courtForm.openTime || ''}
+                  onChange={(e) =>
+                    setCourtForm((p) => ({ ...p, openTime: e.target.value }))
+                  }
+                />
+              </Col>
+              <Col md={4}>
+                <Form.Label>Giờ đóng cửa *</Form.Label>
+                <Form.Control
+                  type="time"
+                  value={courtForm.closeTime || ''}
+                  onChange={(e) =>
+                    setCourtForm((p) => ({ ...p, closeTime: e.target.value }))
+                  }
+                />
+              </Col>
+              <Col md={4}>
+                <Form.Label>Giá/giờ (VND)</Form.Label>
+                <Form.Control
+                  type="number"
+                  min={0}
+                  value={courtForm.pricePerHour}
+                  onChange={(e) =>
+                    setCourtForm((p) => ({ ...p, pricePerHour: e.target.value }))
+                  }
+                  placeholder="VD: 150000"
+                />
+              </Col>
+            </Row>
+          </div>
+
+          <div className="admin-court-modal__section">
+            <div className="admin-court-modal__section-title">Mô tả và tiện ích</div>
+            <Row className="g-3">
+              <Col md={6}>
+                <Form.Label>Sức chứa (người)</Form.Label>
+                <Form.Control
+                  type="number"
+                  min={0}
+                  value={courtForm.capacity}
+                  onChange={(e) =>
+                    setCourtForm((p) => ({ ...p, capacity: e.target.value }))
+                  }
+                />
+              </Col>
+              <Col md={6}>
+                <Form.Label>Tiện ích (mô tả ngắn)</Form.Label>
+                <Form.Control
+                  value={courtForm.facilities}
+                  onChange={(e) =>
+                    setCourtForm((p) => ({ ...p, facilities: e.target.value }))
+                  }
+                  placeholder="VD: Đèn LED, phòng thay đồ, wifi..."
+                />
+              </Col>
+              <Col md={12}>
+                <Form.Label>Mô tả</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={2}
+                  value={courtForm.description}
+                  onChange={(e) =>
+                    setCourtForm((p) => ({ ...p, description: e.target.value }))
+                  }
+                />
+              </Col>
+            </Row>
+          </div>
+
+          <div className="admin-court-modal__section">
+            <div className="admin-court-modal__section-title">Ảnh đại diện</div>
+            <ImageUploadField
+              label="Ảnh sân (upload từ máy tính)"
+              value={courtForm.imageUrl}
+              onChange={(url) => setCourtForm((p) => ({ ...p, imageUrl: url }))}
+              placeholder="Chưa có ảnh sân"
+              previewSize={120}
+              persistImageAfterUpload={
+                courtModal.editing
+                  ? async (imageUrl) => {
+                      await adminService.courts.updateCourt(courtModal.editing, {
+                        imageUrl,
+                      });
+                      await refreshAll();
+                    }
+                  : undefined
+              }
+            />
+          </div>
+
+          {courtModal.editing && (
+            <div className="admin-court-modal__section admin-court-modal__section--inline">
+              <Form.Check
+                type="switch"
+                id="court-active-switch"
+                label="Đang hoạt động"
+                checked={courtForm.isActive}
+                onChange={(e) =>
+                  setCourtForm((p) => ({ ...p, isActive: e.target.checked }))
+                }
+              />
+            </div>
+          )}
         </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setCourtModal({ open: false, editing: null })}>Đóng</Button>
-          <Button variant="primary" onClick={saveCourt}>Lưu</Button>
+        <Modal.Footer className="admin-court-modal__footer">
+          <Button
+            variant="outline-secondary"
+            onClick={() => setCourtModal({ open: false, editing: null })}
+          >
+            Đóng
+          </Button>
+          <Button variant="primary" onClick={saveCourt} disabled={courtTypes.length === 0}>
+            Lưu
+          </Button>
         </Modal.Footer>
       </Modal>
 

@@ -1,8 +1,8 @@
-import { useState, useRef, useId } from 'react';
+import { useState, useRef, useId, useEffect } from 'react';
 import { Spinner } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import { uploadSingleImage } from '../../services/uploadService';
-import { resolveMediaUrl } from '../../utils/mediaUrl';
+import { resolveMediaUrl, normalizeUploadUrlForDb } from '../../utils/mediaUrl';
 
 /**
  * ImageUploadField - Component upload ảnh nhúng trong form admin
@@ -13,6 +13,8 @@ import { resolveMediaUrl } from '../../utils/mediaUrl';
  *   placeholder : text khi chưa có ảnh
  *   previewSize : kích thước preview (default: 120)
  *   disabled    : vô hiệu hóa
+ *   persistImageAfterUpload : (url đã chuẩn hóa) => Promise<void> — gọi API lưu ảnh ngay (khi sửa bản ghi có id),
+ *                             tránh mất ảnh nếu admin đóng trang trước khi bấm Lưu.
  */
 const ImageUploadField = ({
   value = '',
@@ -21,10 +23,16 @@ const ImageUploadField = ({
   placeholder = 'Chưa có ảnh',
   previewSize = 120,
   disabled = false,
+  persistImageAfterUpload,
 }) => {
   const [uploading, setUploading] = useState(false);
+  const [imgFailed, setImgFailed] = useState(false);
   const inputRef = useRef(null);
   const fileInputId = useId();
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [value]);
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -43,14 +51,26 @@ const ImageUploadField = ({
       setUploading(true);
       const res = await uploadSingleImage(file);
       const uploaded = res.data?.data;
-      const url =
+      const raw =
         typeof uploaded === 'string'
           ? uploaded
           : uploaded?.url ?? uploaded?.path ?? uploaded?.filename ?? '';
 
-      if (!url) throw new Error('Không nhận được URL ảnh');
-      toast.success('Upload ảnh thành công');
-      onChange?.(url);
+      if (!raw) throw new Error('Không nhận được URL ảnh');
+      const normalized = normalizeUploadUrlForDb(raw);
+      if (!normalized) {
+        throw new Error('URL ảnh không hợp lệ để lưu (tránh blob / đường dẫn tạm)');
+      }
+      onChange?.(normalized);
+      if (typeof persistImageAfterUpload === 'function') {
+        await persistImageAfterUpload(normalized);
+        toast.success('Đã lưu ảnh lên máy chủ');
+      } else {
+        toast.success(
+          'Tải ảnh lên thành công. Nhấn «Lưu» để ghi ảnh vào cơ sở dữ liệu.',
+          { autoClose: 6000 },
+        );
+      }
     } catch (err) {
       console.error(err);
       toast.error(
@@ -82,11 +102,18 @@ const ImageUploadField = ({
             <Spinner animation="border" size="sm" variant="primary" />
           ) : value ? (
             <>
-              <img
-                src={resolveMediaUrl(value)}
-                alt="Preview"
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
+              {!imgFailed ? (
+                <img
+                  src={resolveMediaUrl(value)}
+                  alt="Preview"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={() => setImgFailed(true)}
+                />
+              ) : (
+                <span className="text-danger small text-center px-1" style={{ fontSize: 10 }}>
+                  Không tải ảnh (URL/API)
+                </span>
+              )}
               {!disabled && (
                 <button
                   type="button"

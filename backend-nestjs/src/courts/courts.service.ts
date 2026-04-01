@@ -1,4 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Booking, BookingDocument } from '../bookings/schemas/booking.schema';
 import { CourtRepository } from './courts.repository';
 import { CourtTypeRepository } from './courts-type.repository';
 import {
@@ -14,6 +21,7 @@ export class CourtsService {
   constructor(
     private courtRepository: CourtRepository,
     private courtTypeRepository: CourtTypeRepository,
+    @InjectModel(Booking.name) private bookingModel: Model<BookingDocument>,
   ) {}
 
   // ─── Court Types ────────────────────────────────────────────────────
@@ -41,6 +49,17 @@ export class CourtsService {
   // ─── Courts ─────────────────────────────────────────────────────────
   async createCourt(createDto: CreateCourtDto) {
     const payload: any = { ...createDto };
+    if (payload.courtTypeId) {
+      const t = await this.courtTypeRepository.findById(payload.courtTypeId);
+      if (!t) throw new BadRequestException('Không tìm thấy loại sân');
+      payload.courtType = t.typeName;
+    }
+    if (!payload.courtType?.trim()) {
+      throw new BadRequestException(
+        'Thiếu loại sân (chọn loại hoặc gửi courtType)',
+      );
+    }
+    payload.courtType = String(payload.courtType).trim();
     if (!payload.pricePerHour) payload.pricePerHour = 0;
     const court = await this.courtRepository.create(payload);
     return { message: 'Thêm sân thể thao thành công', court };
@@ -71,7 +90,15 @@ export class CourtsService {
   }
 
   async updateCourt(id: string, updateDto: UpdateCourtDto) {
-    const court = await this.courtRepository.update(id, updateDto);
+    const payload: any = { ...updateDto };
+    if (payload.courtTypeId) {
+      const t = await this.courtTypeRepository.findById(payload.courtTypeId);
+      if (!t) throw new BadRequestException('Không tìm thấy loại sân');
+      payload.courtType = t.typeName;
+    } else if (payload.courtType != null) {
+      payload.courtType = String(payload.courtType).trim();
+    }
+    const court = await this.courtRepository.update(id, payload);
     if (!court) throw new NotFoundException('Không tìm thấy sân');
     return { message: 'Cập nhật sân thành công', court };
   }
@@ -83,10 +110,11 @@ export class CourtsService {
   }
 
   async getCourtStats() {
-    const [totalCourts, activeCourts] = await Promise.all([
+    const [totalCourts, activeCourts, totalBookings] = await Promise.all([
       this.courtRepository.count({}),
       this.courtRepository.count({ isActive: true }),
+      this.bookingModel.countDocuments({}).exec(),
     ]);
-    return { totalCourts, activeCourts, totalBookings: 0 };
+    return { totalCourts, activeCourts, totalBookings };
   }
 }

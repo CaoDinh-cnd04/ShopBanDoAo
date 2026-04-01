@@ -5,11 +5,16 @@ import {
   IsNumber,
   IsBoolean,
   Min,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateCourtDto {
   @IsString() @IsNotEmpty() courtName: string;
-  @IsString() @IsNotEmpty() courtType: string;
+  /** Gửi tên loại HOẶC courtTypeId — backend sẽ đồng bộ cả hai */
+  @ValidateIf((o) => !o.courtTypeId)
+  @IsString()
+  @IsNotEmpty()
+  courtType?: string;
   @IsString() @IsOptional() courtTypeId?: string;
   @IsString() @IsOptional() courtCode?: string;
   @IsNumber() @Min(0) @IsOptional() pricePerHour?: number;

@@ -343,6 +343,22 @@ export class BookingsService {
       }
     }
 
+    /** Kiểm tra lại ngay trước khi ghi DB — giảm đặt trùng khi hai người chọn cùng lúc */
+    const { slots: availableNow } = await this.getAvailableSlots(
+      createDto.courtId,
+      dateStr,
+    );
+    const allowedNow = new Set(
+      availableNow.filter((a) => !a.isBooked).map((a) => slotKey(a)),
+    );
+    for (const s of chosen) {
+      if (!allowedNow.has(slotKey(s))) {
+        throw new BadRequestException(
+          `Khung giờ ${s.startTime}–${s.endTime} vừa được người khác đặt — vui lòng chọn khung khác`,
+        );
+      }
+    }
+
     const sorted = [...chosen].sort(
       (a, b) => parseMinutes(a.startTime) - parseMinutes(b.startTime),
     );
