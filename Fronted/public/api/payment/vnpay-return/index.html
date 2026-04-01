@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hoàn tất thanh toán…</title>
+  <!--
+    VNPay Return URL trỏ về domain frontend (vd: https://ndsports.id.vn/api/payment/vnpay-return)
+    → trang này chuyển tiếp sang API backend xử lý chữ ký và redirect về /profile/orders.
+    Đổi API_ORIGIN nếu API production khác (khớp Render / VPS).
+  -->
+  <script>
+    (function () {
+      var API_ORIGIN = 'https://shopbandoao.onrender.com';
+      var target =
+        API_ORIGIN + '/api/payment/vnpay-return' + window.location.search + window.location.hash;
+      window.location.replace(target);
+    })();
+  </script>
+</head>
+<body>
+  <p style="font-family: system-ui, sans-serif; padding: 2rem; text-align: center; color: #444;">
+    Đang chuyển đến cổng xác nhận thanh toán…
+  </p>
+</body>
+</html>

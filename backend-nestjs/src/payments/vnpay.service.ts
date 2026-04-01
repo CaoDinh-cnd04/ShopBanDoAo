@@ -42,7 +42,7 @@ export class VnpayService {
       this.config.get<string>('VNP_RETURN_URL')?.trim();
     if (!u) {
       throw new BadRequestException(
-        'Chưa cấu hình VNPAY_RETURN_URL (URL đầy đủ, ví dụ https://ndsports.id.vn/api/payment/vnpay-return)',
+        'Chưa cấu hình VNPAY_RETURN_URL — phải là URL **API backend** (vd: https://xxx.onrender.com/api/payment/vnpay-return), không dùng domain chỉ có frontend tĩnh.',
       );
     }
     return u;

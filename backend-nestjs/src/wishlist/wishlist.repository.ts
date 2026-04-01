@@ -9,10 +9,14 @@ export class WishlistRepository {
     @InjectModel(Wishlist.name) private wishlistModel: Model<WishlistDocument>,
   ) {}
 
+  /** `images` (mảng imageUrl) — không dùng `image` vì Product schema không có field đó */
+  private readonly productPopulateSelect =
+    'productName defaultPrice images';
+
   async findAllByUser(userId: string): Promise<WishlistDocument[]> {
     return this.wishlistModel
       .find({ userId: new Types.ObjectId(userId) })
-      .populate('productId', 'productName defaultPrice image')
+      .populate('productId', this.productPopulateSelect)
       .exec();
   }
 
@@ -33,7 +37,9 @@ export class WishlistRepository {
       userId: new Types.ObjectId(userId),
       productId: new Types.ObjectId(productId),
     });
-    return newWishlist.save();
+    const saved = await newWishlist.save();
+    await saved.populate('productId', this.productPopulateSelect);
+    return saved;
   }
 
   async delete(id: string): Promise<WishlistDocument | null> {

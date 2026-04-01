@@ -17,6 +17,32 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/**
+ * Admin thường nhập chỉ ngày (ISO date) → lưu 00:00:00.000Z.
+ * So sánh `now > endDate` khiến mã **hết hạn ngay trong ngày** (sau 00:00 UTC).
+ * Coi ngày kết thúc là còn hiệu lực đến 23:59:59.999 UTC cùng ngày.
+ */
+function isUtcMidnight(d: Date): boolean {
+  return (
+    d.getUTCHours() === 0 &&
+    d.getUTCMinutes() === 0 &&
+    d.getUTCSeconds() === 0 &&
+    d.getUTCMilliseconds() === 0
+  );
+}
+
+function endDateInclusiveUtc(end: Date): Date {
+  const d = new Date(end);
+  if (isUtcMidnight(d)) {
+    d.setUTCHours(23, 59, 59, 999);
+  }
+  return d;
+}
+
+function normalizeEndDateForStorage(d: Date): Date {
+  return endDateInclusiveUtc(new Date(d));
+}
+
 @Injectable()
 export class VouchersService {
   constructor(
@@ -34,7 +60,7 @@ export class VouchersService {
       voucherName: createDto.voucherName?.trim() ?? '',
       description: createDto.description?.trim() ?? '',
       startDate: new Date(createDto.startDate),
-      endDate: new Date(createDto.endDate),
+      endDate: normalizeEndDateForStorage(new Date(createDto.endDate)),
     };
     const voucher = await this.voucherRepository.create(payload);
     return { message: 'Tạo mã giảm giá thành công', voucher };
@@ -208,7 +234,9 @@ export class VouchersService {
   async updateVoucher(id: string, updateDto: UpdateVoucherDto) {
     const payload: any = { ...updateDto };
     if (updateDto.startDate) payload.startDate = new Date(updateDto.startDate);
-    if (updateDto.endDate) payload.endDate = new Date(updateDto.endDate);
+    if (updateDto.endDate) {
+      payload.endDate = normalizeEndDateForStorage(new Date(updateDto.endDate));
+    }
 
     const voucher = await this.voucherRepository.update(id, payload);
     if (!voucher) throw new NotFoundException('Không tìm thấy mã giảm giá');
@@ -221,13 +249,60 @@ export class VouchersService {
     return { message: 'Đã vô hiệu hóa mã giảm giá' };
   }
 
+  /** Chuẩn hóa JSON — luôn có `code` (tránh client nhận document thiếu field khi serialize) */
+  private mapVoucherForClient(v: VoucherDocument) {
+    const o = v.toObject
+      ? v.toObject()
+      : (v as unknown as Record<string, unknown>);
+    const rawCode = o.code ?? o.voucherCode;
+    const code =
+      typeof rawCode === 'string'
+        ? rawCode.trim().toUpperCase()
+        : String(rawCode ?? '').trim();
+    return {
+      _id: o._id,
+      code,
+      voucherName: (o.voucherName as string) ?? '',
+      description: (o.description as string) ?? '',
+      discountType: o.discountType,
+      discountValue: o.discountValue,
+      minOrderValue: (o.minOrderValue as number) ?? 0,
+      maxDiscountAmount: (o.maxDiscountAmount as number) ?? 0,
+      startDate: o.startDate,
+      endDate: o.endDate,
+    };
+  }
+
   async getPublicVouchers() {
     const now = new Date();
-    const vouchers = await this.voucherRepository.findAll(
-      { isActive: true, startDate: { $lte: now }, endDate: { $gte: now } },
-      0,
-      50,
+    /** Lấy cả mã có endDate = 00:00 UTC (đã lưu cũ) — lọc theo ngày kết thúc inclusive */
+    const looseEnd = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() - 1,
+        0,
+        0,
+        0,
+        0,
+      ),
     );
+    const list = await this.voucherRepository.findAll(
+      {
+        isActive: true,
+        startDate: { $lte: now },
+        endDate: { $gte: looseEnd },
+      },
+      0,
+      100,
+    );
+    const vouchers = list
+      .filter((doc) => {
+        const endAt = endDateInclusiveUtc(new Date(doc.endDate));
+        return now.getTime() <= endAt.getTime();
+      })
+      .slice(0, 50)
+      .map((doc) => this.mapVoucherForClient(doc));
     return { vouchers };
   }
 
@@ -236,34 +311,35 @@ export class VouchersService {
    */
   async getMyVoucherOverview(userId: string) {
     const now = new Date();
-    const vouchers = await this.voucherRepository.findAll(
-      { isActive: true, startDate: { $lte: now }, endDate: { $gte: now } },
+    const looseEnd = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() - 1,
+        0,
+        0,
+        0,
+        0,
+      ),
+    );
+    const candidates = await this.voucherRepository.findAll(
+      {
+        isActive: true,
+        startDate: { $lte: now },
+        endDate: { $gte: looseEnd },
+      },
       0,
-      100,
+      200,
     );
 
     const usages = await this.voucherUsageRepository.findByUser(userId);
     const usedVoucherIds = new Set(usages.map((u) => String(u.voucherId)));
 
-    const mapOne = (v: VoucherDocument) => {
-      const o = v.toObject
-        ? v.toObject()
-        : (v as unknown as Record<string, unknown>);
-      return {
-        _id: o._id,
-        code: o.code,
-        voucherName: o.voucherName ?? '',
-        description: o.description ?? '',
-        discountType: o.discountType,
-        discountValue: o.discountValue,
-        minOrderValue: o.minOrderValue ?? 0,
-        maxDiscountAmount: o.maxDiscountAmount ?? 0,
-        startDate: o.startDate,
-        endDate: o.endDate,
-      };
-    };
-
-    const available = vouchers
+    const available = candidates
+      .filter((v) => {
+        const endAt = endDateInclusiveUtc(new Date(v.endDate));
+        return now.getTime() <= endAt.getTime();
+      })
       .filter((v) => !usedVoucherIds.has(String(v._id)))
       .filter((v) => {
         const lim = v.usageLimit;
@@ -271,7 +347,7 @@ export class VouchersService {
         if (typeof lim !== 'number' || lim < 0) return true;
         return used < lim;
       })
-      .map(mapOne);
+      .map((doc) => this.mapVoucherForClient(doc));
 
     const used = usages.map((u) => {
       const plain = u.toObject();

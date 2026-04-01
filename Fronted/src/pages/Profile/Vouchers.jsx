@@ -37,14 +37,25 @@ const formatDateTime = (d) =>
       })
     : '';
 
+/** API có thể trả `code` hoặc tên cũ — tránh copy ra "undefined" */
+const getVoucherCode = (v) => {
+  const c = v?.code ?? v?.voucherCode ?? v?.VoucherCode;
+  return c != null ? String(c).trim() : '';
+};
+
 const VoucherCard = ({ voucher }) => {
   const [copied, setCopied] = useState(false);
+  const voucherCode = getVoucherCode(voucher);
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(voucher.code);
+      if (!voucherCode) {
+        toast.error('Không có mã để sao chép');
+        return;
+      }
+      await navigator.clipboard.writeText(voucherCode);
       setCopied(true);
-      toast.success(`Đã sao chép mã: ${voucher.code}`);
+      toast.success(`Đã sao chép mã: ${voucherCode}`);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error('Không thể sao chép, hãy copy thủ công');
@@ -70,7 +81,7 @@ const VoucherCard = ({ voucher }) => {
       <div className="voucher-body">
         <div className="voucher-top">
           <div>
-            <div className="voucher-code">{voucher.code}</div>
+            <div className="voucher-code">{voucherCode || '—'}</div>
             <div className="voucher-discount">Giảm {discountLabel}</div>
             {voucher.voucherName ? (
               <div className="voucher-name-sub small text-muted mt-1">{voucher.voucherName}</div>
@@ -81,6 +92,7 @@ const VoucherCard = ({ voucher }) => {
             className={`voucher-copy-btn ${copied ? 'copied' : ''}`}
             onClick={handleCopy}
             title="Sao chép mã"
+            disabled={!voucherCode}
           >
             {copied ? <FiCheck size={15} /> : <FiCopy size={15} />}
             {copied ? 'Đã copy' : 'Sao chép'}
