@@ -308,6 +308,27 @@
   color: #9ca3af;
 }
 
+.pd-sales-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 22px;
+  margin-bottom: 12px;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.pd-sales-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pd-sales-stat strong {
+  color: var(--text-primary, #111827);
+  font-weight: 700;
+}
+
 .pd-rating {
   display: flex;
   align-items: center;

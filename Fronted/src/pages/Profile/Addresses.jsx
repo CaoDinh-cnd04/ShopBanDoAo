@@ -9,7 +9,11 @@ import {
   FiUser, FiPhone, FiHome, FiCheck,
 } from 'react-icons/fi';
 import {
-  fetchAddresses, createAddress, updateAddress, deleteAddress,
+  fetchAddresses,
+  createAddress,
+  updateAddress,
+  deleteAddress,
+  setDefaultAddress,
 } from '../../store/slices/addressSlice';
 import { toast } from 'react-toastify';
 import Loading from '../../components/Loading/Loading';
@@ -37,12 +41,31 @@ const Field = ({ label, icon: Icon, name, placeholder, register, errors, type = 
   </div>
 );
 
+const emptyForm = { fullName: '', phone: '', address: '', ward: '', district: '', city: '', isDefault: false };
+
 const AddressModal = ({ editing, onClose, onSaved }) => {
   const dispatch = useDispatch();
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, formState: { errors }, reset } = useForm({
     resolver: zodResolver(schema),
-    defaultValues: editing || { fullName: '', phone: '', address: '', ward: '', district: '', city: '', isDefault: false },
+    defaultValues: emptyForm,
   });
+
+  const editingKey = editing?._id || editing?.id || 'new';
+  useEffect(() => {
+    reset(
+      editing
+        ? {
+            fullName: editing.fullName || '',
+            phone: editing.phone || '',
+            address: editing.address || '',
+            ward: editing.ward || '',
+            district: editing.district || '',
+            city: editing.city || '',
+            isDefault: !!editing.isDefault,
+          }
+        : emptyForm,
+    );
+  }, [editingKey, editing, reset]);
 
   const onSubmit = async (data) => {
     const action = editing
@@ -116,8 +139,18 @@ const Addresses = () => {
     const result = await dispatch(deleteAddress(id));
     if (deleteAddress.fulfilled.match(result)) {
       toast.success('Đã xóa địa chỉ');
+      dispatch(fetchAddresses());
     } else {
       toast.error('Không thể xóa địa chỉ');
+    }
+  };
+
+  const handleSetDefault = async (id) => {
+    const result = await dispatch(setDefaultAddress(id));
+    if (setDefaultAddress.fulfilled.match(result)) {
+      toast.success('Đã đặt làm địa chỉ mặc định');
+    } else {
+      toast.error(result.payload || 'Không thể cập nhật');
     }
   };
 
@@ -170,10 +203,19 @@ const Addresses = () => {
                 </div>
               </div>
               <div className="addr-card-actions">
-                <button className="addr-btn edit" onClick={() => openEdit(addr)}>
+                {!addr.isDefault && (
+                  <button
+                    type="button"
+                    className="addr-btn"
+                    onClick={() => handleSetDefault(addr._id || addr.id)}
+                  >
+                    Mặc định
+                  </button>
+                )}
+                <button type="button" className="addr-btn edit" onClick={() => openEdit(addr)}>
                   <FiEdit2 size={14} /> Sửa
                 </button>
-                <button className="addr-btn delete" onClick={() => handleDelete(addr._id || addr.id)}>
+                <button type="button" className="addr-btn delete" onClick={() => handleDelete(addr._id || addr.id)}>
                   <FiTrash2 size={14} /> Xóa
                 </button>
               </div>

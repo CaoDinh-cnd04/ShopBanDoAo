@@ -8,6 +8,10 @@ export class OrderItem {
   @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
   productId: Types.ObjectId;
 
+  /** Biến thể (khi sản phẩm có variants) — trừ tồn theo dòng biến thể */
+  @Prop({ type: Types.ObjectId })
+  variantId?: Types.ObjectId;
+
   @Prop({ required: true, min: 1 })
   quantity: number;
 
@@ -66,6 +70,10 @@ export class Order {
 
   @Prop()
   vnpBankCode?: string;
+
+  /** Đã trừ tồn kho khi tạo đơn — khi hủy đơn cần hoàn lại */
+  @Prop({ default: false })
+  inventoryDeducted?: boolean;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import type { NextFunction, Request, Response } from 'express';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
@@ -44,6 +45,7 @@ async function bootstrap(): Promise<void> {
   const uploadsDir = ensureUploadsDirectory();
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.useWebSocketAdapter(new IoAdapter(app));
 
   /** Render / reverse proxy — IP và HTTPS đúng khi cần */
   app.set('trust proxy', 1);

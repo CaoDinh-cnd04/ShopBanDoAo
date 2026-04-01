@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Container, Row, Col } from 'react-bootstrap';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { FiCheck, FiMapPin, FiTruck, FiCreditCard, FiArrowRight, FiArrowLeft } from 'react-icons/fi';
 import { createOrder } from '../../store/slices/orderSlice';
 import { clearCart, fetchCart } from '../../store/slices/cartSlice';
+import { fetchAddresses } from '../../store/slices/addressSlice';
 import { fetchNotifications } from '../../store/slices/notificationSlice';
 import { toast } from 'react-toastify';
 import './Checkout.css';
@@ -25,6 +26,11 @@ const Checkout = () => {
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((s) => s.auth);
   const { items, subtotal } = useSelector((s) => s.cart);
+  const { addresses: rawAddresses } = useSelector((s) => s.addresses);
+  const savedAddresses = useMemo(
+    () => (Array.isArray(rawAddresses) ? rawAddresses : []),
+    [rawAddresses],
+  );
   const [cartHydrated, setCartHydrated] = useState(false);
   const [step, setStep] = useState(1);
   const setStepBoth = (s) => {
@@ -38,9 +44,20 @@ const Checkout = () => {
   const paymentFailHandled = useRef(false);
   /** Tránh race: Enter/submit kép có thể gọi placeOrder ngay sau khi vừa setStep(2) */
   const stepRef = useRef(1);
+  const checkoutAddrInit = useRef(false);
+  const [selectedSavedId, setSelectedSavedId] = useState('__manual');
 
-  const { register, handleSubmit, formState: { errors }, trigger } = useForm({
+  const { register, handleSubmit, formState: { errors }, trigger, reset, getValues } = useForm({
     shouldUnregister: false,
+    defaultValues: {
+      fullName: '',
+      phone: '',
+      address: '',
+      ward: '',
+      district: '',
+      city: '',
+      note: '',
+    },
   });
 
   useEffect(() => {
@@ -78,6 +95,29 @@ const Checkout = () => {
     dispatch(fetchCart()).finally(() => setCartHydrated(true));
   }, [dispatch, isAuthenticated]);
 
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    dispatch(fetchAddresses());
+  }, [dispatch, isAuthenticated]);
+
+  /** Điền địa chỉ mặc định (hoặc đầu danh sách) một lần khi có địa chỉ đã lưu */
+  useEffect(() => {
+    if (!isAuthenticated || !savedAddresses.length || checkoutAddrInit.current) return;
+    checkoutAddrInit.current = true;
+    const def = savedAddresses.find((a) => a.isDefault) || savedAddresses[0];
+    const id = String(def._id || def.id);
+    setSelectedSavedId(id);
+    reset({
+      fullName: def.fullName || '',
+      phone: def.phone || '',
+      address: def.address || '',
+      ward: def.ward || '',
+      district: def.district || '',
+      city: def.city || '',
+      note: '',
+    });
+  }, [isAuthenticated, savedAddresses, reset]);
+
   const safeItems = Array.isArray(items) ? items : [];
   const shipping = shippingMethod === 'express' ? 60000 : (subtotal > 500000 ? 0 : 30000);
 
@@ -94,7 +134,7 @@ const Checkout = () => {
 
   const nextStep = async () => {
     if (stepRef.current !== 1) return;
-    const ok = await trigger(['fullName', 'phone', 'address', 'city']);
+    const ok = await trigger(['fullName', 'phone', 'address', 'ward', 'district', 'city']);
     if (!ok) return;
     stepRef.current = 2;
     setStep(2);
@@ -111,13 +151,22 @@ const Checkout = () => {
         return;
       }
       const items = safeItems
-        .map((item) => ({
-          productId: String(
+        .map((item) => {
+          const productId = String(
             item.productId?._id ?? item.productId ?? '',
-          ).trim(),
-          quantity: Number(item.quantity) || 1,
-          price: Number(item.price) || 0,
-        }))
+          ).trim();
+          const variantRaw = item.variantId;
+          const variantId = variantRaw
+            ? String(variantRaw?._id ?? variantRaw).trim()
+            : '';
+          const row = {
+            productId,
+            quantity: Number(item.quantity) || 1,
+            price: Number(item.price) || 0,
+          };
+          if (variantId) row.variantId = variantId;
+          return row;
+        })
         .filter((row) => row.productId);
       if (!items.length) {
         toast.error('Giỏ hàng thiếu mã sản phẩm — vui lòng quay lại giỏ hàng');
@@ -131,7 +180,7 @@ const Checkout = () => {
         shippingAddress: {
           fullName: data.fullName,
           phone: data.phone,
-          address: data.address,
+          address: [data.address, data.ward].filter(Boolean).join(', ').trim(),
           district: data.district,
           city: data.city,
           note: data.note,
@@ -208,6 +257,57 @@ const Checkout = () => {
                   <motion.div key="s1" className="checkout-card" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                     <h3 className="checkout-card-title"><FiMapPin size={18} /> Thông tin nhận hàng</h3>
                     <p className="checkout-card-hint">Điền đầy đủ để shop giao đúng địa chỉ.</p>
+                    {isAuthenticated && savedAddresses.length > 0 && (
+                      <div className="co-field co-full">
+                        <label className="co-label">Địa chỉ đã lưu</label>
+                        <select
+                          className="co-input"
+                          value={selectedSavedId}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setSelectedSavedId(v);
+                            const note = getValues('note') || '';
+                            if (v === '__manual') {
+                              reset({
+                                fullName: '',
+                                phone: '',
+                                address: '',
+                                ward: '',
+                                district: '',
+                                city: '',
+                                note,
+                              });
+                              return;
+                            }
+                            const a = savedAddresses.find((x) => String(x._id || x.id) === v);
+                            if (a) {
+                              reset({
+                                fullName: a.fullName || '',
+                                phone: a.phone || '',
+                                address: a.address || '',
+                                ward: a.ward || '',
+                                district: a.district || '',
+                                city: a.city || '',
+                                note,
+                              });
+                            }
+                          }}
+                        >
+                          <option value="__manual">Nhập địa chỉ mới</option>
+                          {savedAddresses.map((a) => {
+                            const id = String(a._id || a.id);
+                            return (
+                              <option key={id} value={id}>
+                                {(a.isDefault ? '★ Mặc định — ' : '')}{a.fullName} — {a.city}
+                              </option>
+                            );
+                          })}
+                        </select>
+                        <p className="checkout-card-hint co-saved-hint">
+                          Chọn địa chỉ đã lưu — mặc định được điền sẵn — hoặc nhập mới.
+                        </p>
+                      </div>
+                    )}
                     <div className="co-grid">
                       <div className="co-field">
                         <label className="co-label">Họ và tên *</label>
@@ -220,18 +320,24 @@ const Checkout = () => {
                         {errors.phone && <span className="co-error">{errors.phone.message}</span>}
                       </div>
                       <div className="co-field co-full">
-                        <label className="co-label">Địa chỉ *</label>
-                        <input className={`co-input ${errors.address ? 'error' : ''}`} placeholder="123 Đường ABC, Phường XYZ" {...register('address', { required: 'Bắt buộc' })} />
+                        <label className="co-label">Địa chỉ (số nhà, đường) *</label>
+                        <input className={`co-input ${errors.address ? 'error' : ''}`} placeholder="123 Đường ABC" {...register('address', { required: 'Bắt buộc' })} />
                         {errors.address && <span className="co-error">{errors.address.message}</span>}
+                      </div>
+                      <div className="co-field">
+                        <label className="co-label">Phường / Xã *</label>
+                        <input className={`co-input ${errors.ward ? 'error' : ''}`} placeholder="Phường Bến Nghé" {...register('ward', { required: 'Bắt buộc' })} />
+                        {errors.ward && <span className="co-error">{errors.ward.message}</span>}
+                      </div>
+                      <div className="co-field">
+                        <label className="co-label">Quận / Huyện *</label>
+                        <input className={`co-input ${errors.district ? 'error' : ''}`} placeholder="Quận 1" {...register('district', { required: 'Bắt buộc' })} />
+                        {errors.district && <span className="co-error">{errors.district.message}</span>}
                       </div>
                       <div className="co-field">
                         <label className="co-label">Tỉnh / Thành phố *</label>
                         <input className={`co-input ${errors.city ? 'error' : ''}`} placeholder="Hồ Chí Minh" {...register('city', { required: 'Bắt buộc' })} />
                         {errors.city && <span className="co-error">{errors.city.message}</span>}
-                      </div>
-                      <div className="co-field">
-                        <label className="co-label">Quận / Huyện</label>
-                        <input className="co-input" placeholder="Quận 1" {...register('district')} />
                       </div>
                       <div className="co-field co-full">
                         <label className="co-label">Ghi chú</label>

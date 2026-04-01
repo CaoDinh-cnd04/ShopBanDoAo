@@ -6,8 +6,9 @@ import {
   IsBoolean,
   IsDateString,
   IsIn,
+  Min,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 export class CreateVoucherDto {
   @IsString() @IsNotEmpty() code: string;
@@ -44,8 +45,17 @@ export class QueryVoucherDto {
 }
 
 export class ApplyVoucherDto {
-  @IsString() @IsNotEmpty() code: string;
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
+  @IsString()
+  @IsNotEmpty({ message: 'Nhập mã voucher' })
+  code: string;
+
+  /** Tạm tính giỏ — thiếu hoặc không hợp lệ thì coi là 0 (tránh lỗi validation axios) */
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  orderValue: number;
+  @Min(0)
+  orderValue?: number;
 }

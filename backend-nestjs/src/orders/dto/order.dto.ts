@@ -25,6 +25,13 @@ export class OrderItemDto {
   @IsNumber()
   @Min(0)
   price: number;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === '' || value == null ? undefined : String(value).trim(),
+  )
+  @IsMongoId()
+  variantId?: string;
 }
 
 export class CreateOrderDto {

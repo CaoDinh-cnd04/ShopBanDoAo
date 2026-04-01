@@ -1,0 +1,148 @@
+.admin-messages-page {
+  max-width: 1200px;
+}
+
+.admin-msg-card .card-body {
+  padding: 0;
+}
+
+.admin-msg-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  min-height: 480px;
+}
+
+@media (max-width: 991px) {
+  .admin-msg-grid {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+}
+
+.admin-msg-sidebar {
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  max-height: 70vh;
+}
+
+.admin-msg-sidebar-head {
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-msg-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+}
+
+.admin-msg-item {
+  width: 100%;
+  text-align: left;
+  padding: 0.65rem 1rem;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.admin-msg-item:hover {
+  background: rgba(13, 110, 253, 0.06);
+}
+
+.admin-msg-item.active {
+  background: rgba(13, 110, 253, 0.12);
+}
+
+.admin-msg-item-name {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.admin-msg-item-preview {
+  font-size: 0.82rem;
+  color: #6c757d;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-msg-item-time {
+  font-size: 0.72rem;
+  color: #adb5bd;
+}
+
+.admin-msg-loading,
+.admin-msg-empty,
+.admin-msg-placeholder {
+  padding: 2rem;
+  text-align: center;
+  color: #6c757d;
+}
+
+.admin-msg-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 400px;
+}
+
+.admin-msg-thread-head {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.admin-msg-thread {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  max-height: min(420px, 50vh);
+}
+
+.admin-msg-bubble {
+  max-width: 88%;
+  margin-bottom: 0.65rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+}
+
+.admin-msg-bubble.from-user {
+  margin-right: auto;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.admin-msg-bubble.from-admin {
+  margin-left: auto;
+  background: rgba(13, 110, 253, 0.12);
+}
+
+.admin-msg-bubble-meta {
+  font-size: 0.72rem;
+  opacity: 0.8;
+  margin-bottom: 0.25rem;
+}
+
+.admin-msg-compose {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.admin-msg-compose textarea {
+  flex: 1;
+}

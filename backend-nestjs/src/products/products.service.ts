@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Types } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
 import { ProductRepository } from './products.repository';
+import { Order, OrderDocument } from '../orders/schemas/order.schema';
 import {
   CreateProductDto,
   UpdateProductDto,
@@ -11,7 +13,10 @@ export type ProductListViewer = { role?: string } | null;
 
 @Injectable()
 export class ProductsService {
-  constructor(private productRepository: ProductRepository) {}
+  constructor(
+    private productRepository: ProductRepository,
+    @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
+  ) {}
 
   private isAdminViewer(user: ProductListViewer): boolean {
     return user?.role === 'Admin';
@@ -193,13 +198,87 @@ export class ProductsService {
     };
   }
 
+  /**
+   * Cùng logic lọc đơn như getTopSellingProducts: đã thanh toán / đang xử lý,
+   * không tính hủy hoặc chờ VNPay chưa trả.
+   */
+  private orderMatchForSalesStats(): Record<string, unknown> {
+    return {
+      $and: [
+        {
+          orderStatus: {
+            $nin: ['Cancelled', 'cancelled', 'AwaitingPayment'],
+          },
+        },
+        {
+          $or: [
+            { paymentStatus: 'Paid' },
+            {
+              orderStatus: {
+                $in: ['Processing', 'Shipped', 'Delivered', 'Hoàn thành'],
+              },
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  /**
+   * Tổng số lượng đã bán (sum quantity line item) và số đơn có chứa SP.
+   */
+  async getProductSalesStats(
+    productId: string,
+  ): Promise<{ totalSold: number; orderCount: number }> {
+    if (!Types.ObjectId.isValid(productId)) {
+      return { totalSold: 0, orderCount: 0 };
+    }
+    const oid = new Types.ObjectId(productId);
+    const rows = await this.orderModel
+      .aggregate([
+        { $match: this.orderMatchForSalesStats() },
+        { $unwind: '$items' },
+        { $match: { 'items.productId': oid } },
+        {
+          $group: {
+            _id: '$_id',
+            qtyInOrder: { $sum: '$items.quantity' },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalSold: { $sum: '$qtyInOrder' },
+            orderCount: { $sum: 1 },
+          },
+        },
+      ])
+      .exec();
+    const row = rows[0];
+    if (!row) return { totalSold: 0, orderCount: 0 };
+    return {
+      totalSold: Math.max(0, Math.floor(Number(row.totalSold) || 0)),
+      orderCount: Math.max(0, Math.floor(Number(row.orderCount) || 0)),
+    };
+  }
+
   async getProductById(id: string, viewer: ProductListViewer = null) {
     const product = await this.productRepository.findById(id);
     if (!product) throw new NotFoundException('Không tìm thấy sản phẩm');
     if (!this.isAdminViewer(viewer) && product.isActive === false) {
       throw new NotFoundException('Không tìm thấy sản phẩm');
     }
-    return product;
+    const stats = await this.getProductSalesStats(id);
+    const plain =
+      typeof (product as { toObject?: () => Record<string, unknown> }).toObject ===
+      'function'
+        ? (product as { toObject: () => Record<string, unknown> }).toObject()
+        : (product as unknown as Record<string, unknown>);
+    return {
+      ...plain,
+      totalSold: stats.totalSold,
+      orderCount: stats.orderCount,
+    };
   }
 
   async createProduct(createDto: CreateProductDto) {
@@ -230,5 +309,74 @@ export class ProductsService {
   async getDistinctBrands() {
     const brands = await this.productRepository.distinctBrands();
     return brands.sort((a, b) => a.localeCompare(b, 'vi'));
+  }
+
+  /**
+   * Sản phẩm bán chạy: tổng quantity trong đơn đã thanh toán / đang xử lý giao.
+   * Không đủ dữ liệu → fallback SP nổi bật (isFeatured).
+   */
+  async getTopSellingProducts(limit: number) {
+    const cap = Math.min(48, Math.max(1, limit || 8));
+    const ranked = await this.orderModel
+      .aggregate([
+        {
+          $match: {
+            $and: [
+              {
+                orderStatus: {
+                  $nin: ['Cancelled', 'cancelled', 'AwaitingPayment'],
+                },
+              },
+              {
+                $or: [
+                  { paymentStatus: 'Paid' },
+                  {
+                    orderStatus: {
+                      $in: ['Processing', 'Shipped', 'Delivered', 'Hoàn thành'],
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        { $unwind: '$items' },
+        {
+          $group: {
+            _id: '$items.productId',
+            totalSold: { $sum: '$items.quantity' },
+          },
+        },
+        { $sort: { totalSold: -1 } },
+        { $limit: cap },
+      ])
+      .exec();
+
+    const ids = ranked
+      .map((r) => r._id)
+      .filter((id) => id != null)
+      .map((id) =>
+        id instanceof Types.ObjectId ? id : new Types.ObjectId(String(id)),
+      );
+
+    if (ids.length === 0) {
+      const products = await this.productRepository.findAll(
+        { isActive: true, isFeatured: true },
+        0,
+        cap,
+        { createdAt: -1 },
+      );
+      return {
+        products,
+        meta: {
+          source: 'fallback_featured',
+          message: 'Chưa có đơn — hiển thị SP nổi bật',
+        },
+      };
+    }
+
+    const products =
+      await this.productRepository.findActiveByIdsPreserveOrder(ids);
+    return { products, meta: { source: 'sales' } };
   }
 }

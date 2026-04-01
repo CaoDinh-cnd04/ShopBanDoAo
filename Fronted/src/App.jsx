@@ -36,6 +36,7 @@ import AdminUsers from './pages/Admin/AdminUsers';
 import AdminUserDetail from './pages/Admin/AdminUserDetail';
 import AdminReviews from './pages/Admin/AdminReviews';
 import AdminBanner from './pages/Admin/AdminBanner';
+import AdminMessages from './pages/Admin/AdminMessages';
 import About from './pages/About/About';
 import Contact from './pages/Contact/Contact';
 import FAQ from './pages/FAQ/FAQ';
@@ -50,10 +51,16 @@ import { setTheme } from './store/slices/themeSlice';
 
 // Components
 import AnimatedBackground from './components/AnimatedBackground/AnimatedBackground';
+import { disconnectChatSocket } from './services/chatSocket';
 
 function App() {
   const dispatch = useDispatch();
   const { theme } = useSelector((state) => state.theme);
+  const { token } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    if (!token) disconnectChatSocket();
+  }, [token]);
 
   useEffect(() => {
     // Check authentication on mount
@@ -148,6 +155,10 @@ function App() {
               path="profile/notifications"
               element={<ProtectedRoute><Profile /></ProtectedRoute>}
             />
+            <Route
+              path="profile/messages"
+              element={<ProtectedRoute><Profile /></ProtectedRoute>}
+            />
             {/* Detail pages — standalone */}
             <Route
               path="profile/orders/:id"
@@ -185,6 +196,7 @@ function App() {
             <Route path="users" element={<AdminUsers />} />
             <Route path="reviews" element={<AdminReviews />} />
             <Route path="banner" element={<AdminBanner />} />
+            <Route path="messages" element={<AdminMessages />} />
           </Route>
         </Routes>
 

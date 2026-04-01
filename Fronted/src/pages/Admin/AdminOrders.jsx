@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, Table, Button, Badge, Form, Row, Col, Spinner, Modal } from 'react-bootstrap';
-import { FiTrash2 } from 'react-icons/fi';
+import { FiTrash2, FiPrinter } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import adminService from '../../services/adminService';
 
@@ -229,6 +229,80 @@ const AdminOrders = () => {
 
   const fmtMoney = (n) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(n) || 0);
+
+  const printOrderDetail = () => {
+    if (!detail) return;
+    const st = String(detail.orderStatus ?? detail.statusName ?? '');
+    const statusLbl = statusLabelVi(st);
+    const esc = (s) =>
+      String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    const addr =
+      (detail.addressDisplay && String(detail.addressDisplay).trim()) ||
+      [detail.addressLine, detail.ward, detail.district, detail.city].filter(Boolean).join(', ') ||
+      (typeof detail.shippingAddress === 'string' ? detail.shippingAddress : '') ||
+      '—';
+    const payLbl = detail.paymentMethodLabel || detail.paymentMethod || '—';
+    const shipLbl = detail.shippingMethodLabel || detail.shippingMethodName || detail.shippingMethod || '—';
+    const note = detail.note?.trim() ? detail.note : '';
+    const rows = (detail.items || [])
+      .map((it) => {
+        const v =
+          it.variantSummary ||
+          (it.sizeName && it.colorName && (it.sizeName !== '—' || it.colorName !== '—')
+            ? `${it.sizeName} / ${it.colorName}`
+            : '—');
+        return `<tr>
+          <td>${esc(it.productName)}<div class="sub">${esc(v)}</div></td>
+          <td class="num">${it.quantity}</td>
+          <td class="num">${esc(fmtMoney(it.unitPrice))}</td>
+          <td class="num">${esc(fmtMoney(it.totalPrice))}</td>
+        </tr>`;
+      })
+      .join('');
+    const code = detail.orderCode || orderId(detail);
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Đơn ${esc(code)}</title>
+<style>
+  body{font-family:system-ui,-apple-system,sans-serif;padding:24px;font-size:13px;color:#111}
+  h1{font-size:18px;margin:0 0 16px}
+  .meta p{margin:6px 0}
+  table{width:100%;border-collapse:collapse;margin:16px 0}
+  th,td{border:1px solid #ccc;padding:8px;text-align:left}
+  th{background:#f3f4f6}
+  td.num{text-align:right}
+  .sub{font-size:11px;color:#555;margin-top:4px}
+  @media print{body{padding:12px}}
+</style></head><body>
+<h1>Chi tiết đơn hàng</h1>
+<div class="meta">
+  <p><strong>Mã:</strong> ${esc(code)} — <strong>Trạng thái:</strong> ${esc(statusLbl)}</p>
+  <p><strong>Khách:</strong> ${esc(detail.customerName)} — ${esc(detail.customerEmail)}${detail.customerPhone ? ` — ${esc(detail.customerPhone)}` : ''}</p>
+  <p><strong>Ngày đặt:</strong> ${detail.orderDate ? esc(new Date(detail.orderDate).toLocaleString('vi-VN')) : '—'}</p>
+  <p><strong>Thanh toán:</strong> ${esc(payLbl)}</p>
+  <p><strong>Vận chuyển:</strong> ${esc(shipLbl)}</p>
+  <p><strong>Người nhận:</strong> ${esc(detail.receiverName)} — ${esc(detail.receiverPhone || '—')}</p>
+  <p><strong>Địa chỉ:</strong> ${typeof addr === 'string' ? esc(addr) : esc(String(addr))}</p>
+  ${note ? `<p><strong>Ghi chú:</strong> ${esc(note)}</p>` : ''}
+  ${detail.voucherCode ? `<p><strong>Voucher:</strong> ${esc(detail.voucherCode)}</p>` : ''}
+</div>
+<table>
+  <thead><tr><th>Sản phẩm</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<p><strong>Tổng thanh toán:</strong> ${esc(fmtMoney(detail.totalAmount))}</p>
+</body></html>`;
+    const w = window.open('', '_blank');
+    if (!w) {
+      toast.error('Trình duyệt đã chặn cửa sổ mới — cho phép popup để in đơn.');
+      return;
+    }
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+  };
 
   return (
     <div className="admin-page">
@@ -458,22 +532,37 @@ const AdminOrders = () => {
               </p>
               <p>
                 <strong>Khách:</strong> {detail.customerName || '—'} — {detail.customerEmail || '—'}
+                {detail.customerPhone ? (
+                  <span className="text-muted"> — {detail.customerPhone}</span>
+                ) : null}
               </p>
               <p>
                 <strong>Ngày đặt:</strong>{' '}
                 {detail.orderDate ? new Date(detail.orderDate).toLocaleString('vi-VN') : '—'}
               </p>
               <p>
-                <strong>Thanh toán / giao:</strong> {detail.shippingMethodName || detail.paymentMethod || '—'}
+                <strong>Thanh toán:</strong>{' '}
+                {detail.paymentMethodLabel || detail.paymentMethod || '—'}
+              </p>
+              <p>
+                <strong>Vận chuyển:</strong>{' '}
+                {detail.shippingMethodLabel || detail.shippingMethodName || detail.shippingMethod || '—'}
               </p>
               <p>
                 <strong>Người nhận:</strong> {detail.receiverName || '—'} — {detail.receiverPhone || '—'}
               </p>
-              <p>
+              <p className="mb-1">
                 <strong>Địa chỉ:</strong>{' '}
-                {[detail.addressLine, detail.ward, detail.district, detail.city].filter(Boolean).join(', ') ||
+                {detail.addressDisplay ||
+                  [detail.addressLine, detail.ward, detail.district, detail.city].filter(Boolean).join(', ') ||
+                  (typeof detail.shippingAddress === 'string' ? detail.shippingAddress : '') ||
                   '—'}
               </p>
+              {detail.note?.trim() ? (
+                <p>
+                  <strong>Ghi chú:</strong> {detail.note}
+                </p>
+              ) : null}
               {(detail.voucherCode || detail.voucherName) && (
                 <p>
                   <strong>Voucher:</strong> {detail.voucherCode} {detail.voucherName ? `(${detail.voucherName})` : ''}
@@ -496,7 +585,10 @@ const AdminOrders = () => {
                       <td>
                         {it.productName}
                         <div className="small text-muted">
-                          {it.sizeName} / {it.colorName}
+                          {it.variantSummary ||
+                            (it.sizeName !== '—' || it.colorName !== '—'
+                              ? `${it.sizeName} / ${it.colorName}`
+                              : '—')}
                         </div>
                       </td>
                       <td>{it.quantity}</td>
@@ -522,7 +614,11 @@ const AdminOrders = () => {
             <p>Không có dữ liệu.</p>
           )}
         </Modal.Body>
-        <Modal.Footer>
+        <Modal.Footer className="d-flex justify-content-between flex-wrap gap-2">
+          <Button variant="outline-primary" onClick={printOrderDetail} disabled={!detail || detailLoading}>
+            <FiPrinter className="me-1" aria-hidden />
+            In đơn hàng
+          </Button>
           <Button variant="secondary" onClick={() => setDetailOpen(false)}>
             Đóng
           </Button>

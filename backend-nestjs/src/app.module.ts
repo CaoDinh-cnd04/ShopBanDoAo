@@ -18,6 +18,7 @@ import { CourtsModule } from './courts/courts.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { UploadModule } from './upload/upload.module';
 import { SiteSettingsModule } from './site-settings/site-settings.module';
+import { ChatModule } from './chat/chat.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -48,6 +49,7 @@ import { SiteSettingsModule } from './site-settings/site-settings.module';
     NotificationsModule,
     UploadModule,
     SiteSettingsModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

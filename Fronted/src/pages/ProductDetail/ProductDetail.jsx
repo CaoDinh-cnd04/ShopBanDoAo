@@ -20,6 +20,7 @@ import {
   FiMapPin,
   FiActivity,
   FiX,
+  FiShoppingBag,
 } from 'react-icons/fi';
 import { fetchProductById } from '../../store/slices/productSlice';
 import { addToCart } from '../../store/slices/cartSlice';
@@ -443,6 +444,19 @@ const ProductDetail = () => {
                     <FiLayers size={13} aria-hidden /> {categoryName}
                   </span>
                 )}
+              </div>
+
+              <div className="pd-sales-stats" aria-label="Thống kê bán hàng">
+                <span className="pd-sales-stat">
+                  <FiShoppingBag size={14} aria-hidden />
+                  Đã bán:{' '}
+                  <strong>{Number(product.totalSold ?? 0).toLocaleString('vi-VN')}</strong>
+                </span>
+                <span className="pd-sales-stat">
+                  <FiShoppingCart size={14} aria-hidden />
+                  Đơn đặt:{' '}
+                  <strong>{Number(product.orderCount ?? 0).toLocaleString('vi-VN')}</strong>
+                </span>
               </div>
 
               {rating != null && Number(rating) > 0 && (

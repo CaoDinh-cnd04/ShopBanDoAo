@@ -31,6 +31,16 @@ export class ProductsController {
     return this.productsService.getDistinctBrands();
   }
 
+  /** Trang chủ — SP bán chạy (theo tổng quantity trong đơn); đặt trước :id */
+  @Get('featured/top-selling')
+  @UseGuards(OptionalJwtAuthGuard)
+  async getTopSelling(@Query('limit') limit?: string) {
+    const n = parseInt(limit || '8', 10);
+    return this.productsService.getTopSellingProducts(
+      Number.isFinite(n) && n > 0 ? n : 8,
+    );
+  }
+
   @Get()
   @UseGuards(OptionalJwtAuthGuard)
   async getAllProducts(

@@ -12,7 +12,7 @@ export class AddressRepository {
   async findAllByUser(userId: string): Promise<AddressDocument[]> {
     return this.addressModel
       .find({ userId: new Types.ObjectId(userId) })
-      .sort({ isDefault: -1 })
+      .sort({ isDefault: -1, updatedAt: -1 })
       .exec();
   }
 

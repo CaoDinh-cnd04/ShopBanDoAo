@@ -37,5 +37,8 @@ services:
         sync: false
       - key: FRONTEND_URL
         sync: false
+      # Origin API (không /api) — URL ảnh trong DB: https://<host>/uploads/...
+      - key: API_PUBLIC_URL
+        sync: false
       - key: VNPAY_SANDBOX
         value: "true"

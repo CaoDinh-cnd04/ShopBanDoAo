@@ -136,8 +136,8 @@ const Navbar = () => {
                 {i18n.language === 'vi' ? '🇻🇳' : '🇺🇸'}
               </Dropdown.Toggle>
               <Dropdown.Menu className="dropdown-premium">
-                <Dropdown.Item onClick={() => changeLanguage('vi')}>🇻🇳 Tiếng Việt</Dropdown.Item>
-                <Dropdown.Item onClick={() => changeLanguage('en')}>🇺🇸 English</Dropdown.Item>
+                <Dropdown.Item onClick={() => changeLanguage('vi')}>{t('nav.langVi')}</Dropdown.Item>
+                <Dropdown.Item onClick={() => changeLanguage('en')}>{t('nav.langEn')}</Dropdown.Item>
               </Dropdown.Menu>
             </Dropdown>
 

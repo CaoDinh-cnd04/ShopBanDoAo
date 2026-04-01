@@ -41,9 +41,16 @@ export class VouchersController {
   ) {
     return this.vouchersService.applyVoucher(
       dto.code,
-      dto.orderValue,
+      dto.orderValue ?? 0,
       req.user.userId,
     );
+  }
+
+  /** Voucher còn dùng được + lịch sử đã dùng (theo tài khoản) */
+  @Get('my')
+  @UseGuards(JwtAuthGuard)
+  async getMyVouchers(@Req() req: Request & { user: { userId: string } }) {
+    return this.vouchersService.getMyVoucherOverview(req.user.userId);
   }
 
   // ADMIN ROUTES

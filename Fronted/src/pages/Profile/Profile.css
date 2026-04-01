@@ -427,6 +427,23 @@
   gap: 4px;
 }
 
+.voucher-used-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.voucher-used-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-tertiary, #f3f4f6);
+  border-radius: 10px;
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
 /* ── Orders / Bookings ── */
 .pf-filter-tabs {
   display: flex;

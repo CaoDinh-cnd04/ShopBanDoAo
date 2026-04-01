@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Container, Row, Col } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import { FiTrash2, FiPlus, FiMinus, FiShoppingBag, FiArrowRight, FiTag } from 'react-icons/fi';
 import { fetchCart, updateCartItem, removeFromCart, clearCart } from '../../store/slices/cartSlice';
@@ -14,6 +15,7 @@ import './Cart.css';
 const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
 
 const Cart = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { items, subtotal, isLoading } = useSelector((s) => s.cart);
@@ -39,7 +41,7 @@ const Cart = () => {
   const updateQty = (productId, qty, variantId) => {
     if (qty <= 0) {
       dispatch(removeFromCart({ productId, variantId }));
-      toast.info('Đã xoá sản phẩm');
+      toast.info(t('cart.toastRemovedItem'));
     } else {
       dispatch(updateCartItem({ productId, quantity: qty, variantId }));
     }
@@ -47,7 +49,7 @@ const Cart = () => {
 
   const handleRemove = (productId, variantId) => {
     dispatch(removeFromCart({ productId, variantId }));
-    toast.success('Đã xoá khỏi giỏ');
+    toast.success(t('cart.toastRemovedCart'));
   };
 
   const safeItems = Array.isArray(items) ? items : [];
@@ -59,11 +61,11 @@ const Cart = () => {
   const handleApplyVoucher = async () => {
     const code = voucherInput.trim();
     if (!code) {
-      toast.warn('Nhập mã giảm giá');
+      toast.warn(t('cart.toastEnterVoucher'));
       return;
     }
     if (!isAuthenticated) {
-      toast.warn('Vui lòng đăng nhập để áp dụng mã');
+      toast.warn(t('cart.toastLoginVoucher'));
       return;
     }
     try {
@@ -82,7 +84,9 @@ const Cart = () => {
       sessionStorage.setItem('cartVoucher', JSON.stringify(next));
       toast.success(res.data?.message || 'Đã áp dụng mã giảm giá');
     } catch (e) {
-      toast.error(e.response?.data?.message || 'Không áp dụng được mã');
+      const raw = e.response?.data?.message;
+      const msg = Array.isArray(raw) ? raw.join(', ') : raw || 'Không áp dụng được mã';
+      toast.error(msg);
     } finally {
       setVoucherLoading(false);
     }
@@ -105,10 +109,10 @@ const Cart = () => {
           animate={{ opacity: 1, scale: 1 }}
         >
           <div className="cart-empty-icon">🛒</div>
-          <h2>Giỏ hàng trống</h2>
-          <p>Bạn chưa có sản phẩm nào trong giỏ hàng.</p>
+          <h2>{t('cart.emptyTitle')}</h2>
+          <p>{t('cart.emptyDesc')}</p>
           <button className="auth-submit-btn" style={{ width: 'auto', paddingInline: '2rem' }} onClick={() => navigate('/products')}>
-            <FiShoppingBag size={18} /> Tiếp tục mua sắm
+            <FiShoppingBag size={18} /> {t('cart.continueBtn')}
           </button>
         </motion.div>
       </div>
@@ -120,9 +124,9 @@ const Cart = () => {
       <Container>
         {/* Header */}
         <div className="cart-header">
-          <h1 className="cart-title">Giỏ hàng <span className="cart-count">({safeItems.length})</span></h1>
-          <button className="cart-clear-btn" onClick={() => { dispatch(clearCart()); toast.success('Đã xoá giỏ hàng'); }}>
-            Xoá tất cả
+          <h1 className="cart-title">{t('cart.titleWithCount', { count: safeItems.length })}</h1>
+          <button className="cart-clear-btn" onClick={() => { dispatch(clearCart()); toast.success(t('cart.toastClearCart')); }}>
+            {t('cart.clearAll')}
           </button>
         </div>
 
@@ -194,56 +198,56 @@ const Cart = () => {
           {/* Summary */}
           <Col lg={4}>
             <div className="cart-summary-card">
-              <h3 className="summary-title">Tóm tắt đơn hàng</h3>
+              <h3 className="summary-title">{t('cart.summaryTitle')}</h3>
 
               {/* Voucher */}
               <div className="voucher-input-wrap">
                 <FiTag size={15} className="voucher-icon" />
                 <input
                   className="voucher-input"
-                  placeholder="Mã giảm giá..."
+                  placeholder={t('cart.voucherPlaceholder')}
                   value={voucherInput}
                   onChange={(e) => setVoucherInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleApplyVoucher())}
                   disabled={voucherLoading}
                 />
                 <button type="button" className="voucher-apply" onClick={handleApplyVoucher} disabled={voucherLoading}>
-                  {voucherLoading ? '…' : 'Áp dụng'}
+                  {voucherLoading ? '…' : t('cart.apply')}
                 </button>
               </div>
               {appliedVoucher && (
                 <div className="voucher-applied small text-success mb-2 d-flex justify-content-between align-items-center">
                   <span>
-                    Đã áp dụng <strong>{appliedVoucher.code}</strong>
+                    {t('cart.applied')} <strong>{appliedVoucher.code}</strong>
                     {appliedVoucher.name ? ` — ${appliedVoucher.name}` : ''} (−{fmt(discount)})
                   </span>
                   <button type="button" className="voucher-remove" onClick={clearVoucher}>
-                    Gỡ
+                    {t('cart.removeVoucher')}
                   </button>
                 </div>
               )}
 
               <div className="summary-rows">
                 <div className="summary-row">
-                  <span>Tạm tính</span>
+                  <span>{t('cart.subtotal')}</span>
                   <span>{fmt(subtotal)}</span>
                 </div>
                 <div className="summary-row">
-                  <span>Vận chuyển</span>
-                  <span className={shipping === 0 ? 'text-success fw-bold' : ''}>{shipping === 0 ? 'Miễn phí 🎉' : fmt(shipping)}</span>
+                  <span>{t('cart.shipping')}</span>
+                  <span className={shipping === 0 ? 'text-success fw-bold' : ''}>{shipping === 0 ? t('cart.shippingFree') : fmt(shipping)}</span>
                 </div>
                 {discount > 0 && (
                   <div className="summary-row text-success">
-                    <span>Giảm giá (voucher)</span>
+                    <span>{t('cart.discountLine')}</span>
                     <span>−{fmt(discount)}</span>
                   </div>
                 )}
                 {shipping === 0 && (
-                  <p className="shipping-note">Đơn trên 500K được miễn phí vận chuyển</p>
+                  <p className="shipping-note">{t('cart.shippingNote')}</p>
                 )}
                 <hr className="summary-divider" />
                 <div className="summary-row summary-total">
-                  <span>Tổng cộng</span>
+                  <span>{t('cart.total')}</span>
                   <span className="total-amount">{fmt(total)}</span>
                 </div>
               </div>
@@ -254,11 +258,11 @@ const Cart = () => {
                 whileTap={{ scale: 0.98 }}
                 onClick={() => navigate('/checkout')}
               >
-                Thanh toán ngay <FiArrowRight size={16} />
+                {t('cart.checkoutNow')} <FiArrowRight size={16} />
               </motion.button>
 
               <Link to="/products" className="continue-link">
-                ← Tiếp tục mua sắm
+                {t('cart.continueShoppingLink')}
               </Link>
             </div>
           </Col>

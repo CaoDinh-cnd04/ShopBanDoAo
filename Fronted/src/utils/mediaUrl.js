@@ -1,10 +1,10 @@
 import { getApiOrigin } from '../config/apiBase';
 
 /**
- * Chuẩn hóa URL ảnh từ API:
- * - Đường dẫn tuyệt đối https://... giữ nguyên
- * - `/uploads/...` — gắn origin backend (getApiOrigin + VITE_API_ORIGIN override)
- * - Ngược lại giữ path tương đối (dev: Vite proxy `/uploads` → backend)
+ * Chuẩn hóa URL ảnh từ API / DB:
+ * - URL tuyệt đối https://... — giữ nguyên (trừ localhost → gắn lại origin API)
+ * - `/uploads/...` — gắn origin backend (VITE_API_ORIGIN hoặc getApiOrigin)
+ * - URL dev cũ `http://localhost:3000/uploads/...` — đổi sang domain API production
  */
 export function resolveMediaUrl(url) {
   if (url == null || url === '') return '';
@@ -12,7 +12,23 @@ export function resolveMediaUrl(url) {
     return resolveMediaUrl(url.imageUrl);
   }
   const s = String(url).trim();
-  if (/^https?:\/\//i.test(s)) return s;
+  if (/^https?:\/\//i.test(s)) {
+    try {
+      const u = new URL(s);
+      const host = u.hostname.toLowerCase();
+      if (
+        host === 'localhost' ||
+        host === '127.0.0.1' ||
+        host === '[::1]'
+      ) {
+        const path = `${u.pathname}${u.search}${u.hash}`;
+        return resolveMediaUrl(path);
+      }
+    } catch {
+      /* ignore */
+    }
+    return s;
+  }
   const path = s.startsWith('/') ? s : `/${s}`;
   const rawBase =
     import.meta.env.VITE_API_ORIGIN?.trim() || getApiOrigin();

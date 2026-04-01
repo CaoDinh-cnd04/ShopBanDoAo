@@ -19,7 +19,10 @@ export class OrderRepository {
       .skip(skip)
       .limit(limit)
       .populate('userId', 'fullName email phone')
-      .populate('items.productId', 'productName defaultPrice images')
+      .populate(
+        'items.productId',
+        'productName defaultPrice images variants',
+      )
       .exec();
   }
 
@@ -31,7 +34,10 @@ export class OrderRepository {
     return this.orderModel
       .findById(id)
       .populate('userId', 'fullName email phone')
-      .populate('items.productId', 'productName defaultPrice images')
+      .populate(
+        'items.productId',
+        'productName defaultPrice images variants',
+      )
       .exec();
   }
 

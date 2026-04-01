@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -38,6 +39,11 @@ export class AddressesController {
     @Body() updateDto: UpdateAddressDto,
   ) {
     return this.addressesService.updateAddress(req.user.userId, id, updateDto);
+  }
+
+  @Patch(':id/set-default')
+  async setDefaultAddress(@Request() req: any, @Param('id') id: string) {
+    return this.addressesService.setDefaultAddress(req.user.userId, id);
   }
 
   @Delete(':id')

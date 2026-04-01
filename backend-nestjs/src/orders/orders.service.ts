@@ -19,6 +19,8 @@ import { VnpayService } from '../payments/vnpay.service';
 import { OrderEventsService } from '../order-events/order-events.service';
 import { ReviewsService } from '../reviews/reviews.service';
 import { VouchersService } from '../vouchers/vouchers.service';
+import { ProductRepository } from '../products/products.repository';
+import { OrderDocument } from './schemas/order.schema';
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -35,6 +37,7 @@ export class OrdersService {
     private readonly orderEvents: OrderEventsService,
     private readonly reviewsService: ReviewsService,
     private readonly vouchersService: VouchersService,
+    private readonly productRepository: ProductRepository,
   ) {}
 
   /** Khớp Cart / Checkout: giao nhanh 60k; tiêu chuẩn 30k hoặc miễn phí khi tạm tính > 500k */
@@ -123,9 +126,14 @@ export class OrdersService {
     const oid = order._id as Types.ObjectId;
     const created = (order.createdAt as Date) || (order.updatedAt as Date);
     const ts = created ? new Date(created).getTime() : 0;
+    const codeFromDb =
+      typeof order.orderCode === 'string' && order.orderCode.trim()
+        ? order.orderCode.trim()
+        : '';
     return {
       _id: oid,
-      orderCode: ts ? `ORD${ts}` : `ORD${String(oid).slice(-12)}`,
+      orderCode:
+        codeFromDb || (ts ? `ORD${ts}` : `ORD${String(oid).slice(-12)}`),
       customerName: u.fullName ?? '',
       customerEmail: u.email ?? '',
       customerPhone: u.phone ?? '',
@@ -158,9 +166,155 @@ export class OrdersService {
     return {};
   }
 
+  /** Chuẩn hóa địa chỉ lưu DB (chuỗi hoặc object legacy) → một chuỗi hiển thị */
+  private formatShippingAddressToString(value: unknown): string {
+    if (value == null || value === '') return '';
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      const o = value as Record<string, unknown>;
+      const toPart = (v: unknown) => {
+        if (v == null) return '';
+        if (
+          typeof v === 'string' ||
+          typeof v === 'number' ||
+          typeof v === 'boolean'
+        ) {
+          return String(v).trim();
+        }
+        return '';
+      };
+      const parts = [
+        toPart(o.fullName),
+        toPart(o.phone),
+        toPart(o.address),
+        toPart(o.district),
+        toPart(o.city),
+        toPart(o.note),
+      ].filter(Boolean);
+      return parts.join(' | ');
+    }
+    if (typeof value === 'string') return value.trim();
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value).trim();
+    }
+    return '';
+  }
+
+  /**
+   * Chuỗi từ checkout: fullName | phone | address | district | city | note
+   */
+  private parsePipeShippingParts(s: string): {
+    receiverName: string;
+    receiverPhone: string;
+    addressLine: string;
+    district: string;
+    city: string;
+    noteInPipe: string;
+  } | null {
+    const parts = s.split(' | ').map((x) => x.trim());
+    if (parts.length < 3) return null;
+    return {
+      receiverName: parts[0] || '',
+      receiverPhone: parts[1] || '',
+      addressLine: parts[2] || '',
+      district: parts[3] || '',
+      city: parts[4] || '',
+      noteInPipe: parts[5] || '',
+    };
+  }
+
+  private paymentMethodLabelVi(raw: string): string {
+    const s = raw.trim().toLowerCase();
+    if (s === 'cod') return 'Thanh toán khi nhận hàng (COD)';
+    if (s === 'vnpay') return 'VNPay';
+    if (!s) return '—';
+    return raw.trim();
+  }
+
+  private shippingMethodLabelVi(raw: string | undefined): string {
+    const s = (raw || '').trim().toLowerCase();
+    if (s === 'express') return 'Giao hàng nhanh';
+    if (s === 'standard') return 'Giao hàng tiêu chuẩn';
+    return raw?.trim() ? String(raw) : '—';
+  }
+
+  private resolveVariantLabels(
+    product: Record<string, unknown> | undefined,
+    variantId: unknown,
+  ): { sizeName: string; colorName: string; variantSummary: string } {
+    const dash = '—';
+    if (!product || variantId == null || variantId === '') {
+      return { sizeName: dash, colorName: dash, variantSummary: '' };
+    }
+    const variants = product.variants as Record<string, unknown>[] | undefined;
+    if (!Array.isArray(variants)) {
+      return { sizeName: dash, colorName: dash, variantSummary: '' };
+    }
+    const toIdStr = (id: unknown): string => {
+      if (id == null) return '';
+      if (id instanceof Types.ObjectId) return id.toHexString();
+      if (typeof id === 'string') return id;
+      return '';
+    };
+    const idStr = toIdStr(variantId);
+    const v = variants.find((x) => {
+      if (!x) return false;
+      const bid = (x as { _id?: unknown })._id;
+      return bid != null && toIdStr(bid) === idStr;
+    });
+    if (!v) {
+      return { sizeName: dash, colorName: dash, variantSummary: '' };
+    }
+    const attrs =
+      v.attributes && typeof v.attributes === 'object'
+        ? (v.attributes as Record<string, string>)
+        : {};
+    const size =
+      (typeof v.size === 'string' && v.size) || attrs.size || attrs.Size || '';
+    const color =
+      (typeof v.color === 'string' && v.color) ||
+      attrs.color ||
+      attrs.Color ||
+      '';
+    const extra = Object.entries(attrs)
+      .filter(([k]) => !/^(size|color)$/i.test(k))
+      .map(([, val]) => val)
+      .filter(Boolean);
+    const parts = [size, color, ...extra].filter(Boolean);
+    const variantSummary = parts.join(' · ');
+    return {
+      sizeName: size || dash,
+      colorName: color || dash,
+      variantSummary,
+    };
+  }
+
   /** Chi tiết admin: khớp field mà frontend đọc (không dùng mock SQL) */
   private mapOrderForAdminDetail(order: Record<string, unknown>) {
     const u = this.extractUser(order);
+    const shippingStr = this.formatShippingAddressToString(
+      order.shippingAddress,
+    );
+    const parsed = this.parsePipeShippingParts(shippingStr);
+    const receiverName = parsed?.receiverName || u.fullName || '';
+    const receiverPhone = parsed?.receiverPhone || u.phone || '';
+    const addressDisplay = parsed
+      ? [parsed.addressLine, parsed.district, parsed.city]
+          .filter(Boolean)
+          .join(', ') || shippingStr
+      : shippingStr;
+    const noteRaw = order.note;
+    const noteStr =
+      typeof noteRaw === 'string' && noteRaw.trim()
+        ? noteRaw.trim()
+        : parsed?.noteInPipe?.trim() || '';
+
+    const payMethodRaw =
+      typeof order.paymentMethod === 'string' ? order.paymentMethod : '—';
+    const shipRaw =
+      typeof order.shippingMethod === 'string'
+        ? order.shippingMethod
+        : undefined;
+
     const items = ((order.items as Record<string, unknown>[]) || []).map(
       (it, idx) => {
         const p = it.productId as Record<string, unknown> | undefined;
@@ -171,14 +325,22 @@ export class OrdersService {
         }
         const qty = Number(it.quantity) || 0;
         const price = Number(it.price) || 0;
+        const { sizeName, colorName, variantSummary } =
+          this.resolveVariantLabels(p, it.variantId);
         return {
           _id: it._id ?? idx,
           productName,
           quantity: qty,
           unitPrice: price,
           totalPrice: price * qty,
-          sizeName: '—',
-          colorName: '—',
+          sizeName,
+          colorName,
+          variantSummary:
+            variantSummary ||
+            (sizeName !== '—' || colorName !== '—'
+              ? [sizeName, colorName].filter((x) => x && x !== '—').join(' / ')
+              : ''),
+          variantId: it.variantId,
         };
       },
     );
@@ -186,38 +348,170 @@ export class OrdersService {
     const created = (order.createdAt as Date) || (order.updatedAt as Date);
     const ts = created ? new Date(created).getTime() : 0;
     const total = Number(order.totalAmount) || 0;
-    const payMethod =
-      typeof order.paymentMethod === 'string' ? order.paymentMethod : '—';
+    const codeFromDb =
+      typeof order.orderCode === 'string' && order.orderCode.trim()
+        ? order.orderCode.trim()
+        : '';
     return {
       _id: oid,
-      orderCode: ts ? `ORD${ts}` : `ORD${String(oid).slice(-12)}`,
+      orderCode:
+        codeFromDb || (ts ? `ORD${ts}` : `ORD${String(oid).slice(-12)}`),
       orderStatus: order.orderStatus,
       statusName: order.orderStatus,
       orderDate: created,
       totalAmount: total,
-      paymentMethod: payMethod,
+      paymentMethod: payMethodRaw,
+      paymentMethodLabel: this.paymentMethodLabelVi(payMethodRaw),
       paymentStatus: order.paymentStatus,
-      shippingAddress: order.shippingAddress,
+      shippingAddress: shippingStr,
+      /** Một chuỗi — không bao giờ là object */
+      addressDisplay,
       customerName: u.fullName ?? '',
       customerEmail: u.email ?? '',
-      receiverName: u.fullName ?? '',
-      receiverPhone: u.phone ?? '',
-      addressLine: order.shippingAddress,
+      customerPhone: u.phone ?? '',
+      receiverName,
+      receiverPhone,
+      addressLine: parsed?.addressLine ?? '',
       ward: '',
-      district: '',
-      city: '',
-      shippingMethodName: payMethod,
+      district: parsed?.district ?? '',
+      city: parsed?.city ?? '',
+      shippingMethod: shipRaw ?? '',
+      shippingMethodLabel: this.shippingMethodLabelVi(shipRaw),
+      /** @deprecated dùng shippingMethodLabel — giữ để tương thích */
+      shippingMethodName: this.shippingMethodLabelVi(shipRaw),
+      note: noteStr || undefined,
       voucherCode: order.voucherCode,
       voucherName: '',
       voucherDiscountAmount: order.voucherDiscountAmount,
       items,
       payments: [
         {
-          paymentMethodName: payMethod,
+          paymentMethodName: this.paymentMethodLabelVi(payMethodRaw),
           amount: total,
         },
       ],
     };
+  }
+
+  private async assertOrderItemsMatchVariantRules(
+    items: CreateOrderDto['items'],
+  ): Promise<void> {
+    for (const item of items) {
+      const p = await this.productRepository.findById(item.productId);
+      if (!p) {
+        throw new NotFoundException(
+          `Không tìm thấy sản phẩm: ${item.productId}`,
+        );
+      }
+      const plain =
+        typeof (p as { toObject?: () => object }).toObject === 'function'
+          ? (p as { toObject: () => object }).toObject()
+          : (p as object);
+      const vars = Array.isArray((plain as { variants?: unknown }).variants)
+        ? (plain as { variants: { _id?: unknown }[] }).variants
+        : [];
+      if (vars.length > 0) {
+        const vTrim = item.variantId?.trim();
+        if (!vTrim) {
+          throw new BadRequestException(
+            'Sản phẩm có biến thể — vui lòng chọn size/màu và cập nhật giỏ hàng.',
+          );
+        }
+        const ok = vars.some((v) => String(v._id) === vTrim);
+        if (!ok) {
+          throw new BadRequestException('Biến thể sản phẩm không hợp lệ');
+        }
+      }
+    }
+  }
+
+  private async deductInventoryForOrderItems(
+    items: CreateOrderDto['items'],
+  ): Promise<{ productId: string; variantId?: string; quantity: number }[]> {
+    const applied: {
+      productId: string;
+      variantId?: string;
+      quantity: number;
+    }[] = [];
+    for (const item of items) {
+      const vid = item.variantId?.trim() || undefined;
+      const ok = await this.productRepository.decrementStockForLine(
+        item.productId,
+        vid,
+        item.quantity,
+      );
+      if (!ok) {
+        for (const r of [...applied].reverse()) {
+          await this.productRepository.incrementStockForLine(
+            r.productId,
+            r.variantId,
+            r.quantity,
+          );
+        }
+        throw new BadRequestException(
+          'Không đủ hàng trong kho (sản phẩm đã thay đổi). Vui lòng làm mới giỏ hàng.',
+        );
+      }
+      applied.push({
+        productId: item.productId,
+        variantId: vid,
+        quantity: item.quantity,
+      });
+    }
+    return applied;
+  }
+
+  private async rollbackInventoryLines(
+    applied: { productId: string; variantId?: string; quantity: number }[],
+  ): Promise<void> {
+    for (const r of [...applied].reverse()) {
+      await this.productRepository.incrementStockForLine(
+        r.productId,
+        r.variantId,
+        r.quantity,
+      );
+    }
+  }
+
+  private async restoreInventoryIfDeducted(
+    order: OrderDocument,
+  ): Promise<void> {
+    const o = order as OrderDocument & {
+      inventoryDeducted?: boolean;
+      items?: {
+        productId: unknown;
+        variantId?: unknown;
+        quantity?: number;
+      }[];
+    };
+    if (!o.inventoryDeducted) return;
+    const items = o.items || [];
+    for (const it of items) {
+      const q = Number(it.quantity) || 0;
+      if (q < 1) continue;
+      let pid = '';
+      const rawPid = it.productId;
+      if (rawPid instanceof Types.ObjectId) {
+        pid = rawPid.toHexString();
+      } else if (
+        rawPid &&
+        typeof rawPid === 'object' &&
+        '_id' in (rawPid as object)
+      ) {
+        pid = String((rawPid as { _id: unknown })._id);
+      } else {
+        pid = String(rawPid ?? '');
+      }
+      let vid: string | undefined;
+      const rawVid = it.variantId;
+      if (rawVid instanceof Types.ObjectId) {
+        vid = rawVid.toHexString();
+      } else if (rawVid != null && rawVid !== '') {
+        vid = String(rawVid);
+      }
+      if (!pid) continue;
+      await this.productRepository.incrementStockForLine(pid, vid, q);
+    }
   }
 
   async createOrder(userId: string, createDto: CreateOrderDto, req?: Request) {
@@ -262,11 +556,27 @@ export class OrdersService {
       };
     }
 
+    await this.assertOrderItemsMatchVariantRules(createDto.items);
+    const appliedInventory = await this.deductInventoryForOrderItems(
+      createDto.items,
+    );
+
     const payload = {
-      items: createDto.items.map((item) => ({
-        ...item,
-        productId: new Types.ObjectId(item.productId),
-      })),
+      items: createDto.items.map((item) => {
+        const row: {
+          productId: Types.ObjectId;
+          quantity: number;
+          price: number;
+          variantId?: Types.ObjectId;
+        } = {
+          productId: new Types.ObjectId(item.productId),
+          quantity: item.quantity,
+          price: item.price,
+        };
+        const v = item.variantId?.trim();
+        if (v) row.variantId = new Types.ObjectId(v);
+        return row;
+      }),
       shippingAddress: createDto.shippingAddress,
       totalAmount: createDto.totalAmount,
       orderCode: this.generateOrderCode(),
@@ -279,9 +589,16 @@ export class OrdersService {
       shippingMethod: createDto.shippingMethod?.trim() || undefined,
       voucherCode: voucherSnapshot?.code,
       voucherDiscountAmount: voucherSnapshot?.discountAmount,
+      inventoryDeducted: true,
     } as any;
 
-    const order = await this.orderRepository.create(payload);
+    let order: OrderDocument;
+    try {
+      order = await this.orderRepository.create(payload);
+    } catch (e: unknown) {
+      await this.rollbackInventoryLines(appliedInventory);
+      throw e;
+    }
 
     if (voucherSnapshot) {
       try {
@@ -293,6 +610,7 @@ export class OrdersService {
         );
       } catch (e: unknown) {
         await this.orderRepository.delete(String(order._id));
+        await this.rollbackInventoryLines(appliedInventory);
         const code =
           e && typeof e === 'object' && 'code' in e
             ? (e as { code?: number }).code
@@ -582,8 +900,13 @@ export class OrdersService {
         'Chỉ hủy được đơn khi trạng thái là Chờ xử lý (chưa xác nhận). Đơn đã xác nhận hoặc đã thanh toán không thể hủy tại đây.',
       );
     }
+    const raw = await this.orderRepository.findByIdRaw(orderId);
+    if (raw?.inventoryDeducted) {
+      await this.restoreInventoryIfDeducted(raw);
+    }
     const updated = await this.orderRepository.update(orderId, {
       orderStatus: 'Cancelled',
+      inventoryDeducted: false,
     });
     if (!updated) {
       throw new NotFoundException('Không tìm thấy đơn hàng');
@@ -608,16 +931,33 @@ export class OrdersService {
       payload.orderStatus = updateDto.statusName;
       delete payload.statusName;
     }
-    const order = await this.orderRepository.update(id, payload);
-    if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
 
     const prevSt = String(before.orderStatus || '')
       .trim()
       .toLowerCase();
-    const newSt = String(order.orderStatus || '')
+    const nextStRaw =
+      payload.orderStatus != null
+        ? String(payload.orderStatus)
+        : String(before.orderStatus || '');
+    const newSt = nextStRaw.trim().toLowerCase();
+    if (newSt === 'cancelled' && prevSt !== 'cancelled') {
+      const raw = await this.orderRepository.findByIdRaw(id);
+      if (raw?.inventoryDeducted) {
+        await this.restoreInventoryIfDeducted(raw);
+        payload.inventoryDeducted = false;
+      }
+    }
+
+    const order = await this.orderRepository.update(id, payload);
+    if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
+
+    const prevSt2 = String(before.orderStatus || '')
       .trim()
       .toLowerCase();
-    if (newSt === 'cancelled' && prevSt !== 'cancelled') {
+    const newSt2 = String(order.orderStatus || '')
+      .trim()
+      .toLowerCase();
+    if (newSt2 === 'cancelled' && prevSt2 !== 'cancelled') {
       void this.orderEvents
         .onOrderCancelled(String(order._id), 'admin')
         .catch((e) =>
@@ -632,6 +972,11 @@ export class OrdersService {
 
   /** Xóa hẳn bản ghi đơn (admin) — không hoàn tác */
   async deleteOrderByAdmin(id: string) {
+    const before = await this.orderRepository.findByIdRaw(id);
+    if (!before) throw new NotFoundException('Không tìm thấy đơn hàng');
+    if (before.inventoryDeducted) {
+      await this.restoreInventoryIfDeducted(before);
+    }
     const deleted = await this.orderRepository.delete(id);
     if (!deleted) throw new NotFoundException('Không tìm thấy đơn hàng');
     return { message: 'Đã xóa đơn hàng' };

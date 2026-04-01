@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Container, Row, Col } from 'react-bootstrap';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   FiFilter,
@@ -23,21 +24,6 @@ import api from '../../services/api';
 import ProductCard from '../../components/ProductCard/ProductCard';
 import Loading from '../../components/Loading/Loading';
 import './Products.css';
-
-const SORT_OPTIONS = [
-  { value: '', label: 'Mặc định' },
-  { value: 'price_asc', label: 'Giá: Thấp → Cao' },
-  { value: 'price_desc', label: 'Giá: Cao → Thấp' },
-  { value: 'name_asc', label: 'Tên: A → Z' },
-  { value: 'newest', label: 'Mới nhất' },
-];
-
-const PRICE_PRESETS = [
-  { label: 'Dưới 500K', min: null, max: 500000 },
-  { label: '500K – 1M', min: 500000, max: 1000000 },
-  { label: '1M – 3M', min: 1000000, max: 3000000 },
-  { label: 'Trên 3M', min: 3000000, max: null },
-];
 
 function splitCsv(param) {
   if (!param || typeof param !== 'string') return [];
@@ -89,6 +75,7 @@ function categoryIdFrom(cat) {
 }
 
 const Products = () => {
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
   const { products, isLoading, pagination } = useSelector((s) => s.products);
@@ -96,6 +83,27 @@ const Products = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
   const [brandOptions, setBrandOptions] = useState([]);
+
+  const sortOptions = useMemo(
+    () => [
+      { value: '', label: t('products.sortDefault') },
+      { value: 'price_asc', label: t('products.sortPriceAsc') },
+      { value: 'price_desc', label: t('products.sortPriceDesc') },
+      { value: 'name_asc', label: t('products.sortNameAsc') },
+      { value: 'newest', label: t('products.sortNewest') },
+    ],
+    [t],
+  );
+
+  const pricePresets = useMemo(
+    () => [
+      { label: t('products.priceUnder500k'), min: null, max: 500000 },
+      { label: t('products.price500to1m'), min: 500000, max: 1000000 },
+      { label: t('products.price1to3m'), min: 1000000, max: 3000000 },
+      { label: t('products.priceOver3m'), min: 3000000, max: null },
+    ],
+    [t],
+  );
 
   const urlSearch = searchParams.get('search') || '';
   const [searchDraft, setSearchDraft] = useState(urlSearch);
@@ -127,13 +135,15 @@ const Products = () => {
         seen.add(s);
         merged.push(s);
       }
-      merged.sort((x, y) => x.localeCompare(y, 'vi'));
+      merged.sort((x, y) =>
+        x.localeCompare(y, i18n.language?.startsWith('vi') ? 'vi' : 'en'),
+      );
       setBrandOptions(merged);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [i18n.language]);
 
   useEffect(() => {
     setSearchDraft(urlSearch);
@@ -285,23 +295,23 @@ const Products = () => {
     <div className="filter-sidebar">
       <div className="filter-header">
         <span className="filter-title">
-          <FiSliders size={16} /> Bộ lọc
+          <FiSliders size={16} /> {t('products.filterTitle')}
         </span>
         {hasFilters && (
           <button type="button" className="clear-btn" onClick={handleClear}>
-            <FiX size={14} /> Xoá
+            <FiX size={14} /> {t('products.clear')}
           </button>
         )}
       </div>
 
       <div className="filter-group filter-group-first">
-        <p className="filter-group-label">Tìm theo tên</p>
+        <p className="filter-group-label">{t('products.searchByName')}</p>
         <div className="filter-search-wrap">
           <FiSearch className="filter-search-icon" size={16} aria-hidden />
           <input
             type="search"
             className="filter-search-input"
-            placeholder="Tên sản phẩm, mô tả ngắn..."
+            placeholder={t('products.searchPlaceholder')}
             value={searchDraft}
             onChange={(e) => setSearchDraft(e.target.value)}
             autoComplete="off"
@@ -310,7 +320,7 @@ const Products = () => {
       </div>
 
       <div className="filter-group">
-        <p className="filter-group-label">Danh mục (chọn nhiều)</p>
+        <p className="filter-group-label">{t('products.categoriesMulti')}</p>
         <div className="filter-checklist">
           {safeCategories.map((cat) => {
             const id = categoryIdFrom(cat);
@@ -331,9 +341,9 @@ const Products = () => {
       </div>
 
       <div className="filter-group">
-        <p className="filter-group-label">Thương hiệu (chọn nhiều)</p>
+        <p className="filter-group-label">{t('products.brandsMulti')}</p>
         {brandOptions.length === 0 ? (
-          <p className="filter-empty-hint">Đang tải thương hiệu...</p>
+          <p className="filter-empty-hint">{t('products.brandsLoading')}</p>
         ) : (
           <div className="filter-checklist filter-checklist-scroll">
             {brandOptions.map((b) => (
@@ -351,9 +361,9 @@ const Products = () => {
       </div>
 
       <div className="filter-group">
-        <p className="filter-group-label">Khoảng giá (VND)</p>
+        <p className="filter-group-label">{t('products.priceRange')}</p>
         <div className="filter-price-presets">
-          {PRICE_PRESETS.map((preset) => (
+          {pricePresets.map((preset) => (
             <button
               key={preset.label}
               type="button"
@@ -367,23 +377,23 @@ const Products = () => {
         <div className="filter-price-custom">
           <div className="filter-price-fields">
             <label className="filter-price-field">
-              <span>Từ</span>
+              <span>{t('products.priceFrom')}</span>
               <input
                 type="number"
                 min={0}
                 inputMode="numeric"
-                placeholder="Tối thiểu"
+                placeholder={t('products.priceMinPh')}
                 value={minPriceDraft}
                 onChange={(e) => setMinPriceDraft(e.target.value)}
               />
             </label>
             <label className="filter-price-field">
-              <span>Đến</span>
+              <span>{t('products.priceTo')}</span>
               <input
                 type="number"
                 min={0}
                 inputMode="numeric"
-                placeholder="Tối đa"
+                placeholder={t('products.priceMaxPh')}
                 value={maxPriceDraft}
                 onChange={(e) => setMaxPriceDraft(e.target.value)}
               />
@@ -394,7 +404,7 @@ const Products = () => {
             className="filter-apply-price-btn"
             onClick={applyCustomPrice}
           >
-            Áp dụng giá
+            {t('products.applyPrice')}
           </button>
         </div>
       </div>
@@ -407,9 +417,9 @@ const Products = () => {
         <Container>
           <div className="products-header-inner">
             <div>
-              <h1 className="products-page-title">Sản phẩm</h1>
+              <h1 className="products-page-title">{t('products.pageTitle')}</h1>
               {totalItems > 0 && (
-                <span className="products-count">{totalItems} sản phẩm</span>
+                <span className="products-count">{t('products.count', { count: totalItems })}</span>
               )}
             </div>
             <div className="products-toolbar">
@@ -418,7 +428,7 @@ const Products = () => {
                 className="toolbar-btn mobile-filter-toggle"
                 onClick={() => setSidebarOpen(true)}
               >
-                <FiFilter size={16} /> Lọc
+                <FiFilter size={16} /> {t('products.mobileFilter')}
               </button>
 
               <select
@@ -426,7 +436,7 @@ const Products = () => {
                 value={searchParams.get('sort') || ''}
                 onChange={(e) => setParam('sort', e.target.value)}
               >
-                {SORT_OPTIONS.map((o) => (
+                {sortOptions.map((o) => (
                   <option key={o.value || 'default'} value={o.value}>
                     {o.label}
                   </option>
@@ -474,10 +484,10 @@ const Products = () => {
                 animate={{ opacity: 1, scale: 1 }}
               >
                 <div className="no-products-icon">🔍</div>
-                <h3>Không tìm thấy sản phẩm</h3>
-                <p>Thử điều chỉnh bộ lọc hoặc từ khoá tìm kiếm</p>
+                <h3>{t('products.noResultsTitle')}</h3>
+                <p>{t('products.noResultsHint')}</p>
                 <button type="button" className="btn-primary" onClick={handleClear}>
-                  Xoá bộ lọc
+                  {t('products.clearFilters')}
                 </button>
               </motion.div>
             ) : (
@@ -575,7 +585,7 @@ const Products = () => {
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             >
               <div className="drawer-header">
-                <span>Bộ lọc</span>
+                <span>{t('products.drawerFilter')}</span>
                 <button type="button" onClick={() => setSidebarOpen(false)}>
                   <FiX size={20} />
                 </button>

@@ -60,6 +60,20 @@ export const deleteAddress = createAsyncThunk(
   }
 );
 
+export const setDefaultAddress = createAsyncThunk(
+  'addresses/setDefault',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await api.patch(`/addresses/${id}/set-default`);
+      return response.data?.data ?? response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Không thể đặt mặc định'
+      );
+    }
+  }
+);
+
 const initialState = {
   addresses: [],
   isLoading: false,
@@ -105,6 +119,17 @@ const addressSlice = createSlice({
         state.addresses = state.addresses.filter(
           (a) => (a._id || a.id)?.toString() !== id
         );
+      })
+      .addCase(setDefaultAddress.fulfilled, (state, action) => {
+        const payload = action.payload;
+        const updated = payload?.address ?? payload;
+        const uid = updated?._id?.toString() || updated?.id?.toString();
+        if (!uid) return;
+        state.addresses = state.addresses.map((a) => {
+          const id = (a._id || a.id)?.toString();
+          if (id === uid) return { ...a, ...updated, isDefault: true };
+          return { ...a, isDefault: false };
+        });
       });
   },
 });

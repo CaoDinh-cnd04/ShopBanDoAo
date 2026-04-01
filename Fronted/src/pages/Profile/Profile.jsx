@@ -4,8 +4,10 @@ import { Container, Row, Col } from 'react-bootstrap';
 import { motion } from 'framer-motion';
 import {
   FiUser, FiPackage, FiCalendar, FiHeart,
-  FiMapPin, FiLock, FiTag, FiBell, FiChevronRight
+  FiMapPin, FiLock, FiTag, FiBell, FiChevronRight, FiMessageCircle
 } from 'react-icons/fi';
+import { useTranslation } from 'react-i18next';
+import { isAdminUser } from '../../store/slices/authSlice';
 import ProfileEdit from './ProfileEdit';
 import Orders from './Orders';
 import Bookings from './Bookings';
@@ -14,17 +16,19 @@ import Addresses from './Addresses';
 import ChangePassword from './ChangePassword';
 import Vouchers from './Vouchers';
 import Notifications from './Notifications';
+import ProfileMessages from './ProfileMessages';
 import './Profile.css';
 
-const NAV_ITEMS = [
-  { key: 'profile',   label: 'Thông tin cá nhân', icon: FiUser,      route: '/profile' },
-  { key: 'orders',    label: 'Đơn hàng của tôi',   icon: FiPackage,   route: '/profile/orders' },
-  { key: 'bookings',  label: 'Lịch đặt sân',       icon: FiCalendar,  route: '/profile/bookings' },
-  { key: 'wishlist',  label: 'Yêu thích',           icon: FiHeart,     route: '/profile/wishlist' },
-  { key: 'addresses', label: 'Địa chỉ',             icon: FiMapPin,    route: '/profile/addresses' },
-  { key: 'vouchers',  label: 'Voucher',             icon: FiTag,       route: '/profile/vouchers' },
-  { key: 'password',  label: 'Đổi mật khẩu',       icon: FiLock,      route: '/profile/password' },
-  { key: 'notifications', label: 'Thông báo',       icon: FiBell,      route: '/profile/notifications' },
+const NAV_ITEMS_ALL = [
+  { key: 'profile',   icon: FiUser,      route: '/profile' },
+  { key: 'orders',    icon: FiPackage,   route: '/profile/orders' },
+  { key: 'bookings',  icon: FiCalendar,  route: '/profile/bookings' },
+  { key: 'wishlist',  icon: FiHeart,     route: '/profile/wishlist' },
+  { key: 'addresses', icon: FiMapPin,    route: '/profile/addresses' },
+  { key: 'vouchers',  icon: FiTag,       route: '/profile/vouchers' },
+  { key: 'password',  icon: FiLock,      route: '/profile/password' },
+  { key: 'notifications', icon: FiBell,      route: '/profile/notifications' },
+  { key: 'messages',  icon: FiMessageCircle, route: '/profile/messages' },
 ];
 
 const CONTENT_MAP = {
@@ -36,12 +40,18 @@ const CONTENT_MAP = {
   vouchers:      <Vouchers />,
   password:      <ChangePassword />,
   notifications: <Notifications />,
+  messages:      <ProfileMessages />,
 };
 
 const Profile = () => {
+  const { t } = useTranslation();
   const { user } = useSelector((s) => s.auth);
   const location = useLocation();
   const navigate = useNavigate();
+
+  const navItems = NAV_ITEMS_ALL.filter(
+    (item) => !(item.key === 'messages' && isAdminUser(user)),
+  );
 
   // Determine active tab from route
   const pathKey = location.pathname.split('/profile/')[1];
@@ -71,7 +81,7 @@ const Profile = () => {
 
               {/* Navigation */}
               <nav className="profile-nav">
-                {NAV_ITEMS.map((item) => {
+                {navItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = item.key === activeKey;
                   return (
@@ -81,7 +91,7 @@ const Profile = () => {
                       onClick={() => handleNav(item)}
                     >
                       <Icon size={17} />
-                      <span>{item.label}</span>
+                      <span>{t(`profile.sidebar.${item.key}`)}</span>
                       {isActive && <FiChevronRight size={14} className="pni-chevron" />}
                     </button>
                   );

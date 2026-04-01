@@ -2,9 +2,10 @@ import { useEffect, useState, useCallback } from 'react';
 import { Container, Row, Col, Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import { FiArrowRight, FiShoppingBag, FiCalendar, FiStar, FiUsers, FiPackage } from 'react-icons/fi';
-import { fetchProducts } from '../../store/slices/productSlice';
+import { fetchTopSellingProducts } from '../../store/slices/productSlice';
 import { fetchCategories } from '../../store/slices/categorySlice';
 import { fetchCourts } from '../../store/slices/courtSlice';
 import ProductCard from '../../components/ProductCard/ProductCard';
@@ -43,6 +44,7 @@ const fadeUp = {
 };
 
 const Home = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -51,7 +53,7 @@ const Home = () => {
   const { courts } = useSelector((s) => s.courts);
 
   useEffect(() => {
-    dispatch(fetchProducts({ isFeatured: 1, limit: 8 }));
+    dispatch(fetchTopSellingProducts({ limit: 8 }));
     dispatch(fetchCategories());
   }, [dispatch]);
 
@@ -117,7 +119,7 @@ const Home = () => {
             <Col lg={6}>
               <motion.div initial="hidden" animate="show" variants={fadeUp}>
                 <span className="section-eyebrow">
-                  {bannerMerged?.eyebrow ?? '⚡ Sports E-Commerce'}
+                  {bannerMerged?.eyebrow ?? t('home.defaultEyebrow')}
                 </span>
                 <h1
                   className="hero-title"
@@ -131,9 +133,9 @@ const Home = () => {
                     bannerMerged.title
                   ) : (
                     <>
-                      Trang bị tốt nhất,
+                      {t('home.defaultTitleLine1')}
                       <br />
-                      <span className="gradient-text">chinh phục mọi sân</span>
+                      <span className="gradient-text">{t('home.defaultTitleLine2')}</span>
                     </>
                   )}
                 </h1>
@@ -143,8 +145,7 @@ const Home = () => {
                     bannerMerged ? { color: bannerMerged.textColor, opacity: 0.9 } : undefined
                   }
                 >
-                  {bannerMerged?.subtitle ||
-                    'Hàng nghìn sản phẩm thể thao chính hãng cùng hệ thống đặt sân hiện đại — tất cả trong một nền tảng.'}
+                  {bannerMerged?.subtitle || t('home.defaultSubtitle')}
                 </p>
                 <div className="hero-ctas">
                   <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
@@ -153,7 +154,7 @@ const Home = () => {
                       onClick={() => navigate(bannerMerged?.ctaLink || '/courts')}
                     >
                       <CtaIcon name={bannerMerged?.ctaIcon || 'shopping'} size={18} />{' '}
-                      {bannerMerged?.ctaText || 'Đặt sân ngay'}
+                      {bannerMerged?.ctaText || t('home.defaultCtaPrimary')}
                     </Button>
                   </motion.div>
                   <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
@@ -162,7 +163,7 @@ const Home = () => {
                       onClick={() => navigate(bannerMerged?.ctaLink2 || '/products')}
                     >
                       <CtaIcon name={bannerMerged?.ctaIcon2 || 'calendar'} size={18} />{' '}
-                      {bannerMerged?.ctaText2 || 'Xem sản phẩm'}
+                      {bannerMerged?.ctaText2 || t('home.defaultCtaSecondary')}
                     </Button>
                   </motion.div>
                 </div>
@@ -195,7 +196,7 @@ const Home = () => {
                     transition={{ delay: 0.8, type: 'spring' }}
                   >
                     <BadgeIcon name={bannerMerged?.badgeIcon || 'star'} size={16} />
-                    <span>{bannerMerged?.badgeText || '10,000+ khách hàng'}</span>
+                    <span>{bannerMerged?.badgeText || t('home.defaultBadge')}</span>
                   </motion.div>
                 )}
               </motion.div>
@@ -209,10 +210,10 @@ const Home = () => {
         <Container>
           <div className="stats-grid">
             {[
-              { icon: FiUsers, value: '10K+', label: 'Khách hàng tin dùng' },
-              { icon: FiPackage, value: '500+', label: 'Sản phẩm chính hãng' },
-              { icon: FiCalendar, value: '50+', label: 'Sân thể thao' },
-              { icon: FiStar, value: '4.9★', label: 'Đánh giá trung bình' },
+              { icon: FiUsers, value: '10K+', label: t('home.statsCustomers') },
+              { icon: FiPackage, value: '500+', label: t('home.statsProducts') },
+              { icon: FiCalendar, value: '50+', label: t('home.statsCourts') },
+              { icon: FiStar, value: '4.9★', label: t('home.statsRating') },
             ].map(({ icon: Icon, value, label }, i) => (
               <motion.div
                 key={label}
@@ -238,11 +239,11 @@ const Home = () => {
           <Container>
             <div className="section-header">
               <div>
-                <span className="section-eyebrow">Danh mục</span>
-                <h2 className="section-title">Khám phá thể loại</h2>
+                <span className="section-eyebrow">{t('home.categoriesEyebrow')}</span>
+                <h2 className="section-title">{t('home.categoriesTitle')}</h2>
               </div>
               <button className="see-all-btn" onClick={() => navigate('/products')}>
-                Xem tất cả <FiArrowRight size={15} />
+                {t('home.seeAll')} <FiArrowRight size={15} />
               </button>
             </div>
             <Row className="g-3">
@@ -282,11 +283,14 @@ const Home = () => {
         <Container>
           <div className="section-header">
             <div>
-              <span className="section-eyebrow">Nổi bật</span>
-              <h2 className="section-title">Sản phẩm hot nhất</h2>
+              <span className="section-eyebrow">{t('home.featuredEyebrow')}</span>
+              <h2 className="section-title">{t('home.featuredTitle')}</h2>
+              <p className="text-muted small mb-0 mt-1">
+                {t('home.featuredHint')}
+              </p>
             </div>
             <button className="see-all-btn" onClick={() => navigate('/products')}>
-              Xem tất cả <FiArrowRight size={15} />
+              {t('home.seeAll')} <FiArrowRight size={15} />
             </button>
           </div>
 
@@ -294,8 +298,8 @@ const Home = () => {
             <Loading />
           ) : displayFeatured.length === 0 ? (
             <div className="empty-state">
-              <p>Chưa có sản phẩm nổi bật</p>
-              <Button className="btn-primary" onClick={() => navigate('/products')}>Xem tất cả sản phẩm</Button>
+              <p>{t('home.featuredEmpty')}</p>
+              <Button className="btn-primary" onClick={() => navigate('/products')}>{t('home.featuredEmptyCta')}</Button>
             </div>
           ) : (
             <Row className="g-4">
@@ -309,7 +313,7 @@ const Home = () => {
                     viewport={{ once: true }}
                     style={{ height: '100%' }}
                   >
-                    <ProductCard product={product} />
+                    <ProductCard product={product} showHotBadge />
                   </motion.div>
                 </Col>
               ))}
@@ -324,11 +328,11 @@ const Home = () => {
           <Container>
             <div className="section-header">
               <div>
-                <span className="section-eyebrow">Đặt sân</span>
-                <h2 className="section-title">Sân thể thao nổi bật</h2>
+                <span className="section-eyebrow">{t('home.courtsEyebrow')}</span>
+                <h2 className="section-title">{t('home.courtsTitle')}</h2>
               </div>
               <button className="see-all-btn" onClick={() => navigate('/courts')}>
-                Xem tất cả <FiArrowRight size={15} />
+                {t('home.seeAll')} <FiArrowRight size={15} />
               </button>
             </div>
             <Row className="g-4">
@@ -360,10 +364,10 @@ const Home = () => {
                         <h3 className="court-name">{court.courtName}</h3>
                         <div className="court-price">
                           <span>{(court.pricePerHour || 0).toLocaleString('vi-VN')} ₫</span>
-                          <span className="court-price-unit">/giờ</span>
+                          <span className="court-price-unit">{t('home.courtPerHour')}</span>
                         </div>
                         <button className="court-book-btn">
-                          <FiCalendar size={14} /> Đặt ngay
+                          <FiCalendar size={14} /> {t('home.bookNow')}
                         </button>
                       </div>
                     </motion.div>
@@ -389,14 +393,14 @@ const Home = () => {
           >
             <div className="cta-blob" aria-hidden />
             <div className="cta-content">
-              <h2>Bắt đầu hành trình thể thao của bạn</h2>
-              <p>Đăng ký ngay để nhận ưu đãi 15% cho đơn đầu tiên!</p>
+              <h2>{t('home.ctaTitle')}</h2>
+              <p>{t('home.ctaSubtitle')}</p>
               <div className="cta-actions">
                 <Button className="btn-primary" onClick={() => navigate('/register')}>
-                  Đăng ký miễn phí
+                  {t('home.ctaRegister')}
                 </Button>
                 <Button className="btn-ghost" onClick={() => navigate('/products')}>
-                  Khám phá sản phẩm
+                  {t('home.ctaExplore')}
                 </Button>
               </div>
             </div>

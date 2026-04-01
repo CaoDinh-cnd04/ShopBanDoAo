@@ -9,6 +9,7 @@ import { PaymentsModule } from '../payments/payments.module';
 import { OrderEventsModule } from '../order-events/order-events.module';
 import { ReviewsModule } from '../reviews/reviews.module';
 import { VouchersModule } from '../vouchers/vouchers.module';
+import { ProductsModule } from '../products/products.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { VouchersModule } from '../vouchers/vouchers.module';
       { name: Order.name, schema: OrderSchema },
       { name: User.name, schema: UserSchema },
     ]),
+    ProductsModule,
     PaymentsModule,
     OrderEventsModule,
     ReviewsModule,

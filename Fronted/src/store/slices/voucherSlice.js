@@ -17,6 +17,25 @@ export const fetchPublicVouchers = createAsyncThunk(
   }
 );
 
+/** Voucher còn dùng được (chưa dùng bởi user) + lịch sử đã dùng — cần đăng nhập */
+export const fetchMyVouchers = createAsyncThunk(
+  'vouchers/fetchMyVouchers',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/vouchers/my');
+      const data = response.data.data;
+      return {
+        available: Array.isArray(data?.available) ? data.available : [],
+        used: Array.isArray(data?.used) ? data.used : [],
+      };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Không tải được voucher'
+      );
+    }
+  }
+);
+
 /** Áp dụng voucher khi checkout */
 export const applyVoucher = createAsyncThunk(
   'vouchers/applyVoucher',
@@ -34,6 +53,7 @@ export const applyVoucher = createAsyncThunk(
 
 const initialState = {
   vouchers: [],
+  usedVouchers: [],
   appliedVoucher: null,
   isLoading: false,
   error: null,
@@ -59,11 +79,28 @@ const voucherSlice = createSlice({
       .addCase(fetchPublicVouchers.fulfilled, (state, action) => {
         state.isLoading = false;
         state.vouchers = Array.isArray(action.payload) ? action.payload : [];
+        state.usedVouchers = [];
       })
       .addCase(fetchPublicVouchers.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
         state.vouchers = [];
+        state.usedVouchers = [];
+      })
+      .addCase(fetchMyVouchers.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchMyVouchers.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.vouchers = action.payload.available ?? [];
+        state.usedVouchers = action.payload.used ?? [];
+      })
+      .addCase(fetchMyVouchers.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+        state.vouchers = [];
+        state.usedVouchers = [];
       })
       .addCase(applyVoucher.fulfilled, (state, action) => {
         state.appliedVoucher = action.payload;

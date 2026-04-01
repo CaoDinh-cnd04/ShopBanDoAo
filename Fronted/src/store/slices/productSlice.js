@@ -33,6 +33,27 @@ export const fetchProductById = createAsyncThunk(
   }
 );
 
+/** Trang chủ — sản phẩm bán chạy (theo đơn hàng), không dùng isFeatured tĩnh */
+export const fetchTopSellingProducts = createAsyncThunk(
+  'products/fetchTopSellingProducts',
+  async (params = {}, { rejectWithValue, signal }) => {
+    try {
+      const response = await api.get('/products/featured/top-selling', {
+        params: { limit: params.limit ?? 8 },
+        signal,
+      });
+      return response.data.data;
+    } catch (error) {
+      if (error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError') {
+        return rejectWithValue(null);
+      }
+      return rejectWithValue(
+        error.response?.data?.message || 'Không tải được sản phẩm bán chạy'
+      );
+    }
+  }
+);
+
 const initialState = {
   products: [],
   product: null,
@@ -111,6 +132,20 @@ const productSlice = createSlice({
       .addCase(fetchProductById.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
+      })
+      .addCase(fetchTopSellingProducts.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchTopSellingProducts.fulfilled, (state, action) => {
+        state.isLoading = false;
+        const payload = action.payload;
+        const list = payload?.products ?? [];
+        state.featuredProducts = Array.isArray(list) ? list : [];
+      })
+      .addCase(fetchTopSellingProducts.rejected, (state, action) => {
+        state.isLoading = false;
+        if (action.payload != null) state.error = action.payload;
       });
   },
 });

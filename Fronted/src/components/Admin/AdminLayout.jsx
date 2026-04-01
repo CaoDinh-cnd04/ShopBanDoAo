@@ -15,7 +15,8 @@ import {
   FiLayers,
   FiMapPin,
   FiTag,
-  FiImage
+  FiImage,
+  FiMessageCircle
 } from 'react-icons/fi';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
@@ -59,6 +60,7 @@ const navGroups = [
     title: 'Người dùng & nội dung',
     items: [
       { to: '/admin/users', end: false, icon: FiUsers, label: 'Người dùng' },
+      { to: '/admin/messages', end: false, icon: FiMessageCircle, label: 'Tin nhắn' },
       { to: '/admin/reviews', end: false, icon: FiStar, label: 'Đánh giá' }
     ]
   }

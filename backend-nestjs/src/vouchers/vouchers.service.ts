@@ -124,7 +124,12 @@ export class VouchersService {
       );
     }
 
-    if (voucher.usageLimit <= voucher.usedCount) {
+    const limit = voucher.usageLimit;
+    if (
+      typeof limit === 'number' &&
+      limit >= 0 &&
+      limit <= (voucher.usedCount ?? 0)
+    ) {
       throw new BadRequestException('Mã giảm giá đã hết lượt sử dụng');
     }
 
@@ -150,10 +155,17 @@ export class VouchersService {
     return { voucher, discountAmount };
   }
 
-  async applyVoucher(code: string, orderValue: number, userId: string) {
+  async applyVoucher(
+    code: string,
+    orderValue: number | undefined,
+    userId: string,
+  ) {
+    const raw = Number(orderValue);
+    const safeOrderValue =
+      Number.isFinite(raw) && raw >= 0 ? Math.round(raw) : 0;
     const { voucher, discountAmount } = await this.evaluateVoucher(
       code,
-      orderValue,
+      safeOrderValue,
       userId,
     );
     return {
@@ -217,6 +229,71 @@ export class VouchersService {
       50,
     );
     return { vouchers };
+  }
+
+  /**
+   * Trang khách: voucher đang hiệu lực mà user **chưa dùng** + lịch sử đã áp dụng (theo đơn).
+   */
+  async getMyVoucherOverview(userId: string) {
+    const now = new Date();
+    const vouchers = await this.voucherRepository.findAll(
+      { isActive: true, startDate: { $lte: now }, endDate: { $gte: now } },
+      0,
+      100,
+    );
+
+    const usages = await this.voucherUsageRepository.findByUser(userId);
+    const usedVoucherIds = new Set(usages.map((u) => String(u.voucherId)));
+
+    const mapOne = (v: VoucherDocument) => {
+      const o = v.toObject
+        ? v.toObject()
+        : (v as unknown as Record<string, unknown>);
+      return {
+        _id: o._id,
+        code: o.code,
+        voucherName: o.voucherName ?? '',
+        description: o.description ?? '',
+        discountType: o.discountType,
+        discountValue: o.discountValue,
+        minOrderValue: o.minOrderValue ?? 0,
+        maxDiscountAmount: o.maxDiscountAmount ?? 0,
+        startDate: o.startDate,
+        endDate: o.endDate,
+      };
+    };
+
+    const available = vouchers
+      .filter((v) => !usedVoucherIds.has(String(v._id)))
+      .filter((v) => {
+        const lim = v.usageLimit;
+        const used = v.usedCount ?? 0;
+        if (typeof lim !== 'number' || lim < 0) return true;
+        return used < lim;
+      })
+      .map(mapOne);
+
+    const used = usages.map((u) => {
+      const plain = u.toObject();
+      const ord = plain.orderId as unknown;
+      let orderCode = '';
+      if (
+        ord &&
+        typeof ord === 'object' &&
+        ord !== null &&
+        'orderCode' in ord
+      ) {
+        orderCode = String((ord as { orderCode?: string }).orderCode ?? '');
+      }
+      return {
+        voucherCode: u.voucherCode,
+        orderId: String(u.orderId),
+        orderCode: orderCode || String(u.orderId),
+        usedAt: plain.createdAt,
+      };
+    });
+
+    return { available, used };
   }
 
   async getVoucherStats() {

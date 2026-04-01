@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { FiHeart, FiShoppingCart, FiStar } from 'react-icons/fi';
 import { useSelector, useDispatch } from 'react-redux';
 import { toggleWishlist } from '../../store/slices/wishlistSlice';
@@ -12,7 +13,8 @@ import './ProductCard.css';
 const formatPrice = (price) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
 
-const ProductCard = ({ product }) => {
+const ProductCard = ({ product, showHotBadge = false }) => {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((s) => s.auth);
   const { items: wishlistItems } = useSelector((s) => s.wishlist);
@@ -25,23 +27,23 @@ const ProductCard = ({ product }) => {
   const isOnSale = originalPrice && originalPrice > price;
   const discount = isOnSale ? Math.round((1 - price / originalPrice) * 100) : 0;
   const isOutOfStock = product.variants?.length > 0 && product.variants.every((v) => v.stockQuantity === 0);
-  const isFeatured = product.isFeatured;
+  const isFeatured = product.isFeatured || showHotBadge;
   const rating = product.rating || product.averageRating;
   const reviewCount = product.reviewCount || product.totalReviews;
 
   const handleWishlist = (e) => {
     e.preventDefault(); e.stopPropagation();
-    if (!isAuthenticated) { toast.info('Vui lòng đăng nhập để thêm vào yêu thích'); return; }
+    if (!isAuthenticated) { toast.info(t('productCard.loginWishlist')); return; }
     const pid = product.id || product._id;
     dispatch(toggleWishlist(pid));
-    toast.success(isInWishlist ? 'Đã xoá khỏi yêu thích' : 'Đã thêm vào yêu thích ❤️');
+    toast.success(isInWishlist ? t('productCard.removedWishlist') : t('productCard.addedWishlist'));
   };
 
   const handleAddToCart = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (!isAuthenticated) {
-      toast.info('Vui lòng đăng nhập để thêm vào giỏ');
+      toast.info(t('productCard.loginCart'));
       return;
     }
     if (isOutOfStock) return;
@@ -52,10 +54,10 @@ const ProductCard = ({ product }) => {
     if (variantId) body.variantId = variantId;
     const res = await dispatch(addToCart(body));
     if (addToCart.fulfilled.match(res)) {
-      toast.success('Đã thêm vào giỏ hàng 🛒');
+      toast.success(t('productCard.addedCart'));
     } else {
       const msg = res.payload;
-      toast.error(typeof msg === 'string' ? msg : 'Không thêm được vào giỏ hàng');
+      toast.error(typeof msg === 'string' ? msg : t('productCard.addCartFail'));
     }
   };
 
@@ -83,8 +85,8 @@ const ProductCard = ({ product }) => {
 
             {/* Badges */}
             <div className="pc-badges">
-              {isOutOfStock && <span className="pc-badge badge-sold">Hết hàng</span>}
-              {isFeatured && !isOutOfStock && <span className="pc-badge badge-hot">HOT 🔥</span>}
+              {isOutOfStock && <span className="pc-badge badge-sold">{t('productCard.outOfStock')}</span>}
+              {isFeatured && !isOutOfStock && <span className="pc-badge badge-hot">{t('productCard.hot')}</span>}
               {isOnSale && !isOutOfStock && <span className="pc-badge badge-sale">-{discount}%</span>}
             </div>
 
@@ -111,7 +113,7 @@ const ProductCard = ({ product }) => {
                 disabled={isOutOfStock}
               >
                 <FiShoppingCart size={15} />
-                {isOutOfStock ? 'Hết hàng' : 'Thêm nhanh'}
+                {isOutOfStock ? t('productCard.outOfStock') : t('productCard.quickAdd')}
               </button>
             </motion.div>
           </div>

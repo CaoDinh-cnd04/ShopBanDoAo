@@ -1,0 +1,105 @@
+.profile-messages .pm-chat-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.pm-messages {
+  max-height: min(420px, 55vh);
+  overflow-y: auto;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: var(--bs-body-bg, #fff);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='dark'] .pm-messages {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.pm-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.pm-empty p {
+  margin: 0.75rem 0 0;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.pm-bubble {
+  max-width: 85%;
+  margin-bottom: 0.65rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+}
+
+.pm-bubble--mine {
+  margin-left: auto;
+  background: linear-gradient(135deg, #0d6efd22, #0d6efd11);
+  border: 1px solid rgba(13, 110, 253, 0.25);
+}
+
+.pm-bubble--admin {
+  margin-right: auto;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+[data-theme='dark'] .pm-bubble--admin {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.pm-bubble-meta {
+  font-size: 0.72rem;
+  opacity: 0.75;
+  margin-bottom: 0.25rem;
+}
+
+.pm-bubble-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.pm-compose {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.pm-input {
+  flex: 1;
+  resize: vertical;
+  min-height: 44px;
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: var(--bs-body-bg, #fff);
+  color: inherit;
+}
+
+[data-theme='dark'] .pm-input {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.pm-send {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  border: none;
+  background: #0d6efd;
+  color: #fff;
+  font-weight: 600;
+}
+
+.pm-send:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

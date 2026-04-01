@@ -1,31 +1,13 @@
 import { Link } from 'react-router-dom';
 import { Container, Row, Col } from 'react-bootstrap';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
+import { useMemo } from 'react';
 import {
   FiFacebook, FiInstagram, FiTwitter, FiYoutube,
   FiMail, FiPhone, FiMapPin, FiArrowRight
 } from 'react-icons/fi';
 import './Footer.css';
-
-const SHOP_LINKS = [
-  { to: '/products', label: 'Tất cả sản phẩm' },
-  { to: '/products?category=ao', label: 'Áo thể thao' },
-  { to: '/products?category=giay', label: 'Giày thể thao' },
-  { to: '/products?isFeatured=1', label: 'Sản phẩm nổi bật' },
-];
-const COURT_LINKS = [
-  { to: '/courts', label: 'Tất cả sân' },
-  { to: '/courts?type=tennis', label: 'Sân Tennis' },
-  { to: '/courts?type=badminton', label: 'Sân Cầu lông' },
-  { to: '/courts?type=football', label: 'Sân Bóng đá' },
-];
-const SUPPORT_LINKS = [
-  { to: '/faq', label: 'Câu hỏi thường gặp' },
-  { to: '/contact', label: 'Liên hệ' },
-  { to: '/shipping', label: 'Vận chuyển & Đổi trả' },
-  { to: '/privacy', label: 'Chính sách bảo mật' },
-  { to: '/terms', label: 'Điều khoản sử dụng' },
-];
 
 const SOCIALS = [
   { icon: FiFacebook, href: '#', label: 'Facebook' },
@@ -35,9 +17,41 @@ const SOCIALS = [
 ];
 
 const Footer = () => {
+  const { t } = useTranslation();
+
+  const shopLinks = useMemo(
+    () => [
+      { to: '/products', label: t('footer.shop.allProducts') },
+      { to: '/products?category=ao', label: t('footer.linkShirts') },
+      { to: '/products?category=giay', label: t('footer.linkShoes') },
+      { to: '/products?isFeatured=1', label: t('footer.linkFeatured') },
+    ],
+    [t],
+  );
+
+  const courtLinks = useMemo(
+    () => [
+      { to: '/courts', label: t('footer.linkAllCourts') },
+      { to: '/courts?type=tennis', label: t('footer.linkTennis') },
+      { to: '/courts?type=badminton', label: t('footer.linkBadminton') },
+      { to: '/courts?type=football', label: t('footer.linkFootball') },
+    ],
+    [t],
+  );
+
+  const supportLinks = useMemo(
+    () => [
+      { to: '/faq', label: t('footer.support.faq') },
+      { to: '/contact', label: t('footer.support.contact') },
+      { to: '/shipping', label: t('footer.linkShippingReturns') },
+      { to: '/privacy', label: t('footer.privacy') },
+      { to: '/terms', label: t('footer.linkTermsUse') },
+    ],
+    [t],
+  );
+
   return (
     <footer className="footer-premium">
-      {/* Wave divider */}
       <div className="footer-wave" aria-hidden="true">
         <svg viewBox="0 0 1440 60" preserveAspectRatio="none">
           <path
@@ -50,16 +64,12 @@ const Footer = () => {
       <div className="footer-body">
         <Container>
           <Row className="gy-5">
-            {/* Brand column */}
             <Col lg={4} md={12}>
               <div className="footer-brand">
                 <Link to="/" className="footer-logo">
                   ⚡ <span>SPORTS</span>
                 </Link>
-                <p className="footer-tagline">
-                  Hệ thống mua sắm & đặt sân thể thao hàng đầu Việt Nam — chất lượng cao, dịch vụ tốt.
-                </p>
-                {/* Social */}
+                <p className="footer-tagline">{t('footer.tagline')}</p>
                 <div className="footer-socials">
                   {SOCIALS.map(({ icon: Icon, href, label }) => (
                     <motion.a
@@ -78,24 +88,22 @@ const Footer = () => {
               </div>
             </Col>
 
-            {/* Links columns */}
             <Col lg={2} sm={6}>
-              <FooterLinkGroup title="Mua sắm" links={SHOP_LINKS} />
+              <FooterLinkGroup title={t('footer.shop.title')} links={shopLinks} />
             </Col>
             <Col lg={2} sm={6}>
-              <FooterLinkGroup title="Đặt sân" links={COURT_LINKS} />
+              <FooterLinkGroup title={t('footer.bookings.title')} links={courtLinks} />
             </Col>
             <Col lg={2} sm={6}>
-              <FooterLinkGroup title="Hỗ trợ" links={SUPPORT_LINKS} />
+              <FooterLinkGroup title={t('footer.support.title')} links={supportLinks} />
             </Col>
 
-            {/* Contact column */}
             <Col lg={2} sm={6}>
-              <h6 className="footer-heading">Liên hệ</h6>
+              <h6 className="footer-heading">{t('footer.contactHeading')}</h6>
               <ul className="footer-contact-list">
                 <li>
                   <FiMapPin size={14} />
-                  <span>123 Đường ABC, Q.1, TP.HCM</span>
+                  <span>{t('contact.info.address.content')}</span>
                 </li>
                 <li>
                   <FiPhone size={14} />
@@ -112,11 +120,11 @@ const Footer = () => {
           <hr className="footer-divider" />
 
           <div className="footer-bottom">
-            <p>© {new Date().getFullYear()} Sports E-Commerce. All rights reserved.</p>
+            <p>{t('footer.copyrightLine', { year: new Date().getFullYear() })}</p>
             <div className="footer-bottom-links">
-              <Link to="/privacy">Bảo mật</Link>
-              <Link to="/terms">Điều khoản</Link>
-              <Link to="/sitemap">Sitemap</Link>
+              <Link to="/privacy">{t('footer.bottomPrivacy')}</Link>
+              <Link to="/terms">{t('footer.bottomTerms')}</Link>
+              <Link to="/sitemap">{t('footer.bottomSitemap')}</Link>
             </div>
           </div>
         </Container>

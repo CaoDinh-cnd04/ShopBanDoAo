@@ -43,4 +43,13 @@ export class VoucherUsageRepository {
     });
     return doc.save(session ? { session } : {});
   }
+
+  /** Lịch sử dùng voucher của user (mới nhất trước) */
+  async findByUser(userId: string): Promise<VoucherUsageDocument[]> {
+    return this.model
+      .find({ userId: new Types.ObjectId(userId) })
+      .sort({ createdAt: -1 })
+      .populate({ path: 'orderId', select: 'orderCode' })
+      .exec();
+  }
 }
