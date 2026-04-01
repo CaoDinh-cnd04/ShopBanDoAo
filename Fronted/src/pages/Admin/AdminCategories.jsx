@@ -95,13 +95,19 @@ const AdminCategories = () => {
 
   const saveCategory = async () => {
     if (!catForm.categoryName.trim()) { toast.error('Nhập tên danh mục'); return; }
+    const variantProfile =
+      catForm.variantProfile &&
+      Object.prototype.hasOwnProperty.call(VARIANT_PROFILES, catForm.variantProfile)
+        ? catForm.variantProfile
+        : 'generic';
     try {
       const payload = {
         categoryName: catForm.categoryName.trim(),
         categorySlug: catForm.categorySlug.trim() || catForm.categoryName.trim().toLowerCase().replace(/\s+/g, '-'),
         description: catForm.description.trim() || null,
-        imageUrl: catForm.imageUrl.trim() || null,
-        displayOrder: Number(catForm.displayOrder) || 0
+        imageUrl: normalizeUploadUrlForDb(catForm.imageUrl) || null,
+        displayOrder: Number(catForm.displayOrder) || 0,
+        variantProfile,
       };
       if (catModal.editing) {
         await adminService.categories.updateCategory(catModal.editing, { ...payload, isActive: catForm.isActive });
