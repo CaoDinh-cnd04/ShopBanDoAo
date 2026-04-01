@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { resolveFrontendBase } from '../common/frontend-url.util';
+import {
+  resolveFrontendBase,
+  isProductionDeployment,
+} from '../common/frontend-url.util';
 import { Order, OrderDocument } from '../orders/schemas/order.schema';
 import { Booking, BookingDocument } from '../bookings/schemas/booking.schema';
 import { OrderEventsService } from '../order-events/order-events.service';
@@ -35,6 +38,11 @@ export class VnpayReturnHandler {
   /** Trả về URL tuyệt đối để 302 redirect (Return URL). */
   async getRedirectUrl(query: Record<string, string>): Promise<string> {
     const base = this.frontendBase();
+    if (isProductionDeployment() && base.includes('localhost')) {
+      this.logger.error(
+        `VNPay redirect base là localhost (${base}) — đặt FRONTEND_URL hoặc FRONTEND_PUBLIC_URL=https://ndsports.id.vn trên server (Render: NODE_ENV hoặc RENDER=true).`,
+      );
+    }
     const result = this.vnpay.verifyCallback(query);
 
     if (!result.valid) {
@@ -117,7 +125,7 @@ export class VnpayReturnHandler {
       return `${base}/profile/bookings/${encodeURIComponent(bookingId)}?payment=failed&reason=amount`;
     }
 
-    await this.bookingModel
+    const updatedBooking = await this.bookingModel
       .findOneAndUpdate(
         {
           _id: booking._id,
@@ -135,6 +143,16 @@ export class VnpayReturnHandler {
         { new: true },
       )
       .exec();
+
+    if (updatedBooking) {
+      void this.orderEvents
+        .onBookingDepositPaid(updatedBooking)
+        .catch((e) =>
+          this.logger.error(
+            `onBookingDepositPaid: ${e instanceof Error ? e.message : e}`,
+          ),
+        );
+    }
 
     return `${base}/profile/bookings/${encodeURIComponent(bookingId)}?payment=success`;
   }

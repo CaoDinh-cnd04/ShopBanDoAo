@@ -20,6 +20,7 @@ import { User, UserDocument } from '../users/schemas/user.schema';
 import { Court, CourtDocument } from '../courts/schemas/court.schema';
 import { VnpayService } from '../payments/vnpay.service';
 import { buildBookingVnpTxnRef } from '../payments/vnpay-booking.util';
+import { OrderEventsService } from '../order-events/order-events.service';
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -105,6 +106,7 @@ export class BookingsService {
     @InjectModel(Court.name) private courtModel: Model<CourtDocument>,
     private readonly config: ConfigService,
     private readonly vnpayService: VnpayService,
+    private readonly orderEvents: OrderEventsService,
   ) {}
 
   private clientIp(req?: Request): string {
@@ -397,6 +399,14 @@ export class BookingsService {
 
     const booking = await this.bookingRepository.create(payload);
 
+    void this.orderEvents
+      .onBookingCreatedAwaitingPayment(booking)
+      .catch((e) =>
+        this.logger.error(
+          `onBookingCreatedAwaitingPayment: ${e instanceof Error ? e.message : e}`,
+        ),
+      );
+
     const txnRef = buildBookingVnpTxnRef(String(booking._id));
     let paymentUrl: string | undefined;
     try {
@@ -537,13 +547,35 @@ export class BookingsService {
   }
 
   async updateBookingStatus(id: string, updateDto: UpdateBookingStatusDto) {
+    const existing = await this.bookingRepository.findById(id);
+    if (!existing) throw new NotFoundException('Không tìm thấy đơn đặt sân');
+
     const payload: any = { ...updateDto };
     if (updateDto.statusName && !updateDto.bookingStatus) {
       payload.bookingStatus = updateDto.statusName;
       delete payload.statusName;
     }
+
+    const prev = String(existing.bookingStatus || '').toLowerCase();
+    const wasCancelled =
+      prev === 'cancelled' || prev === 'đã hủy' || prev === 'da huy';
+
     const booking = await this.bookingRepository.update(id, payload);
     if (!booking) throw new NotFoundException('Không tìm thấy đơn đặt sân');
+
+    const next = String(booking.bookingStatus || '').toLowerCase();
+    const nowCancelled =
+      next === 'cancelled' || next === 'đã hủy' || next === 'da huy';
+    if (nowCancelled && !wasCancelled) {
+      void this.orderEvents
+        .onBookingCancelled(id, 'admin')
+        .catch((e) =>
+          this.logger.error(
+            `onBookingCancelled(admin): ${e instanceof Error ? e.message : e}`,
+          ),
+        );
+    }
+
     return { message: 'Cập nhật trạng thái sân thành công', booking };
   }
 
@@ -569,6 +601,15 @@ export class BookingsService {
     const updated = await this.bookingRepository.update(bookingId, {
       bookingStatus: 'Cancelled',
     });
+    if (updated) {
+      void this.orderEvents
+        .onBookingCancelled(bookingId, 'user')
+        .catch((e) =>
+          this.logger.error(
+            `onBookingCancelled(user): ${e instanceof Error ? e.message : e}`,
+          ),
+        );
+    }
     return { message: 'Hủy lịch đặt sân thành công', booking: updated };
   }
 

@@ -123,7 +123,7 @@ export class VnpayController {
       return { RspCode: '04', Message: 'Invalid amount' };
     }
 
-    await this.bookingModel
+    const updatedBooking = await this.bookingModel
       .findOneAndUpdate(
         {
           _id: booking._id,
@@ -141,6 +141,16 @@ export class VnpayController {
         { new: true },
       )
       .exec();
+
+    if (updatedBooking) {
+      void this.orderEvents
+        .onBookingDepositPaid(updatedBooking)
+        .catch((e) =>
+          this.logger.error(
+            `onBookingDepositPaid IPN: ${e instanceof Error ? e.message : e}`,
+          ),
+        );
+    }
 
     return { RspCode: '00', Message: 'Confirm Success' };
   }

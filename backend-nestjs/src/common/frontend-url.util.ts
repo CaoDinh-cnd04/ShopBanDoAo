@@ -2,8 +2,8 @@
  * Một biến FRONTEND_URL có thể chứa nhiều origin (phân tách bằng dấu phẩy hoặc chấm phẩy),
  * ví dụ: `http://localhost:5173,https://ndsports.id.vn`
  *
- * - NODE_ENV === 'production' → chọn URL không phải localhost (ưu tiên domain public).
- * - Ngược lại (dev) → ưu tiên localhost / 127.0.0.1 nếu có trong danh sách.
+ * - Production (NODE_ENV=production hoặc Render RENDER=true, …) → không redirect về localhost.
+ * - Dev → ưu tiên localhost / 127.0.0.1 nếu có trong danh sách.
  *
  * Khi FRONTEND_URL rỗng hoặc chỉ localhost trong production: không redirect VNPay về localhost.
  * Gợi ý Render: đặt FRONTEND_URL=https://ndsports.id.vn hoặc FRONTEND_PUBLIC_URL cùng domain.
@@ -12,9 +12,19 @@
 /** Domain public mặc định (có thể ghi đè bằng FRONTEND_PUBLIC_URL trên server). */
 const DEFAULT_PUBLIC_SITE = 'https://ndsports.id.vn';
 
+/**
+ * Một số host (Render, Railway…) không set NODE_ENV=production đúng cách → redirect VNPay
+ * về localhost nếu chỉ dựa vào NODE_ENV. Coi các môi trường này là «production» cho URL public.
+ */
+export function isProductionDeployment(): boolean {
+  if (process.env.NODE_ENV === 'production') return true;
+  if (process.env.RENDER === 'true') return true;
+  if (process.env.RAILWAY_ENVIRONMENT === 'production') return true;
+  return false;
+}
+
 function implicitDefaultWhenEmpty(): string {
-  const isProd = process.env.NODE_ENV === 'production';
-  if (isProd) {
+  if (isProductionDeployment()) {
     return (
       process.env.FRONTEND_PUBLIC_URL?.trim() ||
       process.env.FRONTEND_URL_FALLBACK?.trim() ||
@@ -41,15 +51,13 @@ export function resolveFrontendBase(
   if (parts.length === 0) return emptyDefault;
   if (parts.length === 1) {
     const p = parts[0];
-    const isProd = process.env.NODE_ENV === 'production';
-    if (isProd && isLocalhostUrl(p)) {
+    if (isProductionDeployment() && isLocalhostUrl(p)) {
       return emptyDefault;
     }
     return normalizeOrigin(p);
   }
 
-  const isProd = process.env.NODE_ENV === 'production';
-  if (isProd) {
+  if (isProductionDeployment()) {
     const publicUrl = parts.find((pr) => !isLocalhostUrl(pr));
     return normalizeOrigin(publicUrl || parts[parts.length - 1]);
   }

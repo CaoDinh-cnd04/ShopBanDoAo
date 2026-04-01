@@ -7,6 +7,7 @@ import { BookingRepository } from './bookings.repository';
 import { BookingsService } from './bookings.service';
 import { BookingsController } from './bookings.controller';
 import { PaymentsModule } from '../payments/payments.module';
+import { OrderEventsModule } from '../order-events/order-events.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { PaymentsModule } from '../payments/payments.module';
       { name: Court.name, schema: CourtSchema },
     ]),
     PaymentsModule,
+    OrderEventsModule,
   ],
   controllers: [BookingsController],
   providers: [BookingRepository, BookingsService],

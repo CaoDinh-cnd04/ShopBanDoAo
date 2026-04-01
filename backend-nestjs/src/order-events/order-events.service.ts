@@ -7,8 +7,11 @@ import { MailService } from '../mail/mail.service';
 import { resolveFrontendBase } from '../common/frontend-url.util';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { Order, OrderDocument } from '../orders/schemas/order.schema';
+import { Booking, BookingDocument } from '../bookings/schemas/booking.schema';
+import { Court, CourtDocument } from '../courts/schemas/court.schema';
 
 const NOTIF_TYPE_ORDER = 'order';
+const NOTIF_TYPE_BOOKING = 'booking';
 const BRAND_NAME = 'ND Sports';
 const DEFAULT_SITE = 'https://ndsports.id.vn';
 
@@ -22,6 +25,8 @@ export class OrderEventsService {
     private readonly mail: MailService,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     @InjectModel(Order.name) private readonly orderModel: Model<OrderDocument>,
+    @InjectModel(Booking.name) private readonly bookingModel: Model<BookingDocument>,
+    @InjectModel(Court.name) private readonly courtModel: Model<CourtDocument>,
   ) {}
 
   private fmtVnd(n: number): string {
@@ -189,9 +194,6 @@ export class OrderEventsService {
     const payMethod = (order.paymentMethod || '').toUpperCase();
     const pendingVnpay = !!opts.paymentUrl || payMethod === 'VNPAY';
     const host = this.siteHostLabel();
-    const skipAdminNotify =
-      String(order.orderStatus || '').trim().toLowerCase() ===
-      'awaitingpayment';
 
     const titleCustomer = pendingVnpay
       ? `${BRAND_NAME} · Đơn đã tạo — chờ thanh toán VNPay`
@@ -218,21 +220,26 @@ export class OrderEventsService {
       .select('_id email')
       .lean();
 
-    if (!skipAdminNotify) {
-      for (const admin of admins) {
-        const aid = String(admin._id);
-        try {
-          await this.notifications.createNotification({
-            userId: aid,
-            title: `${BRAND_NAME} · Đơn mới cần xác nhận`,
-            message: `${customerName} · ${orderCode} · ${this.fmtVnd(total)}. Mở Quản trị trên ${host} để xử lý.`,
-            type: NOTIF_TYPE_ORDER,
-          });
-        } catch (e) {
-          this.logger.error(
-            `Thông báo admin ${aid}: ${e instanceof Error ? e.message : e}`,
-          );
-        }
+    const adminTitleWeb = pendingVnpay
+      ? `${BRAND_NAME} · Đơn mới — chờ thanh toán VNPay`
+      : `${BRAND_NAME} · Đơn mới cần xác nhận`;
+    const adminMsgWeb = pendingVnpay
+      ? `${customerName} · ${orderCode} · ${this.fmtVnd(total)}. Khách chưa thanh toán — theo dõi trên ${host}.`
+      : `${customerName} · ${orderCode} · ${this.fmtVnd(total)}. Mở Quản trị trên ${host} để xử lý.`;
+
+    for (const admin of admins) {
+      const aid = String(admin._id);
+      try {
+        await this.notifications.createNotification({
+          userId: aid,
+          title: adminTitleWeb,
+          message: adminMsgWeb,
+          type: NOTIF_TYPE_ORDER,
+        });
+      } catch (e) {
+        this.logger.error(
+          `Thông báo admin ${aid}: ${e instanceof Error ? e.message : e}`,
+        );
       }
     }
 
@@ -274,9 +281,6 @@ export class OrderEventsService {
     }
 
     const custEmailDisplay = user?.email ?? '';
-    if (skipAdminNotify) {
-      return;
-    }
     const adminMailTargets = await this.resolveAdminMailTargets();
     for (const to of adminMailTargets) {
       const adminRows = [
@@ -291,13 +295,21 @@ export class OrderEventsService {
           valueHtml: this.escapeHtml(order.paymentMethod || '—'),
         },
       ];
+      const adminHeadline = pendingVnpay
+        ? 'Đơn mới — chờ thanh toán VNPay'
+        : 'Có đơn cần xác nhận';
+      const adminBodyExtra = pendingVnpay
+        ? `<p style="color:#64748b;font-size:14px;">Khách chưa thanh toán VNPay — đơn chỉ được xử lý sau khi thanh toán thành công.</p>`
+        : `<p>Vui lòng đăng nhập khu vực quản trị để xác nhận hoặc liên hệ khách nếu cần.</p>`;
       await this.mail.send({
         to,
-        subject: `[${BRAND_NAME} Admin] Đơn mới ${orderCode} — ${this.fmtVnd(total)}`,
+        subject: pendingVnpay
+          ? `[${BRAND_NAME} Admin] ${orderCode} — chờ VNPay (${this.fmtVnd(total)})`
+          : `[${BRAND_NAME} Admin] Đơn mới ${orderCode} — ${this.fmtVnd(total)}`,
         html: this.wrapBranded({
           pageTitle: 'Đơn hàng mới',
-          headline: 'Có đơn cần xác nhận',
-          bodyHtml: `<p>Bạn có một đơn hàng mới trên <strong>${BRAND_NAME}</strong>.</p>${this.emailDetailTable(adminRows)}<p style="margin-top:16px;">Vui lòng đăng nhập khu vực quản trị để xác nhận hoặc liên hệ khách nếu cần.</p>`,
+          headline: adminHeadline,
+          bodyHtml: `<p>Bạn có một đơn hàng mới trên <strong>${BRAND_NAME}</strong>.</p>${this.emailDetailTable(adminRows)}${adminBodyExtra}`,
           cta: { label: 'Mở quản trị đơn hàng', href: adminOrdersUrl },
         }),
       });
@@ -585,6 +597,349 @@ export class OrderEventsService {
             source === 'user' ? 'Khách đã hủy đơn' : 'Đơn đã được hủy',
           bodyHtml: `${this.emailDetailTable(admRows)}`,
           cta: { label: 'Mở quản trị đơn hàng', href: adminOrdersUrl },
+        }),
+      });
+    }
+  }
+
+  private fmtBookingDate(d: Date | undefined): string {
+    if (!d) return '—';
+    try {
+      return new Intl.DateTimeFormat('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }).format(new Date(d));
+    } catch {
+      return String(d);
+    }
+  }
+
+  private slotsSummary(
+    slots: { startTime: string; endTime: string }[] | undefined,
+  ): string {
+    if (!Array.isArray(slots) || slots.length === 0) return '—';
+    return slots.map((s) => `${s.startTime}–${s.endTime}`).join(', ');
+  }
+
+  /** Đặt sân vừa tạo — chờ thanh toán cọc VNPay */
+  async onBookingCreatedAwaitingPayment(
+    booking: BookingDocument,
+  ): Promise<void> {
+    const bookingId = String(booking._id);
+    const bookingCode = booking.bookingCode ?? bookingId;
+    const user = await this.userModel.findById(booking.userId).lean();
+    if (!user) {
+      this.logger.warn(`onBookingCreated: không tìm thấy user ${booking.userId}`);
+      return;
+    }
+    const court = await this.courtModel.findById(booking.courtId).lean();
+    const courtName = court?.courtName ?? 'Sân';
+    const uid = String(booking.userId);
+    const host = this.siteHostLabel();
+    const dep = Math.round(Number(booking.depositAmount)) || 0;
+    const total = Math.round(Number(booking.totalAmount)) || 0;
+    const dateStr = this.fmtBookingDate(booking.bookingDate);
+    const slotsStr = this.slotsSummary(booking.slots);
+
+    const titleUser = `${BRAND_NAME} · Đặt sân — chờ thanh toán cọc`;
+    const msgUser = `Lịch ${bookingCode} · ${courtName} · ${dateStr} (${slotsStr}). Cọc ${this.fmtVnd(dep)} — hoàn tất VNPay trên ${host}.`;
+
+    try {
+      await this.notifications.createNotification({
+        userId: uid,
+        title: titleUser,
+        message: msgUser,
+        type: NOTIF_TYPE_BOOKING,
+      });
+    } catch (e) {
+      this.logger.error(
+        `Thông báo đặt sân (user): ${e instanceof Error ? e.message : e}`,
+      );
+    }
+
+    const admins = await this.userModel
+      .find({ role: 'Admin' })
+      .select('_id')
+      .lean();
+    const adminTitle = `${BRAND_NAME} · Lịch đặt sân mới — chờ cọc VNPay`;
+    const adminMsg = `${user.fullName ?? 'Khách'} · ${bookingCode} · ${courtName} · ${dateStr}. Cọc ${this.fmtVnd(dep)}. ${host}`;
+    for (const admin of admins) {
+      try {
+        await this.notifications.createNotification({
+          userId: String(admin._id),
+          title: adminTitle,
+          message: adminMsg,
+          type: NOTIF_TYPE_BOOKING,
+        });
+      } catch (e) {
+        this.logger.error(
+          `Thông báo đặt sân (admin): ${e instanceof Error ? e.message : e}`,
+        );
+      }
+    }
+
+    const bookingsUrl = `${this.siteBase()}/profile/bookings`;
+    const adminBookingsUrl = `${this.siteBase()}/admin/bookings`;
+    const customerName = user.fullName ?? 'Khách hàng';
+
+    if (user.email) {
+      const rows = [
+        { label: 'Mã lịch', valueHtml: this.escapeHtml(bookingCode) },
+        { label: 'Sân', valueHtml: this.escapeHtml(courtName) },
+        { label: 'Ngày', valueHtml: this.escapeHtml(dateStr) },
+        { label: 'Khung giờ', valueHtml: this.escapeHtml(slotsStr) },
+        { label: 'Tổng sân', valueHtml: this.fmtVnd(total) },
+        { label: 'Cọc VNPay', valueHtml: this.fmtVnd(dep) },
+      ];
+      await this.mail.send({
+        to: user.email,
+        subject: `[${BRAND_NAME}] ${bookingCode} — chờ thanh toán cọc đặt sân`,
+        html: this.wrapBranded({
+          pageTitle: titleUser,
+          preheader: msgUser,
+          headline: 'Hoàn tất thanh toán cọc trên VNPay',
+          bodyHtml: `<p>Xin chào <strong>${this.escapeHtml(customerName)}</strong>,</p>
+            <p>Lịch đặt sân đã được tạo. Vui lòng thanh toán <strong>cọc</strong> trên cổng VNPay để giữ chỗ.</p>${this.emailDetailTable(rows)}`,
+          cta: { label: 'Xem lịch đặt sân', href: bookingsUrl },
+        }),
+      });
+    }
+
+    const adminMailTargets = await this.resolveAdminMailTargets();
+    const custEmail = user.email ?? '';
+    for (const to of adminMailTargets) {
+      await this.mail.send({
+        to,
+        subject: `[${BRAND_NAME} Admin] Đặt sân ${bookingCode} — chờ cọc (${this.fmtVnd(dep)})`,
+        html: this.wrapBranded({
+          pageTitle: 'Lịch đặt sân mới',
+          headline: 'Chờ khách thanh toán cọc VNPay',
+          bodyHtml: `<p>Có lịch đặt sân mới — <strong>${this.escapeHtml(courtName)}</strong>, ${this.escapeHtml(dateStr)}.</p>${this.emailDetailTable([
+            {
+              label: 'Khách',
+              valueHtml: `${this.escapeHtml(customerName)}${custEmail ? `<br/><span style="color:#64748b;">${this.escapeHtml(custEmail)}</span>` : ''}`,
+            },
+            { label: 'Mã lịch', valueHtml: this.escapeHtml(bookingCode) },
+            { label: 'Cọc', valueHtml: this.fmtVnd(dep) },
+          ])}`,
+          cta: { label: 'Quản trị đặt sân', href: adminBookingsUrl },
+        }),
+      });
+    }
+  }
+
+  /** Cọc VNPay đã thanh toán — gọi khi findOneAndUpdate trả về bản ghi mới (tránh trùng IPN + Return). */
+  async onBookingDepositPaid(booking: BookingDocument): Promise<void> {
+    const bookingId = String(booking._id);
+    const bookingCode = booking.bookingCode ?? bookingId;
+    const user = await this.userModel.findById(booking.userId).lean();
+    if (!user) return;
+    const court = await this.courtModel.findById(booking.courtId).lean();
+    const courtName = court?.courtName ?? 'Sân';
+    const uid = String(booking.userId);
+    const host = this.siteHostLabel();
+    const dep = Math.round(Number(booking.depositAmount)) || 0;
+    const total = Math.round(Number(booking.totalAmount)) || 0;
+    const dateStr = this.fmtBookingDate(booking.bookingDate);
+    const slotsStr = this.slotsSummary(booking.slots);
+
+    const titleUser = `${BRAND_NAME} · Đặt sân đã xác nhận (cọc đã thanh toán)`;
+    const msgUser = `${bookingCode} · ${courtName} · ${dateStr}. Cọc ${this.fmtVnd(dep)} đã thanh toán. ${host}`;
+
+    try {
+      await this.notifications.createNotification({
+        userId: uid,
+        title: titleUser,
+        message: msgUser,
+        type: NOTIF_TYPE_BOOKING,
+      });
+    } catch (e) {
+      this.logger.error(
+        `notify booking paid user: ${e instanceof Error ? e.message : e}`,
+      );
+    }
+
+    const admins = await this.userModel
+      .find({ role: 'Admin' })
+      .select('_id')
+      .lean();
+    for (const admin of admins) {
+      try {
+        await this.notifications.createNotification({
+          userId: String(admin._id),
+          title: `${BRAND_NAME} · Cọc đặt sân đã thanh toán`,
+          message: `${bookingCode} · ${courtName} · ${this.fmtVnd(dep)}. ${host}`,
+          type: NOTIF_TYPE_BOOKING,
+        });
+      } catch (e) {
+        this.logger.error(
+          `notify booking paid admin: ${e instanceof Error ? e.message : e}`,
+        );
+      }
+    }
+
+    const bookingsUrl = `${this.siteBase()}/profile/bookings/${encodeURIComponent(bookingId)}`;
+    const adminBookingsUrl = `${this.siteBase()}/admin/bookings`;
+    const customerName = user.fullName ?? 'Khách hàng';
+
+    if (user.email) {
+      const rows = [
+        { label: 'Mã lịch', valueHtml: this.escapeHtml(bookingCode) },
+        { label: 'Sân', valueHtml: this.escapeHtml(courtName) },
+        { label: 'Ngày', valueHtml: this.escapeHtml(dateStr) },
+        { label: 'Khung giờ', valueHtml: this.escapeHtml(slotsStr) },
+        { label: 'Cọc đã trả', valueHtml: this.fmtVnd(dep) },
+        { label: 'Còn lại tại sân', valueHtml: this.fmtVnd(Math.max(0, total - dep)) },
+      ];
+      await this.mail.send({
+        to: user.email,
+        subject: `[${BRAND_NAME}] ${bookingCode} — cọc đặt sân đã thanh toán`,
+        html: this.wrapBranded({
+          pageTitle: titleUser,
+          preheader: msgUser,
+          headline: 'Cảm ơn bạn — lịch đã được giữ',
+          bodyHtml: `<p>Xin chào <strong>${this.escapeHtml(customerName)}</strong>,</p>
+            <p>Chúng tôi đã ghi nhận <strong>cọc VNPay</strong> cho lịch đặt sân của bạn.</p>${this.emailDetailTable(rows)}`,
+          cta: { label: 'Xem chi tiết lịch', href: bookingsUrl },
+        }),
+      });
+    }
+
+    const adminMailTargets = await this.resolveAdminMailTargets();
+    const custEmail = user.email ?? '';
+    for (const to of adminMailTargets) {
+      await this.mail.send({
+        to,
+        subject: `[${BRAND_NAME} Admin] ${bookingCode} — cọc VNPay đã thanh toán`,
+        html: this.wrapBranded({
+          pageTitle: 'Cọc đặt sân',
+          headline: 'Khách đã thanh toán cọc',
+          bodyHtml: `${this.emailDetailTable([
+            {
+              label: 'Khách',
+              valueHtml: `${this.escapeHtml(customerName)}${custEmail ? `<br/><span style="color:#64748b;">${this.escapeHtml(custEmail)}</span>` : ''}`,
+            },
+            { label: 'Sân', valueHtml: this.escapeHtml(courtName) },
+            { label: 'Mã lịch', valueHtml: this.escapeHtml(bookingCode) },
+            { label: 'Cọc', valueHtml: this.fmtVnd(dep) },
+          ])}`,
+          cta: { label: 'Quản trị đặt sân', href: adminBookingsUrl },
+        }),
+      });
+    }
+  }
+
+  /** Hủy lịch đặt sân */
+  async onBookingCancelled(
+    bookingId: string,
+    source: 'user' | 'admin',
+  ): Promise<void> {
+    const booking = await this.bookingModel.findById(bookingId).exec();
+    if (!booking) return;
+    const bookingCode = booking.bookingCode ?? bookingId;
+    const user = await this.userModel.findById(booking.userId).lean();
+    const court = await this.courtModel.findById(booking.courtId).lean();
+    const courtName = court?.courtName ?? 'Sân';
+    const uid = String(booking.userId);
+    const host = this.siteHostLabel();
+    const dep = Math.round(Number(booking.depositAmount)) || 0;
+    const dateStr = this.fmtBookingDate(booking.bookingDate);
+
+    const customerTitle =
+      source === 'user'
+        ? `${BRAND_NAME} · Bạn đã hủy lịch đặt sân`
+        : `${BRAND_NAME} · Lịch đặt sân đã hủy`;
+    const customerMsg =
+      source === 'user'
+        ? `Lịch ${bookingCode} · ${courtName} · ${dateStr} đã hủy. ${host}`
+        : `Lịch ${bookingCode} · ${courtName} đã được hủy từ phía cửa hàng. ${host}`;
+
+    try {
+      await this.notifications.createNotification({
+        userId: uid,
+        title: customerTitle,
+        message: customerMsg,
+        type: NOTIF_TYPE_BOOKING,
+      });
+    } catch (e) {
+      this.logger.error(
+        `booking cancel user notif: ${e instanceof Error ? e.message : e}`,
+      );
+    }
+
+    const admins = await this.userModel
+      .find({ role: 'Admin' })
+      .select('_id')
+      .lean();
+    const adminTitle =
+      source === 'user'
+        ? `${BRAND_NAME} · Khách hủy lịch đặt sân`
+        : `${BRAND_NAME} · Lịch đặt sân hủy (quản trị)`;
+    const customerName = user?.fullName ?? 'Khách';
+    const adminMsg =
+      source === 'user'
+        ? `${customerName} hủy ${bookingCode} · ${courtName}. ${host}`
+        : `Lịch ${bookingCode} · ${courtName} chuyển hủy. ${host}`;
+
+    for (const admin of admins) {
+      try {
+        await this.notifications.createNotification({
+          userId: String(admin._id),
+          title: adminTitle,
+          message: adminMsg,
+          type: NOTIF_TYPE_BOOKING,
+        });
+      } catch (e) {
+        this.logger.error(
+          `booking cancel admin notif: ${e instanceof Error ? e.message : e}`,
+        );
+      }
+    }
+
+    const bookingsUrl = `${this.siteBase()}/profile/bookings`;
+    const adminBookingsUrl = `${this.siteBase()}/admin/bookings`;
+
+    if (user?.email) {
+      await this.mail.send({
+        to: user.email,
+        subject: `[${BRAND_NAME}] ${bookingCode} — lịch đặt sân đã hủy`,
+        html: this.wrapBranded({
+          pageTitle: 'Lịch đã hủy',
+          headline:
+            source === 'user'
+              ? 'Bạn đã hủy lịch đặt sân'
+              : 'Thông báo hủy lịch đặt sân',
+          bodyHtml: `<p>Xin chào <strong>${this.escapeHtml(user.fullName ?? 'Quý khách')}</strong>,</p>
+            <p>Lịch <strong>${this.escapeHtml(bookingCode)}</strong> · ${this.escapeHtml(courtName)} · ${this.escapeHtml(dateStr)} đã được hủy.</p>
+            <p style="color:#64748b;font-size:14px;">Nếu đã thanh toán cọc, đội ngũ sẽ xử lý theo chính sách hoàn tiền (nếu áp dụng).</p>`,
+          cta: { label: 'Lịch đặt sân của tôi', href: bookingsUrl },
+        }),
+      });
+    }
+
+    const custEmailLower = user?.email?.trim().toLowerCase() ?? '';
+    const adminMailTargets = await this.resolveAdminMailTargets();
+    for (const to of adminMailTargets) {
+      if (custEmailLower && to.trim().toLowerCase() === custEmailLower) {
+        continue;
+      }
+      await this.mail.send({
+        to,
+        subject: `[${BRAND_NAME} Admin] ${bookingCode} — hủy lịch đặt sân (${source === 'user' ? 'khách' : 'HT'})`,
+        html: this.wrapBranded({
+          pageTitle: 'Hủy đặt sân',
+          headline: source === 'user' ? 'Khách hủy lịch' : 'Lịch đã hủy',
+          bodyHtml: this.emailDetailTable([
+            { label: 'Mã', valueHtml: this.escapeHtml(bookingCode) },
+            {
+              label: 'Khách',
+              valueHtml: `${this.escapeHtml(customerName)}${user?.email ? `<br/><span style="color:#64748b;">${this.escapeHtml(user.email)}</span>` : ''}`,
+            },
+            { label: 'Sân', valueHtml: this.escapeHtml(courtName) },
+            { label: 'Cọc (tham chiếu)', valueHtml: this.fmtVnd(dep) },
+          ]),
+          cta: { label: 'Quản trị đặt sân', href: adminBookingsUrl },
         }),
       });
     }
