@@ -37,9 +37,18 @@ services:
         sync: false
       - key: FRONTEND_URL
         sync: false
-      # Origin API (không /api) — URL ảnh trong DB: https://<host>/uploads/...
+      # Origin API (không /api) — URL ảnh local /uploads/... (khi không dùng Cloudinary)
       - key: API_PUBLIC_URL
         sync: false
+      # Cloudinary — ảnh admin bền sau redeploy (bắt buộc trên Render free)
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_FOLDER
+        value: shop-uploads
       # Email đơn hàng (khách + admin) — không đặt = không gửi mail (chỉ thông báo trong app)
       # Gmail: App Password → SMTP_HOST=smtp.gmail.com SMTP_PORT=587 SMTP_USER=... SMTP_PASS=...
       - key: SMTP_HOST
