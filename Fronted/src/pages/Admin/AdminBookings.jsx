@@ -446,12 +446,15 @@ const AdminBookings = () => {
           <Form.Group>
             <Form.Label>Chọn trạng thái mới</Form.Label>
             <Form.Select value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
-              {BOOKING_STATUS_OPTIONS.map(({ value, label }) => (
+              {BOOKING_STATUS_OPTIONS_ADMIN.map(({ value, label }) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
               ))}
             </Form.Select>
+            <Form.Text className="text-muted">
+              Hoàn thành khi hết giờ sẽ tự cập nhật. Đóng ca sớm: dùng nút &quot;Hoàn thành sớm&quot; trên dòng lịch.
+            </Form.Text>
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>
