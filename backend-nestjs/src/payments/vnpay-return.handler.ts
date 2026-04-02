@@ -91,13 +91,13 @@ export class VnpayReturnHandler {
       )
       .exec();
     if (updated) {
-      void this.orderEvents
-        .onVnpayPaymentConfirmed(String(updated._id))
-        .catch((e) =>
-          this.logger.error(
-            `onVnpayPaymentConfirmed: ${e instanceof Error ? e.message : e}`,
-          ),
+      try {
+        await this.orderEvents.onVnpayPaymentConfirmed(String(updated._id));
+      } catch (e) {
+        this.logger.error(
+          `onVnpayPaymentConfirmed: ${e instanceof Error ? e.message : e}`,
         );
+      }
     }
 
     const redirectId = updated ? String(updated._id) : String(order._id);
@@ -148,13 +148,13 @@ export class VnpayReturnHandler {
       .exec();
 
     if (updatedBooking) {
-      void this.orderEvents
-        .onBookingDepositPaid(updatedBooking)
-        .catch((e) =>
-          this.logger.error(
-            `onBookingDepositPaid: ${e instanceof Error ? e.message : e}`,
-          ),
+      try {
+        await this.orderEvents.onBookingDepositPaid(updatedBooking);
+      } catch (e) {
+        this.logger.error(
+          `onBookingDepositPaid: ${e instanceof Error ? e.message : e}`,
         );
+      }
     }
 
     return `${base}/profile/bookings/${encodeURIComponent(bookingId)}?payment=success`;

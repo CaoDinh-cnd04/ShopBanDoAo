@@ -65,16 +65,28 @@ export class OrderEventsService {
       .filter((s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
   }
 
+  /**
+   * Gộp ADMIN_NOTIFY_EMAIL + email các tài khoản Admin trong DB (không trùng),
+   * để không bỏ sót khi chỉ cấu một nguồn.
+   */
   private async resolveAdminMailTargets(): Promise<string[]> {
     const fromEnv = this.adminNotifyEmailsFromEnv();
-    if (fromEnv.length > 0) {
-      return fromEnv;
-    }
     const admins = await this.userModel
       .find({ role: 'Admin' })
       .select('email')
       .lean();
-    return (admins.map((a) => a.email).filter(Boolean) as string[]);
+    const fromDb = (admins.map((a) => a.email).filter(Boolean) as string[])
+      .map((e) => e.trim())
+      .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const e of [...fromEnv, ...fromDb]) {
+      const k = e.toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(e);
+    }
+    return out;
   }
 
   private escapeHtml(s: string): string {

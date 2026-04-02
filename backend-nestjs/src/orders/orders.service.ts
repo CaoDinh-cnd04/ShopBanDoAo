@@ -604,13 +604,13 @@ export class OrdersService {
       });
     }
 
-    void this.orderEvents
-      .onOrderCreated(order, { paymentUrl })
-      .catch((e) =>
-        this.logger.error(
-          `orderEvents.onOrderCreated: ${e instanceof Error ? e.message : e}`,
-        ),
+    try {
+      await this.orderEvents.onOrderCreated(order, { paymentUrl });
+    } catch (e) {
+      this.logger.error(
+        `orderEvents.onOrderCreated: ${e instanceof Error ? e.message : e}`,
       );
+    }
 
     return {
       message: 'Tạo đơn hàng thành công',
@@ -833,13 +833,13 @@ export class OrdersService {
     } as any);
     if (!updated) throw new NotFoundException('Không tìm thấy đơn hàng');
 
-    void this.orderEvents
-      .notifyAdminsOrderPendingReview(updated)
-      .catch((e) =>
-        this.logger.error(
-          `notifyAdminsOrderPendingReview: ${e instanceof Error ? e.message : e}`,
-        ),
+    try {
+      await this.orderEvents.notifyAdminsOrderPendingReview(updated);
+    } catch (e) {
+      this.logger.error(
+        `notifyAdminsOrderPendingReview: ${e instanceof Error ? e.message : e}`,
       );
+    }
 
     return {
       message:
@@ -876,13 +876,13 @@ export class OrdersService {
     if (!updated) {
       throw new NotFoundException('Không tìm thấy đơn hàng');
     }
-    void this.orderEvents
-      .onOrderCancelled(String(updated._id), 'user')
-      .catch((e) =>
-        this.logger.error(
-          `onOrderCancelled user: ${e instanceof Error ? e.message : e}`,
-        ),
+    try {
+      await this.orderEvents.onOrderCancelled(String(updated._id), 'user');
+    } catch (e) {
+      this.logger.error(
+        `onOrderCancelled user: ${e instanceof Error ? e.message : e}`,
       );
+    }
     return { message: 'Đã hủy đơn hàng', order: updated };
   }
 
@@ -933,13 +933,13 @@ export class OrdersService {
       .trim()
       .toLowerCase();
     if (newSt2 === 'cancelled' && prevSt2 !== 'cancelled') {
-      void this.orderEvents
-        .onOrderCancelled(String(order._id), 'admin')
-        .catch((e) =>
-          this.logger.error(
-            `onOrderCancelled admin: ${e instanceof Error ? e.message : e}`,
-          ),
+      try {
+        await this.orderEvents.onOrderCancelled(String(order._id), 'admin');
+      } catch (e) {
+        this.logger.error(
+          `onOrderCancelled admin: ${e instanceof Error ? e.message : e}`,
         );
+      }
     }
 
     return { message: 'Cập nhật trạng thái đơn hàng thành công', order };
