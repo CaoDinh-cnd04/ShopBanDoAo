@@ -42,6 +42,9 @@ export const adminBookingService = {
     getBookingById: (id) => api.get(`/admin/bookings/${id}`),
     updateBookingStatus: (id, statusName) =>
         api.put(`/admin/bookings/${id}/status`, { bookingStatus: statusName }),
+    /** Đóng ca trước giờ — body { reason } */
+    completeBookingEarly: (id, body) =>
+        api.put(`/admin/bookings/${id}/complete-early`, body),
     cancelBooking: (id, _reason) =>
         api.put(`/admin/bookings/${id}/status`, { bookingStatus: 'Cancelled' }),
     getBookingStats: (params) => api.get('/admin/bookings/stats', { params }),

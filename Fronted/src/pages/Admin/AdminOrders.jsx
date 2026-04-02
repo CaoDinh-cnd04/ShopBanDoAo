@@ -39,6 +39,65 @@ const isTerminalOrderStatus = (st) => {
   return terminal.has(s);
 };
 
+/** Khớp backend `order-status.util.ts` — chỉ để lọc UI */
+const STATUS_RANK = {
+  AwaitingPayment: 0,
+  Pending: 1,
+  Confirmed: 2,
+  Processing: 3,
+  Shipped: 4,
+  Delivered: 5,
+};
+
+function toCanonicalOrderStatus(raw) {
+  const t = String(raw || '').trim();
+  if (!t) return null;
+  if (t === 'Cancelled') return 'Cancelled';
+  if (Object.prototype.hasOwnProperty.call(STATUS_RANK, t)) return t;
+  const low = t.toLowerCase();
+  if (low === 'awaitingpayment') return 'AwaitingPayment';
+  if (low === 'pending' || t === 'Chờ xử lý') return 'Pending';
+  if (low === 'confirmed' || t === 'Đã xác nhận') return 'Confirmed';
+  if (low === 'processing' || t === 'Đang xử lý') return 'Processing';
+  if (low === 'shipped' || t === 'Đang giao') return 'Shipped';
+  if (
+    low === 'delivered' ||
+    low === 'completed' ||
+    t === 'Hoàn thành' ||
+    low.includes('hoàn thành')
+  ) {
+    return 'Delivered';
+  }
+  if (low === 'cancelled' || low === 'canceled' || t === 'Đã hủy') return 'Cancelled';
+  return null;
+}
+
+/** Trạng thái có thể chọn khi đổi đơn: chỉ tiến hoặc Hủy; đơn kết thúc chỉ còn đúng trạng thái hiện tại */
+function getAllowedNextOrderStatuses(currentRaw) {
+  const prev = toCanonicalOrderStatus(currentRaw);
+  if (!prev) return ORDER_STATUS_OPTIONS;
+  if (prev === 'Delivered' || prev === 'Cancelled') {
+    return ORDER_STATUS_OPTIONS.filter((o) => o.value === prev);
+  }
+  const rp = STATUS_RANK[prev];
+  const out = [];
+  for (const opt of ORDER_STATUS_OPTIONS) {
+    if (opt.value === prev) {
+      out.push(opt);
+      continue;
+    }
+    if (opt.value === 'Cancelled') {
+      out.push(opt);
+      continue;
+    }
+    const rn = STATUS_RANK[opt.value];
+    if (rn !== undefined && rp !== undefined && rn >= rp) {
+      out.push(opt);
+    }
+  }
+  return out;
+}
+
 const AdminOrders = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState([]);
@@ -131,7 +190,10 @@ const AdminOrders = () => {
 
   const handleStatusChange = (order) => {
     setSelectedOrder(order);
-    setNewStatus(orderStatus(order));
+    const cur = orderStatus(order);
+    const allowed = getAllowedNextOrderStatuses(cur);
+    const safe = allowed.some((o) => o.value === cur) ? cur : allowed[0]?.value ?? cur;
+    setNewStatus(safe);
     setShowStatusModal(true);
   };
 
@@ -230,6 +292,24 @@ const AdminOrders = () => {
   const fmtMoney = (n) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(n) || 0);
 
+  /** Địa chỉ giao — ưu tiên field đã map từ API; hỗ trợ đơn cũ lưu object trong DB */
+  const formatShippingAddressLine = (d) => {
+    if (!d) return '—';
+    const sa = d.shippingAddress;
+    if (sa && typeof sa === 'object' && !Array.isArray(sa)) {
+      const o = sa;
+      const line = [o.address, o.ward, o.district, o.city].filter(Boolean).join(', ');
+      const head = [o.fullName, o.phone].filter(Boolean).join(' — ');
+      return [head, line].filter(Boolean).join('. ') || '—';
+    }
+    return (
+      (d.addressDisplay && String(d.addressDisplay).trim()) ||
+      [d.addressLine, d.ward, d.district, d.city].filter(Boolean).join(', ') ||
+      (typeof sa === 'string' ? sa : '') ||
+      '—'
+    );
+  };
+
   const printOrderDetail = () => {
     if (!detail) return;
     const st = String(detail.orderStatus ?? detail.statusName ?? '');
@@ -239,11 +319,7 @@ const AdminOrders = () => {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
-    const addr =
-      (detail.addressDisplay && String(detail.addressDisplay).trim()) ||
-      [detail.addressLine, detail.ward, detail.district, detail.city].filter(Boolean).join(', ') ||
-      (typeof detail.shippingAddress === 'string' ? detail.shippingAddress : '') ||
-      '—';
+    const addr = formatShippingAddressLine(detail);
     const payLbl = detail.paymentMethodLabel || detail.paymentMethod || '—';
     const shipLbl = detail.shippingMethodLabel || detail.shippingMethodName || detail.shippingMethod || '—';
     const note = detail.note?.trim() ? detail.note : '';
@@ -497,7 +573,7 @@ const AdminOrders = () => {
           <Form.Group>
             <Form.Label>Chọn trạng thái mới</Form.Label>
             <Form.Select value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
-              {ORDER_STATUS_OPTIONS.map(({ value, label }) => (
+              {getAllowedNextOrderStatuses(orderStatus(selectedOrder)).map(({ value, label }) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
@@ -552,11 +628,7 @@ const AdminOrders = () => {
                 <strong>Người nhận:</strong> {detail.receiverName || '—'} — {detail.receiverPhone || '—'}
               </p>
               <p className="mb-1">
-                <strong>Địa chỉ:</strong>{' '}
-                {detail.addressDisplay ||
-                  [detail.addressLine, detail.ward, detail.district, detail.city].filter(Boolean).join(', ') ||
-                  (typeof detail.shippingAddress === 'string' ? detail.shippingAddress : '') ||
-                  '—'}
+                <strong>Địa chỉ:</strong> {formatShippingAddressLine(detail)}
               </p>
               {detail.note?.trim() ? (
                 <p>

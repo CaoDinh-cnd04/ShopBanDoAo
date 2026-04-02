@@ -15,6 +15,7 @@ import {
   UpdateBookingStatusDto,
   QueryBookingDto,
   AvailableSlotsQueryDto,
+  CompleteBookingEarlyDto,
 } from './dto/booking.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../core/guards/roles.guard';
@@ -90,5 +91,15 @@ export class BookingsController {
     @Body() updateDto: UpdateBookingStatusDto,
   ) {
     return this.bookingsService.updateBookingStatus(id, updateDto);
+  }
+
+  @Put('admin/bookings/:id/complete-early')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('Admin')
+  async completeBookingEarly(
+    @Param('id') id: string,
+    @Body() dto: CompleteBookingEarlyDto,
+  ) {
+    return this.bookingsService.completeBookingEarlyAdmin(id, dto);
   }
 }

@@ -8,6 +8,7 @@ import {
   IsArray,
   ArrayMinSize,
   ValidateNested,
+  MinLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -38,6 +39,13 @@ export class UpdateBookingStatusDto {
   @IsOptional() @IsString() bookingStatus?: string;
   @IsOptional() @IsString() paymentStatus?: string;
   @IsOptional() @IsString() statusName?: string;
+}
+
+export class CompleteBookingEarlyDto {
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(5, { message: 'Lý do hoàn thành sớm cần ít nhất 5 ký tự' })
+  reason: string;
 }
 
 export class AvailableSlotsQueryDto {

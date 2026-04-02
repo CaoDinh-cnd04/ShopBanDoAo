@@ -61,6 +61,20 @@ export class Booking {
 
   @Prop()
   vnpBankCode?: string;
+
+  /** Thời điểm kết thúc ca cuối (VN) — dùng tự động Completed & hoàn thành sớm */
+  @Prop({ type: Date })
+  slotEndAt?: Date;
+
+  @Prop()
+  earlyCompleteReason?: string;
+
+  @Prop({ type: Date })
+  completedAt?: Date;
+
+  /** 'auto' | 'admin_early' */
+  @Prop()
+  completionSource?: string;
 }
 
 export const BookingSchema = SchemaFactory.createForClass(Booking);

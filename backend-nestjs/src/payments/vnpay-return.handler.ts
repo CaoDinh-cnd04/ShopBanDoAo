@@ -11,6 +11,7 @@ import { Booking, BookingDocument } from '../bookings/schemas/booking.schema';
 import { OrderEventsService } from '../order-events/order-events.service';
 import { VnpayService } from './vnpay.service';
 import { parseBookingIdFromVnpTxnRef } from './vnpay-booking.util';
+import { computeSlotEndFromBookingLike } from '../bookings/booking-slot.util';
 
 /**
  * Xử lý redirect từ VNPay Return URL (đơn hàng hoặc cọc đặt sân).
@@ -125,6 +126,7 @@ export class VnpayReturnHandler {
       return `${base}/profile/bookings/${encodeURIComponent(bookingId)}?payment=failed&reason=amount`;
     }
 
+    const slotEndAt = computeSlotEndFromBookingLike(booking.toObject() as any);
     const updatedBooking = await this.bookingModel
       .findOneAndUpdate(
         {
@@ -135,6 +137,7 @@ export class VnpayReturnHandler {
           $set: {
             paymentStatus: 'DepositPaid',
             bookingStatus: 'Confirmed',
+            slotEndAt,
             vnpTransactionNo: result.transactionNo,
             vnpPayDate: result.payDate,
             vnpBankCode: result.bankCode,

@@ -14,6 +14,14 @@ import {
   UpdateOrderStatusDto,
   QueryOrderDto,
 } from './dto/order.dto';
+import {
+  assertAdminOrderStatusTransition,
+  canonicalOrderStatus,
+} from './order-status.util';
+import {
+  parsePipeShippingParts,
+  serializeShippingAddressInput,
+} from './shipping-address.util';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { VnpayService } from '../payments/vnpay.service';
 import { OrderEventsService } from '../order-events/order-events.service';
@@ -170,56 +178,13 @@ export class OrdersService {
   private formatShippingAddressToString(value: unknown): string {
     if (value == null || value === '') return '';
     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      const o = value as Record<string, unknown>;
-      const toPart = (v: unknown) => {
-        if (v == null) return '';
-        if (
-          typeof v === 'string' ||
-          typeof v === 'number' ||
-          typeof v === 'boolean'
-        ) {
-          return String(v).trim();
-        }
-        return '';
-      };
-      const parts = [
-        toPart(o.fullName),
-        toPart(o.phone),
-        toPart(o.address),
-        toPart(o.district),
-        toPart(o.city),
-        toPart(o.note),
-      ].filter(Boolean);
-      return parts.join(' | ');
+      return serializeShippingAddressInput(value);
     }
     if (typeof value === 'string') return value.trim();
     if (typeof value === 'number' || typeof value === 'boolean') {
       return String(value).trim();
     }
     return '';
-  }
-
-  /**
-   * Chuỗi từ checkout: fullName | phone | address | district | city | note
-   */
-  private parsePipeShippingParts(s: string): {
-    receiverName: string;
-    receiverPhone: string;
-    addressLine: string;
-    district: string;
-    city: string;
-    noteInPipe: string;
-  } | null {
-    const parts = s.split(' | ').map((x) => x.trim());
-    if (parts.length < 3) return null;
-    return {
-      receiverName: parts[0] || '',
-      receiverPhone: parts[1] || '',
-      addressLine: parts[2] || '',
-      district: parts[3] || '',
-      city: parts[4] || '',
-      noteInPipe: parts[5] || '',
-    };
   }
 
   private paymentMethodLabelVi(raw: string): string {
@@ -294,7 +259,7 @@ export class OrdersService {
     const shippingStr = this.formatShippingAddressToString(
       order.shippingAddress,
     );
-    const parsed = this.parsePipeShippingParts(shippingStr);
+    const parsed = parsePipeShippingParts(shippingStr);
     const receiverName = parsed?.receiverName || u.fullName || '';
     const receiverPhone = parsed?.receiverPhone || u.phone || '';
     const addressDisplay = parsed
@@ -931,20 +896,30 @@ export class OrdersService {
       payload.orderStatus = updateDto.statusName;
       delete payload.statusName;
     }
+    if (
+      payload.orderStatus !== undefined &&
+      String(payload.orderStatus).trim() === ''
+    ) {
+      delete payload.orderStatus;
+    }
 
-    const prevSt = String(before.orderStatus || '')
-      .trim()
-      .toLowerCase();
-    const nextStRaw =
-      payload.orderStatus != null
-        ? String(payload.orderStatus)
-        : String(before.orderStatus || '');
-    const newSt = nextStRaw.trim().toLowerCase();
-    if (newSt === 'cancelled' && prevSt !== 'cancelled') {
-      const raw = await this.orderRepository.findByIdRaw(id);
-      if (raw?.inventoryDeducted) {
-        await this.restoreInventoryIfDeducted(raw);
-        payload.inventoryDeducted = false;
+    const willChangeOrderStatus =
+      payload.orderStatus !== undefined &&
+      payload.orderStatus !== null &&
+      String(payload.orderStatus).trim() !== '';
+    if (willChangeOrderStatus) {
+      const canonNext = assertAdminOrderStatusTransition(
+        before.orderStatus,
+        String(payload.orderStatus),
+      );
+      payload.orderStatus = canonNext;
+      const prevCanon = canonicalOrderStatus(before.orderStatus);
+      if (prevCanon && canonNext === 'Cancelled' && prevCanon !== 'Cancelled') {
+        const raw = await this.orderRepository.findByIdRaw(id);
+        if (raw?.inventoryDeducted) {
+          await this.restoreInventoryIfDeducted(raw);
+          payload.inventoryDeducted = false;
+        }
       }
     }
 

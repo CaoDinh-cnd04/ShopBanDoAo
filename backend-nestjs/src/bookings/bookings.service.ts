@@ -15,12 +15,17 @@ import {
   CreateBookingDto,
   UpdateBookingStatusDto,
   QueryBookingDto,
+  CompleteBookingEarlyDto,
 } from './dto/booking.dto';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { Court, CourtDocument } from '../courts/schemas/court.schema';
 import { VnpayService } from '../payments/vnpay.service';
 import { buildBookingVnpTxnRef } from '../payments/vnpay-booking.util';
 import { OrderEventsService } from '../order-events/order-events.service';
+import {
+  computeSlotEndAt,
+  computeSlotEndFromBookingLike,
+} from './booking-slot.util';
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -212,7 +217,18 @@ export class BookingsService {
       statusName: b.bookingStatus,
       bookingStatus: b.bookingStatus,
       paymentStatus: b.paymentStatus,
+      slotEndAt: b.slotEndAt ?? null,
     };
+  }
+
+  private async runBookingExpirySweep(): Promise<void> {
+    try {
+      await this.bookingRepository.markExpiredConfirmedBookings();
+    } catch (e) {
+      this.logger.error(
+        `markExpiredConfirmedBookings: ${e instanceof Error ? e.message : e}`,
+      );
+    }
   }
 
   private mapBookingForAdminDetail(b: Record<string, unknown>) {
@@ -252,6 +268,10 @@ export class BookingsService {
       statusName: b.bookingStatus,
       bookingStatus: b.bookingStatus,
       paymentStatus: b.paymentStatus,
+      slotEndAt: b.slotEndAt ?? null,
+      earlyCompleteReason: b.earlyCompleteReason ?? '',
+      completedAt: b.completedAt ?? null,
+      completionSource: b.completionSource ?? '',
       customerName: u.fullName ?? '',
       customerEmail: u.email ?? '',
       customerPhone: u.phone ?? '',
@@ -381,6 +401,10 @@ export class BookingsService {
       );
     }
 
+    const slotEndAt = computeSlotEndAt(
+      dateStr,
+      sorted[sorted.length - 1].endTime,
+    );
     const payload = {
       userId: new Types.ObjectId(userId),
       courtId: new Types.ObjectId(createDto.courtId),
@@ -389,6 +413,7 @@ export class BookingsService {
       slots: sorted,
       startTime: sorted[0].startTime,
       endTime: sorted[sorted.length - 1].endTime,
+      slotEndAt,
       totalAmount,
       depositAmount,
       remainingAmount,
@@ -442,6 +467,7 @@ export class BookingsService {
   }
 
   async getAllBookings(query: QueryBookingDto) {
+    await this.runBookingExpirySweep();
     const page = parseInt(query.page || '1');
     const limit = parseInt(query.limit || '20');
     const skip = (page - 1) * limit;
@@ -514,6 +540,7 @@ export class BookingsService {
   }
 
   async getBookingByIdForAdmin(id: string) {
+    await this.runBookingExpirySweep();
     const booking = await this.bookingRepository.findById(id);
     if (!booking)
       throw new NotFoundException('Không tìm thấy thông tin đặt sân');
@@ -522,6 +549,7 @@ export class BookingsService {
   }
 
   async getBookingById(id: string, userId?: string, role?: string) {
+    await this.runBookingExpirySweep();
     const booking = await this.bookingRepository.findById(id);
     if (!booking)
       throw new NotFoundException('Không tìm thấy thông tin đặt sân');
@@ -547,6 +575,7 @@ export class BookingsService {
   }
 
   async updateBookingStatus(id: string, updateDto: UpdateBookingStatusDto) {
+    await this.runBookingExpirySweep();
     const existing = await this.bookingRepository.findById(id);
     if (!existing) throw new NotFoundException('Không tìm thấy đơn đặt sân');
 
@@ -554,6 +583,33 @@ export class BookingsService {
     if (updateDto.statusName && !updateDto.bookingStatus) {
       payload.bookingStatus = updateDto.statusName;
       delete payload.statusName;
+    }
+
+    if (payload.bookingStatus != null && String(payload.bookingStatus).trim()) {
+      const nextLower = String(payload.bookingStatus).trim().toLowerCase();
+      if (
+        nextLower === 'completed' ||
+        nextLower === 'hoàn thành' ||
+        nextLower === 'hoan thanh'
+      ) {
+        const prevLower = String(existing.bookingStatus || '')
+          .trim()
+          .toLowerCase();
+        if (prevLower === 'confirmed') {
+          const plainForEnd = existing.toObject
+            ? existing.toObject()
+            : existing;
+          const slotEnd =
+            existing.slotEndAt != null
+              ? new Date(existing.slotEndAt)
+              : computeSlotEndFromBookingLike(plainForEnd);
+          if (new Date() < slotEnd) {
+            throw new BadRequestException(
+              'Ca chưa kết thúc — không chọn Hoàn thành trực tiếp. Dùng "Hoàn thành sớm" và nhập lý do, hoặc đợi hết giờ để hệ thống tự cập nhật.',
+            );
+          }
+        }
+      }
     }
 
     const prev = String(existing.bookingStatus || '').toLowerCase();
@@ -577,6 +633,55 @@ export class BookingsService {
     }
 
     return { message: 'Cập nhật trạng thái sân thành công', booking };
+  }
+
+  /** Admin: đóng ca trước giờ kết thúc — bắt buộc lý do; mở slot cho đặt mới */
+  async completeBookingEarlyAdmin(id: string, dto: CompleteBookingEarlyDto) {
+    await this.runBookingExpirySweep();
+    const existing = await this.bookingRepository.findById(id);
+    if (!existing) throw new NotFoundException('Không tìm thấy đơn đặt sân');
+
+    const prevLower = String(existing.bookingStatus || '').toLowerCase();
+    if (prevLower !== 'confirmed') {
+      throw new BadRequestException(
+        'Chỉ hoàn thành sớm khi lịch đang ở trạng thái Đã xác nhận (đã cọc).',
+      );
+    }
+    const payLower = String(existing.paymentStatus || '').toLowerCase();
+    if (payLower !== 'depositpaid') {
+      throw new BadRequestException('Đơn chưa có cọc xác nhận (VNPay).');
+    }
+
+    const plainForEnd = existing.toObject ? existing.toObject() : existing;
+    const slotEnd =
+      existing.slotEndAt != null
+        ? new Date(existing.slotEndAt)
+        : computeSlotEndFromBookingLike(plainForEnd);
+    const now = new Date();
+    if (slotEnd <= now) {
+      throw new BadRequestException(
+        'Ca đã qua hoặc đang kết thúc — không cần hoàn thành sớm. Hệ thống sẽ tự cập nhật Hoàn thành.',
+      );
+    }
+
+    const reason = dto.reason.trim();
+    if (reason.length < 5) {
+      throw new BadRequestException('Vui lòng nhập lý do (ít nhất 5 ký tự).');
+    }
+
+    const booking = await this.bookingRepository.update(id, {
+      bookingStatus: 'Completed',
+      earlyCompleteReason: reason,
+      completedAt: now,
+      completionSource: 'admin_early',
+    });
+    if (!booking) throw new NotFoundException('Không tìm thấy đơn đặt sân');
+
+    return {
+      message:
+        'Đã hoàn thành sớm — khung giờ đã mở cho khách đặt mới (nếu còn trống).',
+      booking,
+    };
   }
 
   async cancelBookingByUser(userId: string, bookingId: string) {

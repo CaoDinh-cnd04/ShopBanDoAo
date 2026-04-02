@@ -9,6 +9,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
+import { serializeShippingAddressInput } from '../shipping-address.util';
 
 export class OrderItemDto {
   @Transform(({ value }) => (value != null ? String(value).trim() : value))
@@ -43,34 +44,8 @@ export class CreateOrderDto {
 
   @IsString() @IsNotEmpty() paymentMethod: string;
 
-  /** Chuỗi một dòng hoặc object địa chỉ từ checkout — lưu dạng text */
-  @Transform(({ value }) => {
-    if (value == null || value === '') return '';
-    if (typeof value === 'object' && value !== null) {
-      const o = value as Record<string, unknown>;
-      const toPart = (v: unknown) => {
-        if (v == null) return '';
-        if (
-          typeof v === 'string' ||
-          typeof v === 'number' ||
-          typeof v === 'boolean'
-        ) {
-          return String(v).trim();
-        }
-        return '';
-      };
-      const parts = [
-        toPart(o.fullName),
-        toPart(o.phone),
-        toPart(o.address),
-        toPart(o.district),
-        toPart(o.city),
-        toPart(o.note),
-      ].filter(Boolean);
-      return parts.join(' | ');
-    }
-    return String(value).trim();
-  })
+  /** Chuỗi một dòng hoặc object địa chỉ từ checkout — lưu 6 phần cố định (không bỏ phần rỗng) */
+  @Transform(({ value }) => serializeShippingAddressInput(value))
   @IsString()
   @IsNotEmpty({ message: 'Địa chỉ giao hàng không được để trống' })
   shippingAddress: string;

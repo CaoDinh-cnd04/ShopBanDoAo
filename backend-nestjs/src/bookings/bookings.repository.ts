@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Booking, BookingDocument } from './schemas/booking.schema';
+import { computeSlotEndFromBookingLike } from './booking-slot.util';
 
 @Injectable()
 export class BookingRepository {
@@ -57,6 +58,59 @@ export class BookingRepository {
     return this.bookingModel.aggregate(pipeline).exec();
   }
 
+  /**
+   * Đơn Confirmed + đã cọc, đã quá slotEndAt → Completed (mở slot đặt lại).
+   * Gọi trước khi đọc lịch trống / danh sách admin.
+   */
+  async markExpiredConfirmedBookings(): Promise<void> {
+    const now = new Date();
+    await this.bookingModel
+      .updateMany(
+        {
+          bookingStatus: 'Confirmed',
+          paymentStatus: 'DepositPaid',
+          slotEndAt: { $lte: now },
+        },
+        {
+          $set: {
+            bookingStatus: 'Completed',
+            completedAt: now,
+            completionSource: 'auto',
+          },
+        },
+      )
+      .exec();
+
+    const legacy = await this.bookingModel
+      .find({
+        bookingStatus: 'Confirmed',
+        paymentStatus: 'DepositPaid',
+        $or: [{ slotEndAt: { $exists: false } }, { slotEndAt: null }],
+      })
+      .limit(300)
+      .lean()
+      .exec();
+
+    for (const b of legacy) {
+      const end = computeSlotEndFromBookingLike(b as any);
+      if (end <= now) {
+        await this.bookingModel
+          .updateOne(
+            { _id: b._id },
+            {
+              $set: {
+                bookingStatus: 'Completed',
+                completedAt: now,
+                completionSource: 'auto',
+                slotEndAt: end,
+              },
+            },
+          )
+          .exec();
+      }
+    }
+  }
+
   /** Lịch đặt trong ngày (không populate) — kiểm tra trùng slot */
   async findOccupiedForCourtOnDate(
     courtId: string,
@@ -67,7 +121,16 @@ export class BookingRepository {
       .find({
         courtId: new Types.ObjectId(courtId),
         bookingDate: { $gte: dayStart, $lte: dayEnd },
-        bookingStatus: { $nin: ['cancelled', 'Cancelled', 'Đã hủy'] },
+        bookingStatus: {
+          $nin: [
+            'cancelled',
+            'Cancelled',
+            'Đã hủy',
+            'Completed',
+            'Hoàn thành',
+            'completed',
+          ],
+        },
       })
       .select('slots startTime endTime bookingStatus')
       .lean()

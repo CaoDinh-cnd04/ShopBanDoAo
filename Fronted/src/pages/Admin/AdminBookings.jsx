@@ -34,6 +34,15 @@ const isTerminalBookingStatus = (st) => {
   return terminal.has(s);
 };
 
+/** Không chọn Hoàn thành trực tiếp — dùng hết giờ tự động hoặc Hoàn thành sớm + lý do */
+const BOOKING_STATUS_OPTIONS_ADMIN = BOOKING_STATUS_OPTIONS.filter((o) => o.value !== 'Completed');
+
+const canCompleteEarlyBooking = (b) => {
+  const st = String(bookingStatus(b) || '').trim().toLowerCase();
+  const pay = String(b.paymentStatus || '').trim().toLowerCase();
+  return st === 'confirmed' && pay === 'depositpaid';
+};
+
 const AdminBookings = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
@@ -46,6 +55,9 @@ const AdminBookings = () => {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState(null);
+  const [showEarlyModal, setShowEarlyModal] = useState(false);
+  const [earlyTarget, setEarlyTarget] = useState(null);
+  const [earlyReason, setEarlyReason] = useState('');
 
   const filters = useMemo(
     () => ({
@@ -129,6 +141,32 @@ const AdminBookings = () => {
     setSelectedBooking(booking);
     setNewStatus(bookingStatus(booking));
     setShowStatusModal(true);
+  };
+
+  const handleCompleteEarly = async () => {
+    const id = bookingId(earlyTarget);
+    const reason = earlyReason.trim();
+    if (reason.length < 5) {
+      toast.error('Nhập lý do hoàn thành sớm (ít nhất 5 ký tự).');
+      return;
+    }
+    try {
+      await adminService.bookings.completeBookingEarly(id, { reason });
+      toast.success('Đã hoàn thành sớm — khung giờ đã mở cho đặt mới');
+      setShowEarlyModal(false);
+      setEarlyTarget(null);
+      setEarlyReason('');
+      fetchBookings();
+      if (detail && bookingId(detail) === id) {
+        const res = await adminService.bookings.getBookingById(id);
+        setDetail(res.data?.data ?? null);
+      }
+    } catch (error) {
+      console.error('Error complete early:', error);
+      toast.error(
+        error.response?.data?.message || error.response?.data?.error || 'Không thể hoàn thành sớm',
+      );
+    }
   };
 
   const handleUpdateStatus = async () => {
@@ -346,6 +384,20 @@ const AdminBookings = () => {
                             >
                               Hủy
                             </Button>
+                            {canCompleteEarlyBooking(booking) ? (
+                              <Button
+                                size="sm"
+                                variant="success"
+                                className="ms-2"
+                                onClick={() => {
+                                  setEarlyTarget(booking);
+                                  setEarlyReason('');
+                                  setShowEarlyModal(true);
+                                }}
+                              >
+                                Hoàn thành sớm
+                              </Button>
+                            ) : null}
                           </td>
                         </tr>
                       );
@@ -412,6 +464,36 @@ const AdminBookings = () => {
         </Modal.Footer>
       </Modal>
 
+      <Modal show={showEarlyModal} onHide={() => setShowEarlyModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Hoàn thành sớm (mở khung giờ)</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="small text-muted">
+            Ca chưa đến giờ kết thúc. Nhập lý do (ví dụ: khách về sớm, sân hỏng…) — hệ thống sẽ đánh dấu Hoàn thành và
+            cho phép người khác đặt lại khung này.
+          </p>
+          <Form.Group>
+            <Form.Label>Lý do *</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              value={earlyReason}
+              onChange={(e) => setEarlyReason(e.target.value)}
+              placeholder="Tối thiểu 5 ký tự"
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowEarlyModal(false)}>
+            Đóng
+          </Button>
+          <Button variant="success" onClick={handleCompleteEarly}>
+            Xác nhận hoàn thành sớm
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
       <Modal show={detailOpen} onHide={() => setDetailOpen(false)} size="lg" scrollable>
         <Modal.Header closeButton>
           <Modal.Title>Chi tiết đặt sân</Modal.Title>
@@ -446,6 +528,35 @@ const AdminBookings = () => {
                 <strong>Ngày đặt:</strong>{' '}
                 {detail.bookingDate ? new Date(detail.bookingDate).toLocaleString('vi-VN') : '—'}
               </p>
+              {detail.slotEndAt ? (
+                <p>
+                  <strong>Kết thúc ca (ước tính):</strong>{' '}
+                  {new Date(detail.slotEndAt).toLocaleString('vi-VN')}
+                </p>
+              ) : null}
+              {detail.completionSource === 'admin_early' && detail.earlyCompleteReason ? (
+                <p>
+                  <strong>Hoàn thành sớm — lý do:</strong> {detail.earlyCompleteReason}
+                </p>
+              ) : null}
+              {detail.completionSource === 'auto' ? (
+                <p className="small text-muted">Trạng thái hoàn thành được cập nhật tự động sau khi hết giờ đặt.</p>
+              ) : null}
+              {canCompleteEarlyBooking(detail) ? (
+                <div className="mb-2">
+                  <Button
+                    size="sm"
+                    variant="success"
+                    onClick={() => {
+                      setEarlyTarget(detail);
+                      setEarlyReason('');
+                      setShowEarlyModal(true);
+                    }}
+                  >
+                    Hoàn thành sớm (nhập lý do)
+                  </Button>
+                </div>
+              ) : null}
               <hr />
               <h6>Khung giờ</h6>
               <Table size="sm" bordered responsive className="admin-table">

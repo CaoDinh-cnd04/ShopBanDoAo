@@ -8,6 +8,7 @@ import { OrderEventsService } from '../order-events/order-events.service';
 import { VnpayReturnHandler } from './vnpay-return.handler';
 import { VnpayService } from './vnpay.service';
 import { parseBookingIdFromVnpTxnRef } from './vnpay-booking.util';
+import { computeSlotEndFromBookingLike } from '../bookings/booking-slot.util';
 
 /**
  * Callback VNPay (không JWT) — đăng ký đúng URL trên cổng VNPay:
@@ -123,6 +124,7 @@ export class VnpayController {
       return { RspCode: '04', Message: 'Invalid amount' };
     }
 
+    const slotEndAt = computeSlotEndFromBookingLike(booking.toObject() as any);
     const updatedBooking = await this.bookingModel
       .findOneAndUpdate(
         {
@@ -133,6 +135,7 @@ export class VnpayController {
           $set: {
             paymentStatus: 'DepositPaid',
             bookingStatus: 'Confirmed',
+            slotEndAt,
             vnpTransactionNo: result.transactionNo,
             vnpPayDate: result.payDate,
             vnpBankCode: result.bankCode,
