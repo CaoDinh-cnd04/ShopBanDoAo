@@ -7,9 +7,9 @@ import adminService from '../../services/adminService';
 
 const orderId = (o) => o?._id?.toString?.() || o?.orderId || o?.OrderID;
 
-/** Khớp API (Mongo orderStatus) */
+/** Khớp API (Mongo orderStatus) — o có thể null (modal / dữ liệu lỗi) */
 const orderStatus = (o) =>
-  o.orderStatus ?? o.status ?? o.statusName ?? o.Status ?? '';
+  o?.orderStatus ?? o?.status ?? o?.statusName ?? o?.Status ?? '';
 
 /** Giá trị gửi API / DB — đồng bộ backend */
 const ORDER_STATUS_OPTIONS = [
@@ -459,10 +459,10 @@ const AdminOrders = () => {
                 </thead>
                 <tbody>
                   {orders.length > 0 ? (
-                    orders.map((order) => {
+                    orders.filter(Boolean).map((order, idx) => {
                       const st = orderStatus(order);
                       return (
-                        <tr key={orderId(order)}>
+                        <tr key={orderId(order) ?? `order-row-${idx}`}>
                           <td className="fw-bold">
                             {order.orderCode || order.OrderCode || orderId(order)}
                           </td>
