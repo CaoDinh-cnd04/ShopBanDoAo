@@ -771,3 +771,85 @@
     border-radius: 999px;
   }
 }
+
+/* ================================================================
+   RELATED PRODUCTS SECTION
+   ================================================================ */
+.pd-related {
+  background: var(--bg-secondary, #f8fafc);
+  padding: 3rem 0 4rem;
+  margin-top: 3rem;
+  border-top: 1px solid var(--border-color, #e2e8f0);
+}
+
+.pd-related-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.pd-related-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  margin: 0;
+}
+
+.pd-related-see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--accent, #2563eb);
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.pd-related-see-all:hover {
+  opacity: 0.75;
+}
+
+/* Horizontal scroll on mobile, 4-col grid on desktop */
+.pd-related-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.pd-related-item {
+  min-width: 0;
+}
+
+@media (max-width: 991px) {
+  .pd-related-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .pd-related-grid {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 0.75rem;
+    padding-bottom: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .pd-related-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pd-related-item {
+    flex: 0 0 220px;
+  }
+}
+
+@media (max-width: 480px) {
+  .pd-related-item {
+    flex: 0 0 180px;
+  }
+}

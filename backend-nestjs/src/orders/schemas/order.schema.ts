@@ -77,3 +77,10 @@ export class Order {
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);
+
+// Indexes để tăng tốc query
+OrderSchema.index({ userId: 1, createdAt: -1 });
+OrderSchema.index({ orderStatus: 1 });
+OrderSchema.index({ paymentStatus: 1 });
+OrderSchema.index({ createdAt: -1 });
+OrderSchema.index({ 'items.productId': 1 });

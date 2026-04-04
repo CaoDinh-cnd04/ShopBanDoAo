@@ -174,13 +174,28 @@ export class OrdersService {
     return {};
   }
 
-  /** Chuẩn hóa địa chỉ lưu DB (chuỗi hoặc object legacy) → một chuỗi hiển thị */
+  /** Chuẩn hóa địa chỉ lưu DB (chuỗi, object hoặc JSON legacy) → một chuỗi hiển thị */
   private formatShippingAddressToString(value: unknown): string {
     if (value == null || value === '') return '';
     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       return serializeShippingAddressInput(value);
     }
-    if (typeof value === 'string') return value.trim();
+    if (typeof value === 'string') {
+      const t = value.trim();
+      if (!t || t === '[object Object]') return '';
+      // Hỗ trợ đơn cũ lưu shippingAddress dạng JSON.stringify({...})
+      if (t.startsWith('{') && t.endsWith('}')) {
+        try {
+          const obj = JSON.parse(t);
+          if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+            return serializeShippingAddressInput(obj);
+          }
+        } catch {
+          // không phải JSON hợp lệ, dùng chuỗi gốc
+        }
+      }
+      return t;
+    }
     if (typeof value === 'number' || typeof value === 'boolean') {
       return String(value).trim();
     }
@@ -938,6 +953,21 @@ export class OrdersService {
       } catch (e) {
         this.logger.error(
           `onOrderCancelled admin: ${e instanceof Error ? e.message : e}`,
+        );
+      }
+    } else if (
+      willChangeOrderStatus &&
+      newSt2 !== 'cancelled' &&
+      newSt2 !== prevSt2
+    ) {
+      try {
+        await this.orderEvents.onOrderStatusUpdated(
+          String(order._id),
+          order.orderStatus ?? '',
+        );
+      } catch (e) {
+        this.logger.error(
+          `onOrderStatusUpdated: ${e instanceof Error ? e.message : e}`,
         );
       }
     }

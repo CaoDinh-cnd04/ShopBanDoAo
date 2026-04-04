@@ -318,18 +318,19 @@ const AdminVouchers = () => {
                           {voucherStatusLabel(v)}
                         </Badge>
                       </td>
-                      <td className="text-end">
-                        <Button
-                          size="sm"
-                          variant="outline-primary"
-                          className="me-2"
-                          onClick={() => openEdit(v)}
-                        >
-                          Sửa
-                        </Button>
-                        <Button size="sm" variant="outline-danger" onClick={() => remove(id)}>
-                          Vô hiệu
-                        </Button>
+                      <td>
+                        <div className="admin-actions">
+                          <Button
+                            size="sm"
+                            variant="outline-primary"
+                            onClick={() => openEdit(v)}
+                          >
+                            Sửa
+                          </Button>
+                          <Button size="sm" variant="danger" onClick={() => remove(id)}>
+                            Xóa
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );

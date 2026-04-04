@@ -251,7 +251,7 @@ const AdminReviews = () => {
                               {productLabel(review)}
                             </div>
                           </div>
-                          <div className="d-flex flex-column gap-2 flex-shrink-0">
+                          <div className="admin-actions flex-shrink-0">
                             <Button
                               size="sm"
                               variant={visible ? 'outline-warning' : 'success'}
@@ -267,7 +267,7 @@ const AdminReviews = () => {
                                 </>
                               )}
                             </Button>
-                            <Button size="sm" variant="outline-danger" onClick={() => handleDelete(review)}>
+                            <Button size="sm" variant="danger" onClick={() => handleDelete(review)}>
                               <FiTrash2 className="me-1" /> Xóa
                             </Button>
                           </div>

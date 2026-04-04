@@ -761,4 +761,11 @@ export class BookingsService {
       },
     };
   }
+
+  async deleteBookingByAdmin(id: string) {
+    const booking = await this.bookingRepository.findById(id);
+    if (!booking) throw new NotFoundException('Không tìm thấy lịch đặt sân');
+    await this.bookingRepository.delete(id);
+    return { message: 'Đã xóa lịch đặt sân thành công' };
+  }
 }

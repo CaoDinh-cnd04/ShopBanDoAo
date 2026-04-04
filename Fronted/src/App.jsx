@@ -1,49 +1,13 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import { useDispatch, useSelector } from 'react-redux';
 
-// Layout
+// Layout + guards — load ngay (nhỏ, cần luôn)
 import Layout from './components/Layout/Layout';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import AdminRoute from './components/Auth/AdminRoute';
-
-// Pages
-import Home from './pages/Home/Home';
-import Products from './pages/Products/Products';
-import ProductDetail from './pages/ProductDetail/ProductDetail';
-import Cart from './pages/Cart/Cart';
-import Checkout from './pages/Checkout/Checkout';
-import Courts from './pages/Courts/Courts';
-import CourtDetail from './pages/CourtDetail/CourtDetail';
-import Booking from './pages/Booking/Booking';
-import Login from './pages/Auth/Login';
-import Register from './pages/Auth/Register';
-import AuthGoogleCallback from './pages/Auth/AuthGoogleCallback';
-import Profile from './pages/Profile/Profile';
-import OrderDetail from './pages/Profile/OrderDetail';
-import BookingDetail from './pages/Profile/BookingDetail';
-import AdminLayout from './components/Admin/AdminLayout';
-import AdminDashboard from './pages/Admin/AdminDashboard';
-import AdminProducts from './pages/Admin/AdminProducts';
-import AdminProductForm from './pages/Admin/AdminProductForm';
-import AdminCategories from './pages/Admin/AdminCategories';
-import AdminCourts from './pages/Admin/AdminCourts';
-import AdminVouchers from './pages/Admin/AdminVouchers';
-import AdminOrders from './pages/Admin/AdminOrders';
-import AdminBookings from './pages/Admin/AdminBookings';
-import AdminUsers from './pages/Admin/AdminUsers';
-import AdminUserDetail from './pages/Admin/AdminUserDetail';
-import AdminReviews from './pages/Admin/AdminReviews';
-import AdminBanner from './pages/Admin/AdminBanner';
-import AdminMessages from './pages/Admin/AdminMessages';
-import About from './pages/About/About';
-import Contact from './pages/Contact/Contact';
-import FAQ from './pages/FAQ/FAQ';
-import Shipping from './pages/Shipping/Shipping';
-import Privacy from './pages/Privacy/Privacy';
-import Terms from './pages/Terms/Terms';
-import NotFound from './pages/NotFound/NotFound';
+import Loading from './components/Loading/Loading';
 
 // Redux
 import { checkAuth } from './store/slices/authSlice';
@@ -52,6 +16,48 @@ import { setTheme } from './store/slices/themeSlice';
 // Components
 import AnimatedBackground from './components/AnimatedBackground/AnimatedBackground';
 import { disconnectChatSocket } from './services/chatSocket';
+
+// ── Lazy pages ────────────────────────────────────────────────
+// Public
+const Home            = lazy(() => import('./pages/Home/Home'));
+const Products        = lazy(() => import('./pages/Products/Products'));
+const ProductDetail   = lazy(() => import('./pages/ProductDetail/ProductDetail'));
+const Courts          = lazy(() => import('./pages/Courts/Courts'));
+const CourtDetail     = lazy(() => import('./pages/CourtDetail/CourtDetail'));
+const Login           = lazy(() => import('./pages/Auth/Login'));
+const Register        = lazy(() => import('./pages/Auth/Register'));
+const AuthGoogleCallback = lazy(() => import('./pages/Auth/AuthGoogleCallback'));
+const About           = lazy(() => import('./pages/About/About'));
+const Contact         = lazy(() => import('./pages/Contact/Contact'));
+const FAQ             = lazy(() => import('./pages/FAQ/FAQ'));
+const Shipping        = lazy(() => import('./pages/Shipping/Shipping'));
+const Privacy         = lazy(() => import('./pages/Privacy/Privacy'));
+const Terms           = lazy(() => import('./pages/Terms/Terms'));
+const NotFound        = lazy(() => import('./pages/NotFound/NotFound'));
+
+// Protected
+const Cart            = lazy(() => import('./pages/Cart/Cart'));
+const Checkout        = lazy(() => import('./pages/Checkout/Checkout'));
+const Booking         = lazy(() => import('./pages/Booking/Booking'));
+const Profile         = lazy(() => import('./pages/Profile/Profile'));
+const OrderDetail     = lazy(() => import('./pages/Profile/OrderDetail'));
+const BookingDetail   = lazy(() => import('./pages/Profile/BookingDetail'));
+
+// Admin — chunk riêng, user thường không load
+const AdminLayout     = lazy(() => import('./components/Admin/AdminLayout'));
+const AdminDashboard  = lazy(() => import('./pages/Admin/AdminDashboard'));
+const AdminProducts   = lazy(() => import('./pages/Admin/AdminProducts'));
+const AdminProductForm = lazy(() => import('./pages/Admin/AdminProductForm'));
+const AdminCategories = lazy(() => import('./pages/Admin/AdminCategories'));
+const AdminCourts     = lazy(() => import('./pages/Admin/AdminCourts'));
+const AdminVouchers   = lazy(() => import('./pages/Admin/AdminVouchers'));
+const AdminOrders     = lazy(() => import('./pages/Admin/AdminOrders'));
+const AdminBookings   = lazy(() => import('./pages/Admin/AdminBookings'));
+const AdminUsers      = lazy(() => import('./pages/Admin/AdminUsers'));
+const AdminUserDetail = lazy(() => import('./pages/Admin/AdminUserDetail'));
+const AdminReviews    = lazy(() => import('./pages/Admin/AdminReviews'));
+const AdminBanner     = lazy(() => import('./pages/Admin/AdminBanner'));
+const AdminMessages   = lazy(() => import('./pages/Admin/AdminMessages'));
 
 function App() {
   const dispatch = useDispatch();
@@ -63,23 +69,20 @@ function App() {
   }, [token]);
 
   useEffect(() => {
-    // Check authentication on mount
     dispatch(checkAuth());
-    // Load cart from localStorage
-    // Load theme preference
     const savedTheme = localStorage.getItem('theme') || 'light';
     dispatch(setTheme(savedTheme));
   }, [dispatch]);
 
   useEffect(() => {
-    // Apply theme to document
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
   return (
     <div className="app" data-theme={theme}>
       <AnimatedBackground />
-      <Routes>
+      <Suspense fallback={<Loading />}>
+        <Routes>
           <Route path="/" element={<Layout />}>
             {/* Public Routes */}
             <Route index element={<Home />} />
@@ -98,89 +101,28 @@ function App() {
             <Route path="terms" element={<Terms />} />
 
             {/* Protected Routes */}
-            <Route
-              path="cart"
-              element={
-                <ProtectedRoute>
-                  <Cart />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="checkout"
-              element={
-                <ProtectedRoute>
-                  <Checkout />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="booking/:courtId"
-              element={
-                <ProtectedRoute>
-                  <Booking />
-                </ProtectedRoute>
-              }
-            />
-            {/* Profile — tất cả sub-tabs render trong Profile layout với sidebar */}
-            <Route
-              path="profile"
-              element={<ProtectedRoute><Profile /></ProtectedRoute>}
-            />
-            <Route
-              path="profile/orders"
-              element={<ProtectedRoute><Profile /></ProtectedRoute>}
-            />
-            <Route
-              path="profile/bookings"
-              element={<ProtectedRoute><Profile /></ProtectedRoute>}
-            />
-            <Route
-              path="profile/wishlist"
-              element={<ProtectedRoute><Profile /></ProtectedRoute>}
-            />
-            <Route
-              path="profile/addresses"
-              element={<ProtectedRoute><Profile /></ProtectedRoute>}
-            />
-            <Route
-              path="profile/vouchers"
-              element={<ProtectedRoute><Profile /></ProtectedRoute>}
-            />
-            <Route
-              path="profile/password"
-              element={<ProtectedRoute><Profile /></ProtectedRoute>}
-            />
-            <Route
-              path="profile/notifications"
-              element={<ProtectedRoute><Profile /></ProtectedRoute>}
-            />
-            <Route
-              path="profile/messages"
-              element={<ProtectedRoute><Profile /></ProtectedRoute>}
-            />
-            {/* Detail pages — standalone */}
-            <Route
-              path="profile/orders/:id"
-              element={<ProtectedRoute><OrderDetail /></ProtectedRoute>}
-            />
-            <Route
-              path="profile/bookings/:id"
-              element={<ProtectedRoute><BookingDetail /></ProtectedRoute>}
-            />
+            <Route path="cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
+            <Route path="checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+            <Route path="booking/:courtId" element={<ProtectedRoute><Booking /></ProtectedRoute>} />
+            <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="profile/orders" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="profile/bookings" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="profile/wishlist" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="profile/addresses" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="profile/vouchers" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="profile/password" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="profile/notifications" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="profile/messages" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="profile/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
+            <Route path="profile/bookings/:id" element={<ProtectedRoute><BookingDetail /></ProtectedRoute>} />
 
-            {/* 404 cho trang chủ */}
             <Route path="*" element={<NotFound />} />
           </Route>
 
-          {/* Admin: giao diện riêng, không dùng Layout (Navbar/Footer) site chính */}
+          {/* Admin: giao diện riêng */}
           <Route
             path="admin"
-            element={
-              <AdminRoute>
-                <AdminLayout />
-              </AdminRoute>
-            }
+            element={<AdminRoute><AdminLayout /></AdminRoute>}
           >
             <Route index element={<AdminDashboard />} />
             <Route path="products" element={<AdminProducts />} />
@@ -199,6 +141,7 @@ function App() {
             <Route path="messages" element={<AdminMessages />} />
           </Route>
         </Routes>
+      </Suspense>
 
       <ToastContainer
         position="top-right"

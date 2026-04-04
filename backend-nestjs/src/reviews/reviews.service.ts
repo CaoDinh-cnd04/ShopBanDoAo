@@ -2,25 +2,32 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Order, OrderDocument } from '../orders/schemas/order.schema';
 import { Booking, BookingDocument } from '../bookings/schemas/booking.schema';
+import { Product, ProductDocument } from '../products/schemas/product.schema';
 import { ReviewRepository } from './reviews.repository';
 import {
   CreateReviewDto,
   UpdateReviewDto,
   QueryReviewDto,
 } from './dto/review.dto';
+import { OrderEventsService } from '../order-events/order-events.service';
 
 @Injectable()
 export class ReviewsService {
+  private readonly logger = new Logger(ReviewsService.name);
+
   constructor(
     private reviewRepository: ReviewRepository,
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     @InjectModel(Booking.name) private bookingModel: Model<BookingDocument>,
+    @InjectModel(Product.name) private productModel: Model<ProductDocument>,
+    private readonly orderEvents: OrderEventsService,
   ) {}
 
   /** Map productId (string) → { _id, rating } cho đơn đã giao */
@@ -70,6 +77,18 @@ export class ReviewsService {
         comment: createDto.comment?.trim() || undefined,
         isVisible: false,
       } as any);
+      this.orderEvents
+        .onReviewCreated({
+          userId,
+          productName: 'Đánh giá trang web',
+          rating: createDto.rating,
+          reviewType: 'site',
+        })
+        .catch((e) =>
+          this.logger.error(
+            `onReviewCreated site: ${e instanceof Error ? e.message : e}`,
+          ),
+        );
       return {
         message:
           'Đã gửi đánh giá. Nội dung sẽ hiển thị sau khi được quản trị viên duyệt.',
@@ -123,6 +142,18 @@ export class ReviewsService {
         comment: createDto.comment?.trim() || undefined,
         isVisible: false,
       } as any);
+      this.orderEvents
+        .onReviewCreated({
+          userId,
+          productName: 'Đánh giá sân thể thao',
+          rating: createDto.rating,
+          reviewType: 'court',
+        })
+        .catch((e) =>
+          this.logger.error(
+            `onReviewCreated court: ${e instanceof Error ? e.message : e}`,
+          ),
+        );
       return {
         message:
           'Đã gửi đánh giá. Nội dung sẽ hiển thị sau khi được quản trị viên duyệt.',
@@ -197,6 +228,36 @@ export class ReviewsService {
     if (orderIdObj) payload.orderId = orderIdObj;
 
     const review = await this.reviewRepository.create(payload as any);
+
+    const product = await this.productModel
+      .findById(createDto.productId)
+      .select('productName')
+      .lean();
+    const productName =
+      (product as { productName?: string } | null)?.productName ||
+      'Sản phẩm';
+    const orderForCode = createDto.orderId
+      ? await this.orderModel
+          .findById(createDto.orderId)
+          .select('orderCode')
+          .lean()
+      : null;
+    const orderCode =
+      (orderForCode as { orderCode?: string } | null)?.orderCode || undefined;
+    this.orderEvents
+      .onReviewCreated({
+        userId,
+        productName,
+        rating: createDto.rating,
+        orderCode,
+        reviewType: 'product',
+      })
+      .catch((e) =>
+        this.logger.error(
+          `onReviewCreated product: ${e instanceof Error ? e.message : e}`,
+        ),
+      );
+
     return {
       message:
         'Đã gửi đánh giá. Nội dung sẽ hiển thị sau khi được quản trị viên duyệt.',

@@ -14,6 +14,8 @@
     "logout": "Logout",
     "admin": "Admin",
     "search": "Search products...",
+    "searchPlaceholder": "Search products, courts...",
+    "searchBtn": "Search",
     "langVi": "🇻🇳 Tiếng Việt",
     "langEn": "🇺🇸 English"
   },
@@ -163,6 +165,7 @@
     "email": "Email",
     "password": "Password",
     "confirmPassword": "Confirm Password",
+    "fullName": "Full name",
     "firstName": "First Name",
     "lastName": "Last Name",
     "phone": "Phone",
@@ -170,9 +173,14 @@
     "noAccount": "Don't have an account?",
     "hasAccount": "Already have an account?",
     "loginWithGoogle": "Login with Google",
+    "googleNotConfigured": "Google login is not configured",
+    "googleLinkFailed": "Could not generate Google link",
     "validation": {
       "invalidEmail": "Invalid email",
-      "passwordMin": "Password must be at least 6 characters"
+      "passwordMin": "Password must be at least 6 characters",
+      "fullNameMin": "Full name must be at least 2 characters",
+      "phoneInvalid": "Invalid phone number",
+      "passwordMismatch": "Passwords do not match"
     },
     "welcomeBack": "Welcome back!",
     "loginSubtitle": "Sign in to keep shopping and book sports courts.",
@@ -183,7 +191,17 @@
     "registerLink": "Register →",
     "or": "or",
     "loginSuccess": "Signed in successfully",
-    "loginFail": "Sign-in failed"
+    "loginFail": "Sign-in failed",
+    "joinTitle": "Join us!",
+    "joinSubtitle": "Create an account to shop for sports gear and book courts with thousands of satisfied customers.",
+    "badgeFree": "Free sign-up",
+    "badgeMember": "Member perks",
+    "badgeSupport": "24/7 Support",
+    "createAccount": "Create account",
+    "registerTitle": "Register",
+    "registerSuccess": "Registration successful",
+    "registerFail": "Registration failed",
+    "loginLink": "Sign in →"
   },
   "profile": {
     "title": "My Profile",

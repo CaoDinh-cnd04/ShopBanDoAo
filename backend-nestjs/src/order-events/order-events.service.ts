@@ -614,6 +614,143 @@ export class OrderEventsService {
     }
   }
 
+  /**
+   * Admin cập nhật trạng thái đơn (Confirmed / Processing / Shipped / Delivered)
+   * → thông báo web + email cho khách hàng.
+   */
+  async onOrderStatusUpdated(
+    orderId: string,
+    newStatus: string,
+  ): Promise<void> {
+    const order = await this.orderModel.findById(orderId).exec();
+    if (!order) return;
+    const user = await this.userModel.findById(order.userId).lean();
+    if (!user) return;
+
+    const orderCode = order.orderCode ?? orderId;
+    const total = Number(order.totalAmount) || 0;
+    const customerName = user.fullName ?? 'Khách hàng';
+    const ordersUrl = `${this.siteBase()}/profile/orders`;
+
+    const normalized = (newStatus || '').trim().toLowerCase();
+    const statusLabels: Record<string, string> = {
+      confirmed: 'Đã xác nhận đơn hàng',
+      processing: 'Đang chuẩn bị hàng',
+      shipped: 'Đơn hàng đang được giao',
+      delivered: 'Đơn hàng đã giao thành công',
+    };
+    const statusLabel =
+      statusLabels[normalized] ?? `Trạng thái: ${newStatus}`;
+
+    const userTitle = `${BRAND_NAME} · ${statusLabel}`;
+    const userMsg = `Đơn ${orderCode} (${this.fmtVnd(total)}) — ${statusLabel.toLowerCase()}. Xem chi tiết tại ${this.siteHostLabel()}.`;
+
+    try {
+      await this.notifications.createNotification({
+        userId: String(order.userId),
+        title: userTitle,
+        message: userMsg,
+        type: NOTIF_TYPE_ORDER,
+      });
+    } catch (e) {
+      this.logger.error(
+        `onOrderStatusUpdated web (user): ${e instanceof Error ? e.message : e}`,
+      );
+    }
+
+    if (user.email) {
+      const rows = [
+        { label: 'Mã đơn', valueHtml: this.escapeHtml(orderCode) },
+        { label: 'Tổng cộng', valueHtml: this.fmtVnd(total) },
+        { label: 'Trạng thái mới', valueHtml: this.escapeHtml(statusLabel) },
+      ];
+      const extraNote =
+        normalized === 'delivered'
+          ? `<p style="margin-top:16px;color:#64748b;font-size:14px;">Hãy để lại đánh giá sản phẩm để giúp chúng tôi phục vụ bạn tốt hơn.</p>`
+          : normalized === 'shipped'
+            ? `<p style="margin-top:16px;color:#64748b;font-size:14px;">Đơn hàng đang trên đường giao tới bạn. Vui lòng chú ý điện thoại để nhận hàng.</p>`
+            : '';
+      const bodyHtml = `<p>Xin chào <strong>${this.escapeHtml(customerName)}</strong>,</p>
+        <p>Đơn hàng <strong>${this.escapeHtml(orderCode)}</strong> của bạn vừa được cập nhật trạng thái.</p>
+        ${this.emailDetailTable(rows)}${extraNote}`;
+
+      await this.mail.send({
+        to: user.email,
+        subject: `[${BRAND_NAME}] ${orderCode} — ${statusLabel}`,
+        html: this.wrapBranded({
+          pageTitle: statusLabel,
+          preheader: userMsg,
+          headline: statusLabel,
+          bodyHtml,
+          cta: { label: 'Xem chi tiết đơn hàng', href: ordersUrl },
+        }),
+      });
+    }
+  }
+
+  /**
+   * Khách gửi đánh giá sản phẩm sau khi đơn hoàn thành → thông báo admin (web + email).
+   */
+  async onReviewCreated(opts: {
+    userId: string;
+    productName: string;
+    rating: number;
+    orderCode?: string;
+    reviewType?: string;
+  }): Promise<void> {
+    const user = await this.userModel.findById(opts.userId).lean();
+    const customerName = user?.fullName ?? 'Khách hàng';
+    const host = this.siteHostLabel();
+    const adminReviewsUrl = `${this.siteBase()}/admin/reviews`;
+    const stars = '★'.repeat(Math.min(5, Math.max(1, opts.rating)));
+
+    const titleAdmin = `${BRAND_NAME} · Đánh giá mới từ khách`;
+    const msgAdmin = `${customerName} vừa đánh giá "${opts.productName}" ${stars}${opts.orderCode ? ` (đơn ${opts.orderCode})` : ''}. Xem trên ${host}.`;
+
+    const admins = await this.userModel
+      .find({ role: 'Admin' })
+      .select('_id')
+      .lean();
+
+    for (const admin of admins) {
+      const aid = String(admin._id);
+      try {
+        await this.notifications.createNotification({
+          userId: aid,
+          title: titleAdmin,
+          message: msgAdmin,
+          type: NOTIF_TYPE_ORDER,
+        });
+      } catch (e) {
+        this.logger.error(
+          `onReviewCreated web (admin ${aid}): ${e instanceof Error ? e.message : e}`,
+        );
+      }
+    }
+
+    const adminMailTargets = await this.resolveAdminMailTargets();
+    for (const to of adminMailTargets) {
+      const rows = [
+        { label: 'Khách hàng', valueHtml: this.escapeHtml(customerName) },
+        { label: 'Sản phẩm', valueHtml: this.escapeHtml(opts.productName) },
+        { label: 'Số sao', valueHtml: this.escapeHtml(stars) },
+        ...(opts.orderCode
+          ? [{ label: 'Đơn hàng', valueHtml: this.escapeHtml(opts.orderCode) }]
+          : []),
+      ];
+      await this.mail.send({
+        to,
+        subject: `[${BRAND_NAME} Admin] Đánh giá mới — ${opts.productName}`,
+        html: this.wrapBranded({
+          pageTitle: 'Đánh giá mới',
+          headline: 'Khách hàng vừa gửi đánh giá',
+          bodyHtml: `<p>Có một đánh giá mới cần duyệt trên <strong>${BRAND_NAME}</strong>.</p>${this.emailDetailTable(rows)}`,
+          cta: { label: 'Xem & duyệt đánh giá', href: adminReviewsUrl },
+        }),
+      });
+    }
+  }
+
   private fmtBookingDate(d: Date | undefined): string {
     if (!d) return '—';
     try {

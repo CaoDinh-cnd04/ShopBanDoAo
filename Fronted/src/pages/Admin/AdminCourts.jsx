@@ -383,9 +383,11 @@ const AdminCourts = () => {
                               {c.isActive !== false ? 'Hoạt động' : 'Ngừng'}
                             </Badge>
                           </td>
-                          <td className="text-end">
-                            <Button size="sm" variant="outline-primary" className="me-2" onClick={() => openEditCourt(c)}>Sửa</Button>
-                            <Button size="sm" variant="outline-danger" onClick={() => deleteCourt(id)}>Ngừng</Button>
+                          <td>
+                            <div className="admin-actions">
+                              <Button size="sm" variant="outline-primary" onClick={() => openEditCourt(c)}>Sửa</Button>
+                              <Button size="sm" variant="outline-danger" onClick={() => deleteCourt(id)}>Ngừng</Button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -421,9 +423,11 @@ const AdminCourts = () => {
                           <td className="fw-semibold">{t.typeName}</td>
                           <td className="text-muted">{t.description || '—'}</td>
                           <td><Badge bg="secondary">{courtCount}</Badge></td>
-                          <td className="text-end">
-                            <Button size="sm" variant="outline-primary" className="me-2" onClick={() => openEditType(t)}>Sửa</Button>
-                            <Button size="sm" variant="outline-danger" onClick={() => deleteCourtType(tid)}>Xóa</Button>
+                          <td>
+                            <div className="admin-actions">
+                              <Button size="sm" variant="outline-primary" onClick={() => openEditType(t)}>Sửa</Button>
+                              <Button size="sm" variant="danger" onClick={() => deleteCourtType(tid)}>Xóa</Button>
+                            </div>
                           </td>
                         </tr>
                       );

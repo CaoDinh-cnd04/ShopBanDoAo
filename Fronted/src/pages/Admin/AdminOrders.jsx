@@ -292,22 +292,77 @@ const AdminOrders = () => {
   const fmtMoney = (n) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(n) || 0);
 
-  /** Địa chỉ giao — ưu tiên field đã map từ API; hỗ trợ đơn cũ lưu object trong DB */
+  /** Parse chuỗi pipe "fullName | phone | address | district | city | note" → phần địa chỉ */
+  const parsePipeAddress = (s) => {
+    if (!s || typeof s !== 'string' || !s.includes(' | ')) return null;
+    const parts = s.split(' | ').map((p) => p.trim());
+    if (parts.length < 3) return null;
+    return {
+      receiverName: parts[0] || '',
+      receiverPhone: parts[1] || '',
+      addressLine: parts[2] || '',
+      district: parts[3] || '',
+      city: parts[4] || '',
+    };
+  };
+
+  /** Địa chỉ giao — ưu tiên field đã map từ API; hỗ trợ đơn cũ lưu object / JSON / pipe */
   const formatShippingAddressLine = (d) => {
     if (!d) return '—';
     const sa = d.shippingAddress;
+
+    // 1. shippingAddress là object (legacy frontend cũ)
     if (sa && typeof sa === 'object' && !Array.isArray(sa)) {
       const o = sa;
       const line = [o.address, o.ward, o.district, o.city].filter(Boolean).join(', ');
-      const head = [o.fullName, o.phone].filter(Boolean).join(' — ');
-      return [head, line].filter(Boolean).join('. ') || '—';
+      return line || '—';
     }
-    return (
-      (d.addressDisplay && String(d.addressDisplay).trim()) ||
-      [d.addressLine, d.ward, d.district, d.city].filter(Boolean).join(', ') ||
-      (typeof sa === 'string' ? sa : '') ||
-      '—'
-    );
+
+    // 2. addressDisplay sạch (không chứa pipe) — backend đã map đúng
+    const disp = d.addressDisplay ? String(d.addressDisplay).trim() : '';
+    if (disp && !disp.includes(' | ') && disp !== '[object Object]') {
+      return disp;
+    }
+
+    // 3. addressLine + district + city từ backend map
+    const fromParts = [d.addressLine, d.ward, d.district, d.city]
+      .filter(Boolean)
+      .join(', ');
+    if (fromParts) return fromParts;
+
+    // 4. addressDisplay là pipe string — parse thủ công
+    if (disp && disp.includes(' | ')) {
+      const pipe = parsePipeAddress(disp);
+      if (pipe) {
+        const addr = [pipe.addressLine, pipe.district, pipe.city].filter(Boolean).join(', ');
+        if (addr) return addr;
+      }
+    }
+
+    // 5. shippingAddress là pipe string
+    if (typeof sa === 'string' && sa.includes(' | ')) {
+      const pipe = parsePipeAddress(sa);
+      if (pipe) {
+        const addr = [pipe.addressLine, pipe.district, pipe.city].filter(Boolean).join(', ');
+        if (addr) return addr;
+      }
+    }
+
+    // 6. shippingAddress là JSON string (đơn cũ)
+    if (typeof sa === 'string' && sa.startsWith('{')) {
+      try {
+        const obj = JSON.parse(sa);
+        if (obj && typeof obj === 'object') {
+          const line = [obj.address, obj.ward, obj.district, obj.city].filter(Boolean).join(', ');
+          if (line) return line;
+        }
+      } catch { /* không phải JSON hợp lệ */ }
+    }
+
+    // 7. plain string (đơn cũ không có format)
+    if (typeof sa === 'string' && sa && sa !== '[object Object]') return sa;
+
+    return '—';
   };
 
   const printOrderDetail = () => {
@@ -490,41 +545,40 @@ const AdminOrders = () => {
                           <td className="fw-bold">{fmtMoney(order.totalAmount ?? order.TotalAmount)}</td>
                           <td>{getStatusBadge(st)}</td>
                           <td>
-                            <Button
-                              size="sm"
-                              variant="outline-secondary"
-                              className="me-2"
-                              onClick={() => openDetail(order)}
-                            >
-                              Chi tiết
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline-primary"
-                              className="me-2"
-                              onClick={() => handleStatusChange(order)}
-                              disabled={isTerminalOrderStatus(st)}
-                            >
-                              Cập nhật
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline-danger"
-                              className="me-2"
-                              onClick={() => handleCancelOrder(orderId(order))}
-                              disabled={isTerminalOrderStatus(st)}
-                            >
-                              Hủy
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              title="Xóa vĩnh viễn khỏi CSDL"
-                              onClick={() => handleDeleteOrder(order)}
-                            >
-                              <FiTrash2 size={14} className="me-1" />
-                              Xóa
-                            </Button>
+                            <div className="admin-actions">
+                              <Button
+                                size="sm"
+                                variant="outline-secondary"
+                                onClick={() => openDetail(order)}
+                              >
+                                Chi tiết
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline-primary"
+                                onClick={() => handleStatusChange(order)}
+                                disabled={isTerminalOrderStatus(st)}
+                              >
+                                Cập nhật
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline-danger"
+                                onClick={() => handleCancelOrder(orderId(order))}
+                                disabled={isTerminalOrderStatus(st)}
+                              >
+                                Hủy
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                title="Xóa vĩnh viễn khỏi CSDL"
+                                onClick={() => handleDeleteOrder(order)}
+                              >
+                                <FiTrash2 size={14} className="me-1" />
+                                Xóa
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -625,7 +679,9 @@ const AdminOrders = () => {
                 {detail.shippingMethodLabel || detail.shippingMethodName || detail.shippingMethod || '—'}
               </p>
               <p>
-                <strong>Người nhận:</strong> {detail.receiverName || '—'} — {detail.receiverPhone || '—'}
+                <strong>Người nhận:</strong>{' '}
+                {detail.receiverName || detail.customerName || '—'} —{' '}
+                {detail.receiverPhone || detail.customerPhone || '—'}
               </p>
               <p className="mb-1">
                 <strong>Địa chỉ:</strong> {formatShippingAddressLine(detail)}

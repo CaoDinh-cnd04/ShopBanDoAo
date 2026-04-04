@@ -28,10 +28,12 @@ import { toggleWishlist } from '../../store/slices/wishlistSlice';
 import { fetchProductReviews } from '../../store/slices/reviewSlice';
 import ReviewForm from '../../components/Reviews/ReviewForm';
 import ReviewList from '../../components/Reviews/ReviewList';
+import ProductCard from '../../components/ProductCard/ProductCard';
 import Loading from '../../components/Loading/Loading';
 import { toast } from 'react-toastify';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import { hexFromColorName } from '../../utils/productVariantUtils';
+import api from '../../services/api';
 import './ProductDetail.css';
 
 const fmt = (n) =>
@@ -87,6 +89,7 @@ const ProductDetail = () => {
   const [activeImg, setActiveImg] = useState(0);
   const [activeTab, setActiveTab] = useState('desc');
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [relatedProducts, setRelatedProducts] = useState([]);
 
   useEffect(() => {
     dispatch(fetchProductById(id));
@@ -96,6 +99,39 @@ const ProductDetail = () => {
     setSelSize('');
     setSelColor('');
   }, [id, dispatch]);
+
+  // Fetch related products when product (and its categoryId) is available
+  useEffect(() => {
+    if (!product) return;
+    const catRaw = product.categoryId;
+    const catId = catRaw && typeof catRaw === 'object'
+      ? String(catRaw._id || catRaw.id || '')
+      : String(catRaw || '');
+    if (!catId) return;
+
+    let cancelled = false;
+    api
+      .get('/products', { params: { category: catId, limit: 9, page: 1 } })
+      .then((res) => {
+        if (cancelled) return;
+        // API trả về { products: [...], pagination: {...} }
+        const list = Array.isArray(res.data?.products)
+          ? res.data.products
+          : Array.isArray(res.data?.data)
+          ? res.data.data
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+        const currentId = String(product._id || product.id || '');
+        const filtered = list
+          .filter((p) => String(p._id || p.id || '') !== currentId)
+          .slice(0, 8);
+        setRelatedProducts(filtered);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?._id]);
 
   const variants = useMemo(
     () => (Array.isArray(product?.variants) ? product.variants : []),
@@ -710,6 +746,37 @@ const ProductDetail = () => {
             className="pd-lightbox-img"
             onClick={(e) => e.stopPropagation()}
           />
+        </div>
+      )}
+
+      {relatedProducts.length > 0 && (
+        <div className="pd-related">
+          <Container fluid="lg" className="pd-container">
+            <div className="pd-related-header">
+              <h2 className="pd-related-title">Sản phẩm tương tự</h2>
+              <Link
+                to={`/products?category=${typeof product.categoryId === 'object'
+                  ? (product.categoryId._id || product.categoryId.id)
+                  : product.categoryId}`}
+                className="pd-related-see-all"
+              >
+                Xem tất cả <FiChevronRight size={16} />
+              </Link>
+            </div>
+            <div className="pd-related-grid">
+              {relatedProducts.map((p, i) => (
+                <motion.div
+                  key={p._id || p.id}
+                  className="pd-related-item"
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                >
+                  <ProductCard product={p} />
+                </motion.div>
+              ))}
+            </div>
+          </Container>
         </div>
       )}
     </div>

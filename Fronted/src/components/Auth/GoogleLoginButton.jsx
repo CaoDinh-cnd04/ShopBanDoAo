@@ -1,5 +1,6 @@
 import { FcGoogle } from 'react-icons/fc';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 import {
   buildGoogleAuthorizationUrl,
   isGoogleAuthConfigured,
@@ -14,20 +15,22 @@ import { IN_APP_GOOGLE_HINT, isInAppBrowser } from '../../utils/inAppBrowser';
  * @param {string} [returnUrl] — sau khi đăng nhập (query returnUrl từ /login)
  */
 const GoogleLoginButton = ({ returnUrl, disabled }) => {
+  const { t } = useTranslation();
+
   const handleClick = () => {
     if (isInAppBrowser()) {
       toast.error(IN_APP_GOOGLE_HINT, { autoClose: 12000 });
       return;
     }
     if (!isGoogleAuthConfigured) {
-      toast.error('Chưa cấu hình Google Client ID');
+      toast.error(t('auth.googleNotConfigured'));
       return;
     }
     const url = buildGoogleAuthorizationUrl({
       returnUrl: returnUrl || '',
     });
     if (!url) {
-      toast.error('Không tạo được link Google');
+      toast.error(t('auth.googleLinkFailed'));
       return;
     }
     window.location.href = url;
@@ -40,7 +43,7 @@ const GoogleLoginButton = ({ returnUrl, disabled }) => {
       onClick={handleClick}
       disabled={disabled}
     >
-      <FcGoogle size={20} /> Đăng nhập với Google
+      <FcGoogle size={20} /> {t('auth.loginWithGoogle')}
     </button>
   );
 };

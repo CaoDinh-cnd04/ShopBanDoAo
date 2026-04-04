@@ -244,11 +244,11 @@ const Navbar = () => {
                     ref={searchRef}
                     type="text"
                     className="search-input"
-                    placeholder="Tìm sản phẩm, sân thể thao..."
+                    placeholder={t('nav.searchPlaceholder')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
-                  <button type="submit" className="search-submit">Tìm kiếm</button>
+                  <button type="submit" className="search-submit">{t('nav.searchBtn')}</button>
                 </form>
               </Container>
             </motion.div>
@@ -294,12 +294,12 @@ const Navbar = () => {
               <div className="mobile-drawer-footer">
                 {isAuthenticated ? (
                   <button className="mobile-logout" onClick={handleLogout}>
-                    <FiLogOut /> Đăng xuất
+                    <FiLogOut /> {t('nav.logout')}
                   </button>
                 ) : (
                   <div className="mobile-auth">
-                    <Link to="/login" className="btn-login w-100 text-center">Đăng nhập</Link>
-                    <Link to="/register" className="btn-register w-100 text-center">Đăng ký</Link>
+                    <Link to="/login" className="btn-login w-100 text-center">{t('nav.login')}</Link>
+                    <Link to="/register" className="btn-register w-100 text-center">{t('nav.register')}</Link>
                   </div>
                 )}
               </div>

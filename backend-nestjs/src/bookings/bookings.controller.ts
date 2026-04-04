@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Delete,
   Body,
   Param,
   Query,
@@ -101,5 +102,12 @@ export class BookingsController {
     @Body() dto: CompleteBookingEarlyDto,
   ) {
     return this.bookingsService.completeBookingEarlyAdmin(id, dto);
+  }
+
+  @Delete('admin/bookings/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('Admin')
+  async deleteBooking(@Param('id') id: string) {
+    return this.bookingsService.deleteBookingByAdmin(id);
   }
 }

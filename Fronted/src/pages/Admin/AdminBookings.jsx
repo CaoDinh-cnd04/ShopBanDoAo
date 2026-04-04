@@ -201,6 +201,24 @@ const AdminBookings = () => {
     }
   };
 
+  const handleDeleteBooking = async (id) => {
+    if (!window.confirm('Xóa vĩnh viễn booking này khỏi hệ thống?')) return;
+    try {
+      await adminService.bookings.deleteBooking(id);
+      toast.success('Đã xóa booking');
+      if (detail && bookingId(detail) === id) {
+        setDetailOpen(false);
+        setDetail(null);
+      }
+      fetchBookings();
+    } catch (error) {
+      console.error('Error deleting booking:', error);
+      toast.error(
+        error.response?.data?.message || error.response?.data?.error || 'Lỗi khi xóa booking',
+      );
+    }
+  };
+
   const openDetail = async (booking) => {
     const id = bookingId(booking);
     setDetail(null);
@@ -359,45 +377,51 @@ const AdminBookings = () => {
                           <td className="fw-bold">{fmtMoney(booking.totalAmount ?? booking.TotalAmount)}</td>
                           <td>{getStatusBadge(st)}</td>
                           <td>
-                            <Button
-                              size="sm"
-                              variant="outline-secondary"
-                              className="me-2"
-                              onClick={() => openDetail(booking)}
-                            >
-                              Chi tiết
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline-primary"
-                              className="me-2"
-                              onClick={() => handleStatusChange(booking)}
-                              disabled={isTerminalBookingStatus(st)}
-                            >
-                              Sửa
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline-danger"
-                              onClick={() => handleCancelBooking(bookingId(booking))}
-                              disabled={isTerminalBookingStatus(st)}
-                            >
-                              Hủy
-                            </Button>
-                            {canCompleteEarlyBooking(booking) ? (
+                            <div className="admin-actions">
                               <Button
                                 size="sm"
-                                variant="success"
-                                className="ms-2"
-                                onClick={() => {
-                                  setEarlyTarget(booking);
-                                  setEarlyReason('');
-                                  setShowEarlyModal(true);
-                                }}
+                                variant="outline-secondary"
+                                onClick={() => openDetail(booking)}
                               >
-                                Hoàn thành sớm
+                                Chi tiết
                               </Button>
-                            ) : null}
+                              <Button
+                                size="sm"
+                                variant="outline-primary"
+                                onClick={() => handleStatusChange(booking)}
+                                disabled={isTerminalBookingStatus(st)}
+                              >
+                                Sửa
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline-danger"
+                                onClick={() => handleCancelBooking(bookingId(booking))}
+                                disabled={isTerminalBookingStatus(st)}
+                              >
+                                Hủy
+                              </Button>
+                              {canCompleteEarlyBooking(booking) && (
+                                <Button
+                                  size="sm"
+                                  variant="success"
+                                  onClick={() => {
+                                    setEarlyTarget(booking);
+                                    setEarlyReason('');
+                                    setShowEarlyModal(true);
+                                  }}
+                                >
+                                  Hoàn thành sớm
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                onClick={() => handleDeleteBooking(bookingId(booking))}
+                              >
+                                Xóa
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );

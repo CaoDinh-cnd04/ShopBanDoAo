@@ -322,9 +322,11 @@ const AdminCategories = () => {
                               {cat.isActive !== false ? 'Hiển thị' : 'Ẩn'}
                             </Badge>
                           </td>
-                          <td className="text-end">
-                            <Button size="sm" variant="outline-primary" className="me-2" onClick={() => openEditCategory(cat)}>Sửa</Button>
-                            <Button size="sm" variant="outline-danger" onClick={() => deleteCategory(id)}>Xóa</Button>
+                          <td>
+                            <div className="admin-actions">
+                              <Button size="sm" variant="outline-primary" onClick={() => openEditCategory(cat)}>Sửa</Button>
+                              <Button size="sm" variant="danger" onClick={() => deleteCategory(id)}>Xóa</Button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -365,9 +367,11 @@ const AdminCategories = () => {
                             {row.isActive !== false ? 'Hiển thị' : 'Ẩn'}
                           </Badge>
                         </td>
-                        <td className="text-end">
-                          <Button size="sm" variant="outline-primary" className="me-2" onClick={() => openEditSub(row)}>Sửa</Button>
-                          <Button size="sm" variant="outline-danger" onClick={() => deleteSub(row.subCategoryId)}>Xóa</Button>
+                        <td>
+                          <div className="admin-actions">
+                            <Button size="sm" variant="outline-primary" onClick={() => openEditSub(row)}>Sửa</Button>
+                            <Button size="sm" variant="danger" onClick={() => deleteSub(row.subCategoryId)}>Xóa</Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -423,9 +427,11 @@ const AdminCategories = () => {
                               {b.isActive !== false ? 'Hiển thị' : 'Ẩn'}
                             </Badge>
                           </td>
-                          <td className="text-end">
-                            <Button size="sm" variant="outline-primary" className="me-2" onClick={() => openEditBrand(b)}>Sửa</Button>
-                            <Button size="sm" variant="outline-danger" onClick={() => deleteBrand(id)}>Xóa</Button>
+                          <td>
+                            <div className="admin-actions">
+                              <Button size="sm" variant="outline-primary" onClick={() => openEditBrand(b)}>Sửa</Button>
+                              <Button size="sm" variant="danger" onClick={() => deleteBrand(id)}>Xóa</Button>
+                            </div>
                           </td>
                         </tr>
                       );

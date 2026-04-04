@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useDispatch, useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { FiUser, FiMail, FiLock, FiPhone, FiEye, FiEyeOff, FiArrowRight } from 'react-icons/fi';
 import { register as registerUser } from '../../store/slices/authSlice';
 import { toast } from 'react-toastify';
@@ -13,27 +14,28 @@ import InAppBrowserNotice from '../../components/Auth/InAppBrowserNotice';
 import AuthShell from './AuthShell';
 import './Auth.css';
 
-const schema = z
-  .object({
-    fullName: z.string().min(2, 'Họ tên tối thiểu 2 ký tự'),
-    email: z.string().email('Email không hợp lệ'),
-    phone: z
-      .string()
-      .transform((s) => s.replace(/\s/g, ''))
-      .refine((s) => /^(0|\+84)[3-9]\d{8}$/.test(s), 'Số điện thoại không hợp lệ'),
-    password: z.string().min(6, 'Mật khẩu tối thiểu 6 ký tự'),
-    confirmPassword: z.string(),
-  })
-  .refine((d) => d.password === d.confirmPassword, {
-    message: 'Mật khẩu xác nhận không khớp',
-    path: ['confirmPassword'],
-  });
-
 export default function Register() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { isLoading } = useSelector((s) => s.auth);
   const [showPwd, setShowPwd] = useState(false);
+
+  const schema = z
+    .object({
+      fullName: z.string().min(2, t('auth.validation.fullNameMin')),
+      email: z.string().email(t('auth.validation.invalidEmail')),
+      phone: z
+        .string()
+        .transform((s) => s.replace(/\s/g, ''))
+        .refine((s) => /^(0|\+84)[3-9]\d{8}$/.test(s), t('auth.validation.phoneInvalid')),
+      password: z.string().min(6, t('auth.validation.passwordMin')),
+      confirmPassword: z.string(),
+    })
+    .refine((d) => d.password === d.confirmPassword, {
+      message: t('auth.validation.passwordMismatch'),
+      path: ['confirmPassword'],
+    });
 
   const {
     register,
@@ -60,10 +62,10 @@ export default function Register() {
       }),
     );
     if (registerUser.fulfilled.match(res)) {
-      toast.success('Đăng ký thành công');
+      toast.success(t('auth.registerSuccess'));
       navigate('/', { replace: true });
     } else {
-      toast.error(res.payload || 'Đăng ký thất bại');
+      toast.error(res.payload || t('auth.registerFail'));
     }
   };
 
@@ -86,25 +88,25 @@ export default function Register() {
 
   return (
     <AuthShell
-      leftTitle="Tham gia cùng chúng tôi!"
-      leftSubtitle="Tạo tài khoản để mua sắm thể thao và đặt sân với hàng ngàn khách hàng tin dùng."
-      badges={['Miễn phí đăng ký', 'Ưu đãi thành viên', 'Hỗ trợ 24/7']}
+      leftTitle={t('auth.joinTitle')}
+      leftSubtitle={t('auth.joinSubtitle')}
+      badges={[t('auth.badgeFree'), t('auth.badgeMember'), t('auth.badgeSupport')]}
     >
-      <h1 className="auth-form-title">Đăng ký</h1>
+      <h1 className="auth-form-title">{t('auth.registerTitle')}</h1>
       <p className="auth-form-subtitle">
-        Đã có tài khoản?{' '}
+        {t('auth.hasAccount')}{' '}
         <Link to="/login" className="auth-link">
-          Đăng nhập →
+          {t('auth.loginLink')}
         </Link>
       </p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="auth-form" noValidate>
-        <Field name="fullName" label="Họ và tên" placeholder="Nguyễn Văn A" icon={FiUser} />
-        <Field name="email" label="Email" type="email" placeholder="your@email.com" icon={FiMail} />
-        <Field name="phone" label="Số điện thoại" type="tel" placeholder="0901234567" icon={FiPhone} />
+        <Field name="fullName" label={t('auth.fullName')} placeholder="Nguyễn Văn A" icon={FiUser} />
+        <Field name="email" label={t('auth.email')} type="email" placeholder="your@email.com" icon={FiMail} />
+        <Field name="phone" label={t('auth.phone')} type="tel" placeholder="0901234567" icon={FiPhone} />
         <Field
           name="password"
-          label="Mật khẩu"
+          label={t('auth.password')}
           type={showPwd ? 'text' : 'password'}
           placeholder="••••••••"
           icon={FiLock}
@@ -121,7 +123,7 @@ export default function Register() {
         />
         <Field
           name="confirmPassword"
-          label="Xác nhận mật khẩu"
+          label={t('auth.confirmPassword')}
           type="password"
           placeholder="••••••••"
           icon={FiLock}
@@ -132,7 +134,7 @@ export default function Register() {
             <span className="auth-spinner" />
           ) : (
             <>
-              <FiArrowRight size={16} /> Tạo tài khoản
+              <FiArrowRight size={16} /> {t('auth.createAccount')}
             </>
           )}
         </button>
@@ -140,7 +142,7 @@ export default function Register() {
         {isGoogleAuthConfigured && (
           <>
             <div className="auth-divider">
-              <span>hoặc</span>
+              <span>{t('auth.or')}</span>
             </div>
             <InAppBrowserNotice />
             <GoogleLoginButton disabled={isLoading} />

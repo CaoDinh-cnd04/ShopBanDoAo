@@ -293,49 +293,47 @@ const AdminUsers = () => {
                             </Badge>
                           </td>
                           <td>
-                            <Button
-                              size="sm"
-                              variant="outline-secondary"
-                              className="me-1"
-                              onClick={() => setInfoModal({ open: true, user })}
-                            >
-                              Xem
-                            </Button>
-                            <Button
-                              as={Link}
-                              to={`/admin/users/${uid}`}
-                              size="sm"
-                              variant="outline-primary"
-                              className="me-1"
-                            >
-                              Chi tiết
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant={isActive ? 'outline-warning' : 'outline-success'}
-                              className="me-1"
-                              onClick={() => toggleUserStatus(uid, isActive)}
-                            >
-                              {isActive ? 'Khóa' : 'Mở'}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline-danger"
-                              className="me-1"
-                              onClick={() => handleDeleteUser(uid)}
-                            >
-                              Vô hiệu
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              title="Xóa khỏi cơ sở dữ liệu — không hoàn tác"
-                              onClick={() =>
-                                handlePermanentDeleteUser(uid, user.email ?? user.Email ?? uid)
-                              }
-                            >
-                              Xóa
-                            </Button>
+                            <div className="admin-actions">
+                              <Button
+                                size="sm"
+                                variant="outline-secondary"
+                                onClick={() => setInfoModal({ open: true, user })}
+                              >
+                                Xem
+                              </Button>
+                              <Button
+                                as={Link}
+                                to={`/admin/users/${uid}`}
+                                size="sm"
+                                variant="outline-primary"
+                              >
+                                Chi tiết
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={isActive ? 'outline-warning' : 'outline-success'}
+                                onClick={() => toggleUserStatus(uid, isActive)}
+                              >
+                                {isActive ? 'Khóa' : 'Mở'}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline-danger"
+                                onClick={() => handleDeleteUser(uid)}
+                              >
+                                Vô hiệu
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                title="Xóa khỏi cơ sở dữ liệu — không hoàn tác"
+                                onClick={() =>
+                                  handlePermanentDeleteUser(uid, user.email ?? user.Email ?? uid)
+                                }
+                              >
+                                Xóa
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );

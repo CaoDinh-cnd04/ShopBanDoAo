@@ -48,6 +48,7 @@ export const adminBookingService = {
     cancelBooking: (id, _reason) =>
         api.put(`/admin/bookings/${id}/status`, { bookingStatus: 'Cancelled' }),
     getBookingStats: (params) => api.get('/admin/bookings/stats', { params }),
+    deleteBooking: (id) => api.delete(`/admin/bookings/${id}`),
 };
 
 // ==================== PRODUCT MANAGEMENT ====================

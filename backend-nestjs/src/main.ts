@@ -5,6 +5,7 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import type { NextFunction, Request, Response } from 'express';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import compression = require('compression');
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './core/filters/all-exceptions.filter';
 import { TransformInterceptor } from './core/interceptors/transform.interceptor';
@@ -46,6 +47,9 @@ async function bootstrap(): Promise<void> {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.useWebSocketAdapter(new IoAdapter(app));
+
+  /** Gzip — giảm ~70% payload JSON */
+  app.use(compression());
 
   /** Render / reverse proxy — IP và HTTPS đúng khi cần */
   app.set('trust proxy', 1);

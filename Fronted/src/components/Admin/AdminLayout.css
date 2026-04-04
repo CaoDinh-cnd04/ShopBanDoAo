@@ -420,6 +420,22 @@
   border-color: var(--admin-border) !important;
 }
 
+/* ========== Action buttons in table rows ========== */
+.admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.admin-actions .btn {
+  min-width: 76px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 0.25rem 0.5rem;
+}
+
 .admin-pill {
   display: inline-flex;
   align-items: center;

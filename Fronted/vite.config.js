@@ -24,4 +24,26 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    // Cảnh báo khi chunk > 500KB
+    chunkSizeWarningLimit: 500,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          // State management
+          'vendor-redux': ['@reduxjs/toolkit', 'react-redux'],
+          // UI framework
+          'vendor-bootstrap': ['react-bootstrap', 'bootstrap'],
+          // Animation (nặng ~100KB)
+          'vendor-framer': ['framer-motion'],
+          // Charts (admin dashboard)
+          'vendor-charts': ['recharts'],
+          // i18n
+          'vendor-i18n': ['i18next', 'react-i18next'],
+        },
+      },
+    },
+  },
 });

@@ -14,6 +14,8 @@
     "logout": "Đăng xuất",
     "admin": "Quản trị",
     "search": "Tìm kiếm sản phẩm...",
+    "searchPlaceholder": "Tìm sản phẩm, sân thể thao...",
+    "searchBtn": "Tìm kiếm",
     "langVi": "🇻🇳 Tiếng Việt",
     "langEn": "🇺🇸 English"
   },
@@ -163,6 +165,7 @@
     "email": "Email",
     "password": "Mật khẩu",
     "confirmPassword": "Xác nhận mật khẩu",
+    "fullName": "Họ và tên",
     "firstName": "Họ",
     "lastName": "Tên",
     "phone": "Số điện thoại",
@@ -170,9 +173,14 @@
     "noAccount": "Chưa có tài khoản?",
     "hasAccount": "Đã có tài khoản?",
     "loginWithGoogle": "Đăng nhập bằng Google",
+    "googleNotConfigured": "Chưa cấu hình Google Client ID",
+    "googleLinkFailed": "Không tạo được link Google",
     "validation": {
       "invalidEmail": "Email không hợp lệ",
-      "passwordMin": "Mật khẩu tối thiểu 6 ký tự"
+      "passwordMin": "Mật khẩu tối thiểu 6 ký tự",
+      "fullNameMin": "Họ tên tối thiểu 2 ký tự",
+      "phoneInvalid": "Số điện thoại không hợp lệ",
+      "passwordMismatch": "Mật khẩu xác nhận không khớp"
     },
     "welcomeBack": "Chào mừng trở lại!",
     "loginSubtitle": "Đăng nhập để tiếp tục mua sắm và đặt sân thể thao.",
@@ -183,7 +191,17 @@
     "registerLink": "Đăng ký →",
     "or": "hoặc",
     "loginSuccess": "Đăng nhập thành công",
-    "loginFail": "Đăng nhập thất bại"
+    "loginFail": "Đăng nhập thất bại",
+    "joinTitle": "Tham gia cùng chúng tôi!",
+    "joinSubtitle": "Tạo tài khoản để mua sắm thể thao và đặt sân với hàng ngàn khách hàng tin dùng.",
+    "badgeFree": "Miễn phí đăng ký",
+    "badgeMember": "Ưu đãi thành viên",
+    "badgeSupport": "Hỗ trợ 24/7",
+    "createAccount": "Tạo tài khoản",
+    "registerTitle": "Đăng ký",
+    "registerSuccess": "Đăng ký thành công",
+    "registerFail": "Đăng ký thất bại",
+    "loginLink": "Đăng nhập →"
   },
   "profile": {
     "title": "Hồ sơ của tôi",

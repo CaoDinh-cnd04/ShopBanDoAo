@@ -14,6 +14,7 @@ const API_BASE_URL = getApiBaseUrl();
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 15000, // 15s — tránh request treo mãi trên mạng chậm
   headers: {
     'Content-Type': 'application/json',
   },

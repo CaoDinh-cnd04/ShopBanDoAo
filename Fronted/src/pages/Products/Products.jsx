@@ -74,6 +74,147 @@ function categoryIdFrom(cat) {
   return String(raw).trim();
 }
 
+/** Extracted outside Products so React doesn't remount it on every render */
+const FilterSidebar = ({
+  t,
+  hasFilters,
+  handleClear,
+  searchDraft,
+  setSearchDraft,
+  safeCategories,
+  selectedCats,
+  toggleCategory,
+  brandOptions,
+  selectedBrands,
+  toggleBrand,
+  pricePresets,
+  searchParams,
+  togglePricePreset,
+  minPriceDraft,
+  maxPriceDraft,
+  setMinPriceDraft,
+  setMaxPriceDraft,
+  applyCustomPrice,
+}) => (
+  <div className="filter-sidebar">
+    <div className="filter-header">
+      <span className="filter-title">
+        <FiSliders size={16} /> {t('products.filterTitle')}
+      </span>
+      {hasFilters && (
+        <button type="button" className="clear-btn" onClick={handleClear}>
+          <FiX size={14} /> {t('products.clear')}
+        </button>
+      )}
+    </div>
+
+    <div className="filter-group filter-group-first">
+      <p className="filter-group-label">{t('products.searchByName')}</p>
+      <div className="filter-search-wrap">
+        <FiSearch className="filter-search-icon" size={16} aria-hidden />
+        <input
+          type="search"
+          className="filter-search-input"
+          placeholder={t('products.searchPlaceholder')}
+          value={searchDraft}
+          onChange={(e) => setSearchDraft(e.target.value)}
+          autoComplete="off"
+        />
+      </div>
+    </div>
+
+    <div className="filter-group">
+      <p className="filter-group-label">{t('products.categoriesMulti')}</p>
+      <div className="filter-checklist">
+        {safeCategories.map((cat) => {
+          const id = categoryIdFrom(cat);
+          if (!id) return null;
+          const checked = selectedCats.includes(id);
+          return (
+            <label key={id} className="filter-check-row">
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => toggleCategory(id)}
+              />
+              <span>{cat.categoryName}</span>
+            </label>
+          );
+        })}
+      </div>
+    </div>
+
+    <div className="filter-group">
+      <p className="filter-group-label">{t('products.brandsMulti')}</p>
+      {brandOptions.length === 0 ? (
+        <p className="filter-empty-hint">{t('products.brandsLoading')}</p>
+      ) : (
+        <div className="filter-checklist filter-checklist-scroll">
+          {brandOptions.map((b) => (
+            <label key={b} className="filter-check-row">
+              <input
+                type="checkbox"
+                checked={selectedBrands.includes(b)}
+                onChange={() => toggleBrand(b)}
+              />
+              <span>{b}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+
+    <div className="filter-group">
+      <p className="filter-group-label">{t('products.priceRange')}</p>
+      <div className="filter-price-presets">
+        {pricePresets.map((preset) => (
+          <button
+            key={preset.label}
+            type="button"
+            className={`filter-opt ${presetMatches(searchParams, preset) ? 'active' : ''}`}
+            onClick={() => togglePricePreset(preset)}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+      <div className="filter-price-custom">
+        <div className="filter-price-fields">
+          <label className="filter-price-field">
+            <span>{t('products.priceFrom')}</span>
+            <input
+              type="number"
+              min={0}
+              inputMode="numeric"
+              placeholder={t('products.priceMinPh')}
+              value={minPriceDraft}
+              onChange={(e) => setMinPriceDraft(e.target.value)}
+            />
+          </label>
+          <label className="filter-price-field">
+            <span>{t('products.priceTo')}</span>
+            <input
+              type="number"
+              min={0}
+              inputMode="numeric"
+              placeholder={t('products.priceMaxPh')}
+              value={maxPriceDraft}
+              onChange={(e) => setMaxPriceDraft(e.target.value)}
+            />
+          </label>
+        </div>
+        <button
+          type="button"
+          className="filter-apply-price-btn"
+          onClick={applyCustomPrice}
+        >
+          {t('products.applyPrice')}
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
 const Products = () => {
   const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
@@ -171,7 +312,7 @@ const Products = () => {
   );
 
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setSearchParams((prev) => {
         const p = new URLSearchParams(prev);
         const cur = p.get('search') || '';
@@ -182,7 +323,7 @@ const Products = () => {
         return p;
       });
     }, 400);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [searchDraft, setSearchParams]);
 
   const queryKey = searchParams.toString();
@@ -291,125 +432,27 @@ const Products = () => {
       searchParams.get('maxPrice'),
   );
 
-  const Sidebar = () => (
-    <div className="filter-sidebar">
-      <div className="filter-header">
-        <span className="filter-title">
-          <FiSliders size={16} /> {t('products.filterTitle')}
-        </span>
-        {hasFilters && (
-          <button type="button" className="clear-btn" onClick={handleClear}>
-            <FiX size={14} /> {t('products.clear')}
-          </button>
-        )}
-      </div>
-
-      <div className="filter-group filter-group-first">
-        <p className="filter-group-label">{t('products.searchByName')}</p>
-        <div className="filter-search-wrap">
-          <FiSearch className="filter-search-icon" size={16} aria-hidden />
-          <input
-            type="search"
-            className="filter-search-input"
-            placeholder={t('products.searchPlaceholder')}
-            value={searchDraft}
-            onChange={(e) => setSearchDraft(e.target.value)}
-            autoComplete="off"
-          />
-        </div>
-      </div>
-
-      <div className="filter-group">
-        <p className="filter-group-label">{t('products.categoriesMulti')}</p>
-        <div className="filter-checklist">
-          {safeCategories.map((cat) => {
-            const id = categoryIdFrom(cat);
-            if (!id) return null;
-            const checked = selectedCats.includes(id);
-            return (
-              <label key={id} className="filter-check-row">
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggleCategory(id)}
-                />
-                <span>{cat.categoryName}</span>
-              </label>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="filter-group">
-        <p className="filter-group-label">{t('products.brandsMulti')}</p>
-        {brandOptions.length === 0 ? (
-          <p className="filter-empty-hint">{t('products.brandsLoading')}</p>
-        ) : (
-          <div className="filter-checklist filter-checklist-scroll">
-            {brandOptions.map((b) => (
-              <label key={b} className="filter-check-row">
-                <input
-                  type="checkbox"
-                  checked={selectedBrands.includes(b)}
-                  onChange={() => toggleBrand(b)}
-                />
-                <span>{b}</span>
-              </label>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="filter-group">
-        <p className="filter-group-label">{t('products.priceRange')}</p>
-        <div className="filter-price-presets">
-          {pricePresets.map((preset) => (
-            <button
-              key={preset.label}
-              type="button"
-              className={`filter-opt ${presetMatches(searchParams, preset) ? 'active' : ''}`}
-              onClick={() => togglePricePreset(preset)}
-            >
-              {preset.label}
-            </button>
-          ))}
-        </div>
-        <div className="filter-price-custom">
-          <div className="filter-price-fields">
-            <label className="filter-price-field">
-              <span>{t('products.priceFrom')}</span>
-              <input
-                type="number"
-                min={0}
-                inputMode="numeric"
-                placeholder={t('products.priceMinPh')}
-                value={minPriceDraft}
-                onChange={(e) => setMinPriceDraft(e.target.value)}
-              />
-            </label>
-            <label className="filter-price-field">
-              <span>{t('products.priceTo')}</span>
-              <input
-                type="number"
-                min={0}
-                inputMode="numeric"
-                placeholder={t('products.priceMaxPh')}
-                value={maxPriceDraft}
-                onChange={(e) => setMaxPriceDraft(e.target.value)}
-              />
-            </label>
-          </div>
-          <button
-            type="button"
-            className="filter-apply-price-btn"
-            onClick={applyCustomPrice}
-          >
-            {t('products.applyPrice')}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  const sidebarProps = {
+    t,
+    hasFilters,
+    handleClear,
+    searchDraft,
+    setSearchDraft,
+    safeCategories,
+    selectedCats,
+    toggleCategory,
+    brandOptions,
+    selectedBrands,
+    toggleBrand,
+    pricePresets,
+    searchParams,
+    togglePricePreset,
+    minPriceDraft,
+    maxPriceDraft,
+    setMinPriceDraft,
+    setMaxPriceDraft,
+    applyCustomPrice,
+  };
 
   return (
     <div className="products-page">
@@ -470,7 +513,7 @@ const Products = () => {
         <Row className="g-4">
           <Col lg={3} className="d-none d-lg-block">
             <div className="sidebar-sticky">
-              <Sidebar />
+              <FilterSidebar {...sidebarProps} />
             </div>
           </Col>
 
@@ -591,7 +634,7 @@ const Products = () => {
                 </button>
               </div>
               <div className="drawer-content">
-                <Sidebar />
+                <FilterSidebar {...sidebarProps} />
               </div>
             </motion.div>
           </>
