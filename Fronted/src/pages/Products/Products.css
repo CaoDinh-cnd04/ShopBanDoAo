@@ -5,11 +5,11 @@
 
 /* ── Page Header ── */
 .products-page-header {
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
-  padding: 1.5rem 0;
+  padding: 1.25rem 0;
   position: sticky;
-  top: 68px; /* below navbar */
+  top: 60px; /* below navbar */
   z-index: 50;
 }
 
@@ -22,9 +22,10 @@
 }
 
 .products-page-title {
-  font-size: 1.6rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-size: 1.4rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
   margin: 0;
   color: var(--text-primary);
 }
@@ -48,24 +49,26 @@
   gap: 6px;
   padding: 8px 14px;
   border: 1.5px solid var(--border-color);
-  border-radius: 9px;
+  border-radius: 4px;
   background: var(--bg-primary);
   color: var(--text-secondary);
-  font-weight: 600;
-  font-size: 0.875rem;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   font-family: 'Inter', sans-serif;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 .toolbar-btn:hover {
-  border-color: #2563EB;
-  color: #2563EB;
+  border-color: #111111;
+  color: #111111;
 }
 
 .sort-select {
   padding: 8px 14px;
   border: 1.5px solid var(--border-color);
-  border-radius: 9px;
+  border-radius: 4px;
   background: var(--bg-primary);
   color: var(--text-primary);
   font-size: 0.875rem;
@@ -75,12 +78,12 @@
   outline: none;
   transition: border-color 0.2s;
 }
-.sort-select:focus { border-color: #2563EB; }
+.sort-select:focus { border-color: #111111; }
 
 .view-toggle {
   display: flex;
   border: 1.5px solid var(--border-color);
-  border-radius: 9px;
+  border-radius: 4px;
   overflow: hidden;
   background: var(--bg-primary);
 }
@@ -96,7 +99,7 @@
   transition: all 0.15s;
 }
 .view-btn.active, .view-btn:hover {
-  background: #2563EB;
+  background: #111111;
   color: #fff;
 }
 
@@ -107,14 +110,14 @@
 
 .sidebar-sticky {
   position: sticky;
-  top: 140px;
+  top: 130px;
 }
 
 /* ── Filter Sidebar ── */
 .filter-sidebar {
   background: var(--bg-card);
-  border: 1.5px solid var(--border-color);
-  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
   padding: 1.25rem;
   max-width: 100%;
   box-sizing: border-box;
@@ -142,16 +145,18 @@
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  border: 1px solid #F43F5E;
-  border-radius: 6px;
+  border: 1px solid #E00000;
+  border-radius: 4px;
   background: transparent;
-  color: #F43F5E;
-  font-size: 0.75rem;
-  font-weight: 600;
+  color: #E00000;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
   transition: all 0.15s;
 }
-.clear-btn:hover { background: rgba(244,63,94,0.08); }
+.clear-btn:hover { background: rgba(224,0,0,0.06); }
 
 .filter-group {
   margin-bottom: 1.25rem;
@@ -208,7 +213,7 @@
 }
 
 .filter-search-input:focus {
-  border-color: #2563eb;
+  border-color: #111111;
 }
 
 .filter-search-input::placeholder {
@@ -248,7 +253,7 @@
 .filter-check-row input {
   width: 16px;
   height: 16px;
-  accent-color: #2563eb;
+  accent-color: #111111;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -298,40 +303,44 @@
 }
 
 .filter-price-field input:focus {
-  border-color: #2563eb;
+  border-color: #111111;
 }
 
 .filter-apply-price-btn {
   padding: 8px 12px;
-  border-radius: 8px;
-  border: 1.5px solid #2563eb;
-  background: rgba(37, 99, 235, 0.08);
-  color: #2563eb;
-  font-weight: 600;
-  font-size: 0.8rem;
+  border-radius: 4px;
+  border: 1.5px solid #111111;
+  background: transparent;
+  color: #111111;
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   cursor: pointer;
   transition: background 0.15s;
 }
 
 .filter-apply-price-btn:hover {
-  background: rgba(37, 99, 235, 0.15);
+  background: #111111;
+  color: #fff;
 }
 
 .filter-opt {
   padding: 5px 12px;
   border: 1.5px solid var(--border-color);
-  border-radius: 9999px;
+  border-radius: 4px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: 0.75rem;
+  font-weight: 600;
   font-family: 'Inter', sans-serif;
+  letter-spacing: 0.04em;
   cursor: pointer;
   transition: all 0.15s;
 }
 .filter-opt:hover, .filter-opt.active {
-  background: #2563EB;
-  border-color: #2563EB;
+  background: #111111;
+  border-color: #111111;
   color: #fff;
 }
 
@@ -361,27 +370,27 @@
 .page-btn {
   width: 38px; height: 38px;
   border: 1.5px solid var(--border-color);
-  border-radius: 9px;
+  border-radius: 4px;
   background: var(--bg-primary);
   color: var(--text-secondary);
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.875rem;
   font-family: 'Inter', sans-serif;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 .page-btn:hover:not(:disabled) {
-  border-color: #2563EB;
-  color: #2563EB;
+  border-color: #111111;
+  color: #111111;
 }
 .page-btn.active {
-  background: #2563EB;
-  border-color: #2563EB;
+  background: #111111;
+  border-color: #111111;
   color: #fff;
-  box-shadow: 0 4px 12px rgba(37,99,235,0.35);
+  box-shadow: none;
 }
 .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -448,4 +457,63 @@
 @media (max-width: 576px) {
   .view-toggle { display: none; }
   .products-page-title { font-size: 1.3rem; }
+}
+
+/* ── Category Tabs ── */
+.category-tabs-container {
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.category-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 0.75rem 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.category-tabs-bar::-webkit-scrollbar { display: none; }
+
+.cat-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.cat-tab:hover {
+  border-color: #111111;
+  color: #111111;
+  background: transparent;
+}
+.cat-tab.active {
+  background: #111111;
+  border-color: #111111;
+  color: #fff;
+  box-shadow: none;
+}
+.cat-tab-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+@media (max-width: 576px) {
+  .cat-tab { padding: 6px 12px; font-size: 0.78rem; }
+  .cat-tab-icon { display: none; }
 }
