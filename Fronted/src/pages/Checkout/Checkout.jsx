@@ -26,7 +26,7 @@ const Checkout = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((s) => s.auth);
-  const { subtotal: rawSubtotal } = useSelector((s) => s.cart);
+  useSelector((s) => s.cart);
   const items = useSelector(selectCartWithPromo); // items with finalPrice applied
   // Recalculate subtotal using discounted prices
   const subtotal = items.reduce((s, i) => s + (i.finalPrice ?? i.price) * i.quantity, 0);

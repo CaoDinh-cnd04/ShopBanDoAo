@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
-import { FiArrowRight, FiShoppingBag, FiCalendar, FiStar, FiTag, FiPackage } from 'react-icons/fi';
+import { FiArrowRight, FiShoppingBag, FiCalendar, FiStar, FiTag, FiPackage, FiUsers } from 'react-icons/fi';
 import { fetchTopSellingProducts } from '../../store/slices/productSlice';
 import { fetchCategories } from '../../store/slices/categorySlice';
 import { fetchCourts } from '../../store/slices/courtSlice';
