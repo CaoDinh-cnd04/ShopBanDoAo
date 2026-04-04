@@ -13,7 +13,7 @@ import './ProductCard.css';
 const formatPrice = (price) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
 
-const ProductCard = ({ product, showHotBadge = false }) => {
+const ProductCard = ({ product, showHotBadge = false, promoDiscount = 0 }) => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((s) => s.auth);
@@ -22,10 +22,17 @@ const ProductCard = ({ product, showHotBadge = false }) => {
 
   const rawImg = product.images?.[0]?.imageUrl || product.image;
   const mainImage = resolveMediaUrl(rawImg) || '/placeholder.svg';
-  const price = product.variants?.[0]?.price || product.defaultPrice || product.price || 0;
-  const originalPrice = product.originalPrice;
+  const basePrice = product.variants?.[0]?.price || product.defaultPrice || product.price || 0;
+  // promoDiscount (%) overrides static originalPrice when set
+  const promoSalePrice = promoDiscount > 0
+    ? Math.round(basePrice * (1 - promoDiscount / 100))
+    : null;
+  const price = promoSalePrice ?? basePrice;
+  const originalPrice = promoSalePrice ? basePrice : product.originalPrice;
   const isOnSale = originalPrice && originalPrice > price;
-  const discount = isOnSale ? Math.round((1 - price / originalPrice) * 100) : 0;
+  const discount = promoDiscount > 0
+    ? promoDiscount
+    : isOnSale ? Math.round((1 - price / originalPrice) * 100) : 0;
   const isOutOfStock = product.variants?.length > 0 && product.variants.every((v) => v.stockQuantity === 0);
   const isFeatured = product.isFeatured || showHotBadge;
   const rating = product.rating || product.averageRating;
@@ -146,7 +153,7 @@ const ProductCard = ({ product, showHotBadge = false }) => {
             )}
 
             {/* Price */}
-            <div className="pc-price-wrap">
+            <div className={`pc-price-wrap${isOnSale ? ' on-sale' : ''}`}>
               <span className="pc-price">{formatPrice(price)}</span>
               {isOnSale && (
                 <span className="pc-price-original">{formatPrice(originalPrice)}</span>

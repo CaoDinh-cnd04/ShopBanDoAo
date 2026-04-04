@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -19,6 +20,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { UploadModule } from './upload/upload.module';
 import { SiteSettingsModule } from './site-settings/site-settings.module';
 import { ChatModule } from './chat/chat.module';
+import { PromotionsModule } from './promotions/promotions.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -34,6 +36,7 @@ import { ChatModule } from './chat/chat.module';
       }),
       inject: [ConfigService],
     }),
+    ScheduleModule.forRoot(),
     AuthModule,
     UsersModule,
     ProductsModule,
@@ -50,6 +53,7 @@ import { ChatModule } from './chat/chat.module';
     UploadModule,
     SiteSettingsModule,
     ChatModule,
+    PromotionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -6,6 +6,7 @@ import { Court, CourtSchema } from '../courts/schemas/court.schema';
 import { BookingRepository } from './bookings.repository';
 import { BookingsService } from './bookings.service';
 import { BookingsController } from './bookings.controller';
+import { BookingSchedulerService } from './booking-scheduler.service';
 import { PaymentsModule } from '../payments/payments.module';
 import { OrderEventsModule } from '../order-events/order-events.module';
 
@@ -20,7 +21,7 @@ import { OrderEventsModule } from '../order-events/order-events.module';
     OrderEventsModule,
   ],
   controllers: [BookingsController],
-  providers: [BookingRepository, BookingsService],
+  providers: [BookingRepository, BookingsService, BookingSchedulerService],
   exports: [BookingsService],
 })
 export class BookingsModule {}

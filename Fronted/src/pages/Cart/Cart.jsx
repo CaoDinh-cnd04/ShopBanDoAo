@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import { FiTrash2, FiPlus, FiMinus, FiShoppingBag, FiArrowRight, FiTag } from 'react-icons/fi';
 import { fetchCart, updateCartItem, removeFromCart, clearCart } from '../../store/slices/cartSlice';
+import { selectCartWithPromo } from '../../store/slices/promotionSlice';
 import { toast } from 'react-toastify';
 import Loading from '../../components/Loading/Loading';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
@@ -18,7 +19,9 @@ const Cart = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { items, subtotal, isLoading } = useSelector((s) => s.cart);
+  const { isLoading } = useSelector((s) => s.cart);
+  const items = useSelector(selectCartWithPromo);
+  const subtotal = items.reduce((s, i) => s + (i.finalPrice ?? i.price) * i.quantity, 0);
   const { isAuthenticated } = useSelector((s) => s.auth);
 
   const [voucherInput, setVoucherInput] = useState('');
@@ -138,7 +141,8 @@ const Cart = () => {
                 {safeItems.map((item) => {
                   const pid = item.productId;
                   const img = resolveMediaUrl(item.image) || '/placeholder.svg';
-                  const price = item.price || 0;
+                  const price = item.finalPrice ?? item.price ?? 0;
+                  const origPrice = item.promoDiscount > 0 ? item.price : null;
                   const vid = item.variantId;
                   const lineKey = `${pid}-${vid || 'base'}`;
                   return (
@@ -162,7 +166,11 @@ const Cart = () => {
                         {item.variantLabel && (
                           <div className="cart-item-variant">{item.variantLabel}</div>
                         )}
-                        <div className="cart-item-price-mobile">{fmt(price)}</div>
+                        <div className="cart-item-price-mobile">
+                          {origPrice && <span style={{ textDecoration: 'line-through', color: '#999', fontSize: '0.78rem', marginRight: 4 }}>{fmt(origPrice)}</span>}
+                          <span style={origPrice ? { color: '#E00000', fontWeight: 700 } : {}}>{fmt(price)}</span>
+                          {item.promoDiscount > 0 && <span style={{ marginLeft: 5, fontSize: '0.7rem', background: '#E00000', color: '#fff', borderRadius: 3, padding: '1px 5px', fontWeight: 700 }}>-{item.promoDiscount}%</span>}
+                        </div>
                       </div>
 
                       {/* Quantity */}
@@ -177,7 +185,10 @@ const Cart = () => {
                       </div>
 
                       {/* Price */}
-                      <div className="cart-item-subtotal">{fmt(price * item.quantity)}</div>
+                      <div className="cart-item-subtotal">
+                        {origPrice && <div style={{ textDecoration: 'line-through', color: '#999', fontSize: '0.75rem' }}>{fmt(origPrice * item.quantity)}</div>}
+                        <div style={origPrice ? { color: '#E00000', fontWeight: 700 } : {}}>{fmt(price * item.quantity)}</div>
+                      </div>
 
                       {/* Remove */}
                       <motion.button

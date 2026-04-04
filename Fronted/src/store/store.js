@@ -12,6 +12,7 @@ import addressReducer from './slices/addressSlice';
 import reviewReducer from './slices/reviewSlice';
 import voucherReducer from './slices/voucherSlice';
 import notificationReducer from './slices/notificationSlice';
+import promotionReducer from './slices/promotionSlice';
 
 export const store = configureStore({
   reducer: {
@@ -28,6 +29,7 @@ export const store = configureStore({
     reviews: reviewReducer,
     vouchers: voucherReducer,
     notifications: notificationReducer,
+    promotions: promotionReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

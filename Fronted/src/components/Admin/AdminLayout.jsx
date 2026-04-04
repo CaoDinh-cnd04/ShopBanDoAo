@@ -16,7 +16,8 @@ import {
   FiMapPin,
   FiTag,
   FiImage,
-  FiMessageCircle
+  FiMessageCircle,
+  FiPercent,
 } from 'react-icons/fi';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
@@ -54,7 +55,8 @@ const navGroups = [
       { to: '/admin/bookings', end: false, icon: FiCalendar, label: 'Đặt sân' },
       { to: '/admin/courts', end: false, icon: FiMapPin, label: 'Sân' },
       { to: '/admin/banner', end: false, icon: FiImage, label: 'Banner trang chủ' },
-      { to: '/admin/promos', end: false, icon: FiTag, label: 'Banner khuyến mãi' }
+      { to: '/admin/promos', end: false, icon: FiTag, label: 'Banner khuyến mãi' },
+      { to: '/admin/promotions', end: false, icon: FiPercent, label: 'Chương trình KM' }
     ]
   },
   {

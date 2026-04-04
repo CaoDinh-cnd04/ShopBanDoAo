@@ -102,7 +102,7 @@ const AdminDashboard = () => {
       totalRevenue,
       totalBookings,
       pendingBookings,
-      revenueByDay: orders.revenueByDay || orders.revenueByDay30 || [],
+      revenueByDay: orders.revenueByDay30 || orders.revenueByDay || [],
       topProducts: orders.topProducts || [],
       totalCourts,
       activeCourts,

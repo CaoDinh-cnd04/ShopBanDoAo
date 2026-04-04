@@ -991,6 +991,19 @@ export class OrdersService {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+    /**
+     * Điều kiện "đã thu được tiền":
+     *  - VNPay: paymentStatus = 'Paid'  (đã chuyển khoản thành công, dù chưa giao xong)
+     *  - COD  : orderStatus  = 'Delivered' (thu tiền mặt khi giao hàng)
+     * Loại trừ đơn VNPay đã hủy sau khi thanh toán (cần hoàn tiền).
+     */
+    const PAID_MATCH = {
+      $or: [
+        { paymentMethod: 'VNPAY', paymentStatus: 'Paid', orderStatus: { $ne: 'Cancelled' } },
+        { paymentMethod: 'COD',   orderStatus: 'Delivered' },
+      ],
+    };
+
     const [totalOrders, pendingOrders, completedOrders, revenueAgg] =
       await Promise.all([
         this.orderRepository.count({}),
@@ -1001,13 +1014,13 @@ export class OrdersService {
           orderStatus: { $in: ['Delivered', 'Hoàn thành'] },
         }),
         this.orderRepository.aggregate([
-          { $match: { paymentStatus: { $in: ['Paid', 'Đã thanh toán'] } } },
+          { $match: PAID_MATCH },
           { $group: { _id: null, total: { $sum: '$totalAmount' } } },
         ]),
       ]);
 
     const monthAgg = await this.orderRepository.aggregate([
-      { $match: { createdAt: { $gte: startOfMonth } } },
+      { $match: { $and: [PAID_MATCH, { createdAt: { $gte: startOfMonth } }] } },
       {
         $group: {
           _id: null,
@@ -1020,20 +1033,63 @@ export class OrdersService {
     const revenueByDay = await this.orderRepository.aggregate([
       {
         $match: {
-          createdAt: {
-            $gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
-          },
+          $and: [
+            PAID_MATCH,
+            { createdAt: { $gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) } },
+          ],
         },
       },
       {
         $group: {
           _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-          Revenue: { $sum: '$totalAmount' },
-          Orders: { $sum: 1 },
+          revenue: { $sum: '$totalAmount' },
+          orders: { $sum: 1 },
         },
       },
       { $sort: { _id: 1 } },
-      { $project: { _id: 0, date: '$_id', Revenue: 1, Orders: 1 } },
+      { $project: { _id: 0, date: '$_id', revenue: 1, orders: 1 } },
+    ]);
+
+    const topProducts = await this.orderRepository.aggregate([
+      { $match: PAID_MATCH },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.productId',
+          totalQuantity: { $sum: '$items.quantity' },
+          totalRevenue: {
+            $sum: { $multiply: ['$items.price', '$items.quantity'] },
+          },
+        },
+      },
+      { $sort: { totalQuantity: -1 } },
+      { $limit: 10 },
+      {
+        $lookup: {
+          from: 'products',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'product',
+        },
+      },
+      {
+        $unwind: {
+          path: '$product',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          productId: { $toString: '$_id' },
+          productName: {
+            $ifNull: ['$product.productName', 'Sản phẩm đã xóa'],
+          },
+          image: { $arrayElemAt: ['$product.images', 0] },
+          totalQuantity: 1,
+          totalRevenue: 1,
+        },
+      },
     ]);
 
     return {
@@ -1046,6 +1102,7 @@ export class OrdersService {
         thisMonthRevenue: monthAgg[0]?.revenue ?? 0,
       },
       revenueByDay30: revenueByDay,
+      topProducts,
     };
   }
 }

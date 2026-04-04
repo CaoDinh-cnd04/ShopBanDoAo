@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { FiCheck, FiMapPin, FiTruck, FiCreditCard, FiArrowRight, FiArrowLeft } from 'react-icons/fi';
 import { createOrder } from '../../store/slices/orderSlice';
 import { clearCart, fetchCart } from '../../store/slices/cartSlice';
+import { selectCartWithPromo } from '../../store/slices/promotionSlice';
 import { fetchAddresses } from '../../store/slices/addressSlice';
 import { fetchNotifications } from '../../store/slices/notificationSlice';
 import { toast } from 'react-toastify';
@@ -25,7 +26,10 @@ const Checkout = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((s) => s.auth);
-  const { items, subtotal } = useSelector((s) => s.cart);
+  const { subtotal: rawSubtotal } = useSelector((s) => s.cart);
+  const items = useSelector(selectCartWithPromo); // items with finalPrice applied
+  // Recalculate subtotal using discounted prices
+  const subtotal = items.reduce((s, i) => s + (i.finalPrice ?? i.price) * i.quantity, 0);
   const { addresses: rawAddresses } = useSelector((s) => s.addresses);
   const savedAddresses = useMemo(
     () => (Array.isArray(rawAddresses) ? rawAddresses : []),
@@ -162,7 +166,7 @@ const Checkout = () => {
           const row = {
             productId,
             quantity: Number(item.quantity) || 1,
-            price: Number(item.price) || 0,
+            price: Number(item.finalPrice ?? item.price) || 0,
           };
           if (variantId) row.variantId = variantId;
           return row;

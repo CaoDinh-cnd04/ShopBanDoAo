@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
-import { FiArrowRight, FiShoppingBag, FiCalendar, FiStar, FiTag } from 'react-icons/fi';
+import { FiArrowRight, FiShoppingBag, FiCalendar, FiStar, FiTag, FiPackage } from 'react-icons/fi';
 import { fetchTopSellingProducts } from '../../store/slices/productSlice';
 import { fetchCategories } from '../../store/slices/categorySlice';
 import { fetchCourts } from '../../store/slices/courtSlice';
@@ -13,6 +13,7 @@ import Loading from '../../components/Loading/Loading';
 import { resolveMediaUrl } from '../../utils/mediaUrl';
 import adminService from '../../services/adminService';
 import { DEFAULT_BANNER } from '../../config/bannerDefaults';
+import { getDiscountForCategory } from '../../services/promotionService';
 import SiteReviewsSection from '../../components/Reviews/SiteReviewsSection';
 import api from '../../services/api';
 import './Home.css';
@@ -52,6 +53,7 @@ const Home = () => {
   const { featuredProducts, isLoading } = useSelector((s) => s.products);
   const { categories } = useSelector((s) => s.categories);
   const { courts } = useSelector((s) => s.courts);
+  const activePromotions = useSelector((s) => s.promotions?.active ?? []);
 
   useEffect(() => {
     dispatch(fetchTopSellingProducts({ limit: 8 }));
@@ -136,18 +138,16 @@ const Home = () => {
 
   const [promos, setPromos] = useState([]);
 
-  useEffect(() => {
-    adminService.promos.getPromos().then((data) => {
-      setPromos(Array.isArray(data) ? data.filter((p) => p.isActive !== false) : []);
-    });
-    const onUpdate = () => {
-      adminService.promos.getPromos().then((data) => {
-        setPromos(Array.isArray(data) ? data.filter((p) => p.isActive !== false) : []);
-      });
-    };
-    window.addEventListener('site-promos-updated', onUpdate);
-    return () => window.removeEventListener('site-promos-updated', onUpdate);
+  const reloadPromos = useCallback(async () => {
+    const data = await adminService.promos.getPromos();
+    setPromos(Array.isArray(data) ? data.filter((p) => p.isActive !== false) : []);
   }, []);
+
+  useEffect(() => {
+    void reloadPromos();
+    window.addEventListener('site-promos-updated', reloadPromos);
+    return () => window.removeEventListener('site-promos-updated', reloadPromos);
+  }, [reloadPromos]);
 
   const heroStyle = bannerMerged
     ? {
@@ -279,7 +279,12 @@ const Home = () => {
                   whileInView="show"
                   custom={i}
                   viewport={{ once: true }}
-                  onClick={() => promo.link && navigate(promo.link)}
+                  onClick={() => {
+                    const dest = promo.categoryId
+                      ? `/products?category=${promo.categoryId}`
+                      : (promo.link || '/products');
+                    navigate(dest);
+                  }}
                 >
                   {promo.imageUrl && (
                     <img
@@ -289,10 +294,14 @@ const Home = () => {
                     />
                   )}
                   <div className="promo-card-body">
-                    {promo.code && (
+                    {(promo.discountPercent || promo.code) && (
                       <div className="promo-card-code">
-                        <FiTag size={11} />
-                        <span>{promo.code}</span>
+                        {promo.discountPercent && (
+                          <><FiTag size={11} /><span>SALE {promo.discountPercent}%</span></>
+                        )}
+                        {promo.code && !promo.discountPercent && (
+                          <><FiTag size={11} /><span>{promo.code}</span></>
+                        )}
                       </div>
                     )}
                     <div className="promo-card-title">{promo.title}</div>
@@ -395,7 +404,11 @@ const Home = () => {
                     viewport={{ once: true }}
                     style={{ height: '100%' }}
                   >
-                    <ProductCard product={product} showHotBadge />
+                    <ProductCard
+                      product={product}
+                      showHotBadge
+                      promoDiscount={getDiscountForCategory(activePromotions, product.categoryId?._id ?? product.categoryId)}
+                    />
                   </motion.div>
                 </Col>
               ))}
@@ -448,7 +461,10 @@ const Home = () => {
                       viewport={{ once: true }}
                       style={{ height: '100%' }}
                     >
-                      <ProductCard product={product} />
+                      <ProductCard
+                        product={product}
+                        promoDiscount={getDiscountForCategory(activePromotions, product.categoryId?._id ?? product.categoryId)}
+                      />
                     </motion.div>
                   </Col>
                 ))}

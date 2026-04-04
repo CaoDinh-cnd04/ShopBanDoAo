@@ -244,7 +244,13 @@ export const adminPromosService = {
     getPromos: async () => {
         try {
             const res = await api.get('/site-settings/promos');
-            return Array.isArray(res.data) ? res.data : [];
+            // TransformInterceptor wraps: { success, data: [...] }
+            const arr = Array.isArray(res.data)
+                ? res.data
+                : Array.isArray(res.data?.data)
+                ? res.data.data
+                : [];
+            return arr;
         } catch {
             return [];
         }

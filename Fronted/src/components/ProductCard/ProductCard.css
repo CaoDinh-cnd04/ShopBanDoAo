@@ -192,6 +192,7 @@
   gap: 8px;
   margin-top: auto;
   padding-top: 4px;
+  flex-wrap: wrap;
 }
 
 .pc-price {
@@ -199,6 +200,11 @@
   font-weight: 700;
   color: var(--text-primary, #111111);
   letter-spacing: -0.01em;
+}
+
+/* Sale price: red when there's a discount */
+.pc-price-wrap.on-sale .pc-price {
+  color: #E00000;
 }
 
 .pc-price-original {

@@ -12,6 +12,7 @@ import Loading from './components/Loading/Loading';
 // Redux
 import { checkAuth } from './store/slices/authSlice';
 import { setTheme } from './store/slices/themeSlice';
+import { fetchActivePromotions } from './store/slices/promotionSlice';
 
 // Components
 import AnimatedBackground from './components/AnimatedBackground/AnimatedBackground';
@@ -57,8 +58,9 @@ const AdminUsers      = lazy(() => import('./pages/Admin/AdminUsers'));
 const AdminUserDetail = lazy(() => import('./pages/Admin/AdminUserDetail'));
 const AdminReviews    = lazy(() => import('./pages/Admin/AdminReviews'));
 const AdminBanner     = lazy(() => import('./pages/Admin/AdminBanner'));
-const AdminPromos     = lazy(() => import('./pages/Admin/AdminPromos'));
-const AdminMessages   = lazy(() => import('./pages/Admin/AdminMessages'));
+const AdminPromos       = lazy(() => import('./pages/Admin/AdminPromos'));
+const AdminPromotions   = lazy(() => import('./pages/Admin/AdminPromotions'));
+const AdminMessages     = lazy(() => import('./pages/Admin/AdminMessages'));
 
 function App() {
   const dispatch = useDispatch();
@@ -71,6 +73,7 @@ function App() {
 
   useEffect(() => {
     dispatch(checkAuth());
+    dispatch(fetchActivePromotions());
     const savedTheme = localStorage.getItem('theme') || 'light';
     dispatch(setTheme(savedTheme));
   }, [dispatch]);
@@ -140,6 +143,7 @@ function App() {
             <Route path="reviews" element={<AdminReviews />} />
             <Route path="banner" element={<AdminBanner />} />
             <Route path="promos" element={<AdminPromos />} />
+            <Route path="promotions" element={<AdminPromotions />} />
             <Route path="messages" element={<AdminMessages />} />
           </Route>
         </Routes>

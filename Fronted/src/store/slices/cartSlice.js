@@ -34,12 +34,20 @@ const normalizeCart = (payload) => {
       image = typeof first === 'string' ? first : first?.imageUrl || null;
     }
 
+    const rawCat = product.categoryId;
+    const categoryId =
+      (rawCat && typeof rawCat === 'object'
+        ? rawCat._id?.toString() || rawCat.id?.toString()
+        : String(rawCat || '')) || '';
+
     return {
       productId,
       variantId: variantId || undefined,
       variantLabel,
       productName: product.productName ?? item.productName ?? 'Sản phẩm',
-      price,
+      price,           // base price (no promo discount)
+      originalPrice: product.originalPrice || null,
+      categoryId,
       quantity: item.quantity ?? 1,
       image,
     };

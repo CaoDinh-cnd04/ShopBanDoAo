@@ -21,6 +21,7 @@ import {
 } from '../../store/slices/productSlice';
 import { fetchCategories } from '../../store/slices/categorySlice';
 import api from '../../services/api';
+import { getDiscountForCategory } from '../../services/promotionService';
 import ProductCard from '../../components/ProductCard/ProductCard';
 import Loading from '../../components/Loading/Loading';
 import './Products.css';
@@ -73,6 +74,48 @@ function categoryIdFrom(cat) {
   }
   return String(raw).trim();
 }
+
+/** Category tabs — pill buttons bên trên danh sách sản phẩm */
+const CategoryTabs = ({ categories, searchParams, onTabClick }) => {
+  // Tab active khi chỉ có ?category=id (không có ?categories multi-select)
+  const activeTabId = !searchParams.get('categories')
+    ? (searchParams.get('category') || '')
+    : '';
+
+  return (
+    <div className="category-tabs-bar">
+      <button
+        type="button"
+        className={`cat-tab ${activeTabId === '' ? 'active' : ''}`}
+        onClick={() => onTabClick('')}
+      >
+        Tất cả
+      </button>
+      {categories.map((cat) => {
+        const id = categoryIdFrom(cat);
+        if (!id) return null;
+        return (
+          <button
+            key={id}
+            type="button"
+            className={`cat-tab ${activeTabId === id ? 'active' : ''}`}
+            onClick={() => onTabClick(id)}
+          >
+            {cat.imageUrl && (
+              <img
+                src={cat.imageUrl}
+                alt=""
+                className="cat-tab-icon"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
+            )}
+            {cat.categoryName}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
 
 /** Extracted outside Products so React doesn't remount it on every render */
 const FilterSidebar = ({
@@ -179,29 +222,26 @@ const FilterSidebar = ({
         ))}
       </div>
       <div className="filter-price-custom">
-        <div className="filter-price-fields">
-          <label className="filter-price-field">
-            <span>{t('products.priceFrom')}</span>
-            <input
-              type="number"
-              min={0}
-              inputMode="numeric"
-              placeholder={t('products.priceMinPh')}
-              value={minPriceDraft}
-              onChange={(e) => setMinPriceDraft(e.target.value)}
-            />
-          </label>
-          <label className="filter-price-field">
-            <span>{t('products.priceTo')}</span>
-            <input
-              type="number"
-              min={0}
-              inputMode="numeric"
-              placeholder={t('products.priceMaxPh')}
-              value={maxPriceDraft}
-              onChange={(e) => setMaxPriceDraft(e.target.value)}
-            />
-          </label>
+        <div className="filter-price-range-row">
+          <input
+            type="number"
+            min={0}
+            inputMode="numeric"
+            placeholder={t('products.priceMinPh')}
+            value={minPriceDraft}
+            onChange={(e) => setMinPriceDraft(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && applyCustomPrice()}
+          />
+          <span className="filter-price-sep">—</span>
+          <input
+            type="number"
+            min={0}
+            inputMode="numeric"
+            placeholder={t('products.priceMaxPh')}
+            value={maxPriceDraft}
+            onChange={(e) => setMaxPriceDraft(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && applyCustomPrice()}
+          />
         </div>
         <button
           type="button"
@@ -221,6 +261,7 @@ const Products = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { products, isLoading, pagination } = useSelector((s) => s.products);
   const { categories } = useSelector((s) => s.categories);
+  const activePromotions = useSelector((s) => s.promotions?.active ?? []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
   const [brandOptions, setBrandOptions] = useState([]);
@@ -414,6 +455,15 @@ const Products = () => {
     }
   };
 
+  const handleTabClick = useCallback((id) => {
+    const p = new URLSearchParams(searchParams);
+    p.delete('categories');
+    p.set('page', '1');
+    if (id) p.set('category', id);
+    else p.delete('category');
+    setSearchParams(p);
+  }, [searchParams, setSearchParams]);
+
   const currentPage = pagination?.currentPage || Number(searchParams.get('page')) || 1;
   const totalPages = pagination?.totalPages || 1;
   const totalItems = pagination?.totalItems || 0;
@@ -509,6 +559,18 @@ const Products = () => {
         </Container>
       </div>
 
+      {safeCategories.length > 0 && (
+        <div className="category-tabs-container">
+          <Container>
+            <CategoryTabs
+              categories={safeCategories}
+              searchParams={searchParams}
+              onTabClick={handleTabClick}
+            />
+          </Container>
+        </div>
+      )}
+
       <Container className="products-layout">
         <Row className="g-4">
           <Col lg={3} className="d-none d-lg-block">
@@ -551,7 +613,13 @@ const Products = () => {
                         transition={{ delay: (i % 12) * 0.04 }}
                         style={{ height: '100%' }}
                       >
-                        <ProductCard product={product} />
+                        <ProductCard
+                          product={product}
+                          promoDiscount={getDiscountForCategory(
+                            activePromotions,
+                            product.categoryId?._id ?? product.categoryId,
+                          )}
+                        />
                       </motion.div>
                     </Col>
                   ))}
