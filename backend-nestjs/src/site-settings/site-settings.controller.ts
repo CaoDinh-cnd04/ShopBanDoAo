@@ -27,4 +27,18 @@ export class SiteSettingsController {
   async putBanner(@Body() body: Record<string, unknown>) {
     return this.siteSettingsService.setBanner(body);
   }
+
+  /** Công khai — trang chủ đọc promos */
+  @Get('promos')
+  async getPromos() {
+    return this.siteSettingsService.getPromos();
+  }
+
+  /** Chỉ Admin — lưu promos vào MongoDB */
+  @Put('promos')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('Admin')
+  async putPromos(@Body() body: unknown) {
+    return this.siteSettingsService.setPromos(body);
+  }
 }

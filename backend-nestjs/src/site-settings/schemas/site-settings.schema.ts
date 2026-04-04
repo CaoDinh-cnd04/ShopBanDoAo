@@ -8,6 +8,9 @@ export type SiteSettingsDocument = SiteSettings & Document;
 export class SiteSettings {
   @Prop({ type: Object, default: {} })
   banner: Record<string, unknown>;
+
+  @Prop({ type: Array, default: [] })
+  promos: Record<string, unknown>[];
 }
 
 export const SiteSettingsSchema = SchemaFactory.createForClass(SiteSettings);

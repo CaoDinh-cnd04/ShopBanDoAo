@@ -57,6 +57,7 @@ const AdminUsers      = lazy(() => import('./pages/Admin/AdminUsers'));
 const AdminUserDetail = lazy(() => import('./pages/Admin/AdminUserDetail'));
 const AdminReviews    = lazy(() => import('./pages/Admin/AdminReviews'));
 const AdminBanner     = lazy(() => import('./pages/Admin/AdminBanner'));
+const AdminPromos     = lazy(() => import('./pages/Admin/AdminPromos'));
 const AdminMessages   = lazy(() => import('./pages/Admin/AdminMessages'));
 
 function App() {
@@ -138,6 +139,7 @@ function App() {
             <Route path="users" element={<AdminUsers />} />
             <Route path="reviews" element={<AdminReviews />} />
             <Route path="banner" element={<AdminBanner />} />
+            <Route path="promos" element={<AdminPromos />} />
             <Route path="messages" element={<AdminMessages />} />
           </Route>
         </Routes>

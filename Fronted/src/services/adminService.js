@@ -240,6 +240,22 @@ export const adminDashboardService = {
     },
 };
 
+export const adminPromosService = {
+    getPromos: async () => {
+        try {
+            const res = await api.get('/site-settings/promos');
+            return Array.isArray(res.data) ? res.data : [];
+        } catch {
+            return [];
+        }
+    },
+    savePromos: async (promos) => {
+        await api.put('/site-settings/promos', promos);
+        window.dispatchEvent(new CustomEvent('site-promos-updated'));
+        return promos;
+    },
+};
+
 export default {
     users: adminUserService,
     orders: adminOrderService,
@@ -251,5 +267,6 @@ export default {
     reviews: adminReviewService,
     dashboard: adminDashboardService,
     banner: adminBannerService,
+    promos: adminPromosService,
 };
 

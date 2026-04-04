@@ -53,7 +53,8 @@ const navGroups = [
     items: [
       { to: '/admin/bookings', end: false, icon: FiCalendar, label: 'Đặt sân' },
       { to: '/admin/courts', end: false, icon: FiMapPin, label: 'Sân' },
-      { to: '/admin/banner', end: false, icon: FiImage, label: 'Banner trang chủ' }
+      { to: '/admin/banner', end: false, icon: FiImage, label: 'Banner trang chủ' },
+      { to: '/admin/promos', end: false, icon: FiTag, label: 'Banner khuyến mãi' }
     ]
   },
   {

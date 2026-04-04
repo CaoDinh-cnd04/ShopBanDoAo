@@ -18,4 +18,16 @@ export class SiteSettingsService {
     await this.repo.upsertBanner(body);
     return body;
   }
+
+  async getPromos(): Promise<Record<string, unknown>[]> {
+    return this.repo.getPromos();
+  }
+
+  async setPromos(body: unknown): Promise<Record<string, unknown>[]> {
+    if (!Array.isArray(body)) {
+      throw new BadRequestException('Body phải là mảng JSON');
+    }
+    await this.repo.upsertPromos(body as Record<string, unknown>[]);
+    return body as Record<string, unknown>[];
+  }
 }

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
-import { FiArrowRight, FiShoppingBag, FiCalendar, FiStar, FiUsers, FiPackage } from 'react-icons/fi';
+import { FiArrowRight, FiShoppingBag, FiCalendar, FiStar, FiTag } from 'react-icons/fi';
 import { fetchTopSellingProducts } from '../../store/slices/productSlice';
 import { fetchCategories } from '../../store/slices/categorySlice';
 import { fetchCourts } from '../../store/slices/courtSlice';
@@ -14,6 +14,7 @@ import { resolveMediaUrl } from '../../utils/mediaUrl';
 import adminService from '../../services/adminService';
 import { DEFAULT_BANNER } from '../../config/bannerDefaults';
 import SiteReviewsSection from '../../components/Reviews/SiteReviewsSection';
+import api from '../../services/api';
 import './Home.css';
 
 const PLACEHOLDER = '/placeholder-category.svg';
@@ -67,8 +68,53 @@ const Home = () => {
   const displayFeatured = Array.isArray(featuredProducts)
     ? featuredProducts.slice(0, 8)
     : [];
-  const displayCategories = Array.isArray(categories) ? categories.slice(0, 6) : [];
+  const displayCategories = Array.isArray(categories) ? categories : [];
   const displayCourts = Array.isArray(courts) ? courts.slice(0, 3) : [];
+
+  // { [categoryId]: Product[] }
+  const [catProducts, setCatProducts] = useState({});
+
+  // Fetch top-4 products for each category (idle callback để không block)
+  useEffect(() => {
+    if (!Array.isArray(categories) || categories.length === 0) return;
+    let cancelled = false;
+    const load = async () => {
+      const entries = await Promise.all(
+        categories.map(async (cat) => {
+          const id = String(cat.categoryId || cat._id || cat.id || '');
+          if (!id) return null;
+          try {
+            const res = await api.get('/products', {
+              params: { category: id, limit: 4, page: 1, sort: 'newest' },
+            });
+            const list = Array.isArray(res.data?.products)
+              ? res.data.products
+              : Array.isArray(res.data?.data)
+              ? res.data.data
+              : [];
+            return [id, list.slice(0, 4)];
+          } catch {
+            return null;
+          }
+        }),
+      );
+      if (!cancelled) {
+        const map = {};
+        for (const entry of entries) {
+          if (entry) map[entry[0]] = entry[1];
+        }
+        setCatProducts(map);
+      }
+    };
+    const id =
+      typeof requestIdleCallback !== 'undefined'
+        ? requestIdleCallback(load)
+        : setTimeout(load, 50);
+    return () => {
+      cancelled = true;
+      typeof requestIdleCallback !== 'undefined' ? cancelIdleCallback(id) : clearTimeout(id);
+    };
+  }, [categories]);
 
   const [bannerMerged, setBannerMerged] = useState(() => ({ ...DEFAULT_BANNER }));
 
@@ -79,9 +125,7 @@ const Home = () => {
 
   useEffect(() => {
     void reloadBanner();
-    const onUpdate = () => {
-      void reloadBanner();
-    };
+    const onUpdate = () => { void reloadBanner(); };
     window.addEventListener('site-banner-updated', onUpdate);
     window.addEventListener('storage', onUpdate);
     return () => {
@@ -89,6 +133,21 @@ const Home = () => {
       window.removeEventListener('storage', onUpdate);
     };
   }, [reloadBanner]);
+
+  const [promos, setPromos] = useState([]);
+
+  useEffect(() => {
+    adminService.promos.getPromos().then((data) => {
+      setPromos(Array.isArray(data) ? data.filter((p) => p.isActive !== false) : []);
+    });
+    const onUpdate = () => {
+      adminService.promos.getPromos().then((data) => {
+        setPromos(Array.isArray(data) ? data.filter((p) => p.isActive !== false) : []);
+      });
+    };
+    window.addEventListener('site-promos-updated', onUpdate);
+    return () => window.removeEventListener('site-promos-updated', onUpdate);
+  }, []);
 
   const heroStyle = bannerMerged
     ? {
@@ -205,33 +264,56 @@ const Home = () => {
         </Container>
       </section>
 
-      {/* ══════════════ STATS ══════════════ */}
-      <section className="stats-section">
-        <Container>
-          <div className="stats-grid">
-            {[
-              { icon: FiUsers, value: '10K+', label: t('home.statsCustomers') },
-              { icon: FiPackage, value: '500+', label: t('home.statsProducts') },
-              { icon: FiCalendar, value: '50+', label: t('home.statsCourts') },
-              { icon: FiStar, value: '4.9★', label: t('home.statsRating') },
-            ].map(({ icon: Icon, value, label }, i) => (
-              <motion.div
-                key={label}
-                className="stat-item"
-                variants={fadeUp}
-                initial="hidden"
-                whileInView="show"
-                custom={i}
-                viewport={{ once: true }}
-              >
-                <div className="stat-icon"><Icon size={22} /></div>
-                <div className="stat-value">{value}</div>
-                <div className="stat-label">{label}</div>
-              </motion.div>
-            ))}
-          </div>
-        </Container>
-      </section>
+      {/* ══════════════ PROMO BANNERS ══════════════ */}
+      {promos.length > 0 && (
+        <section className="promos-section">
+          <Container>
+            <div className="promos-grid" style={{ '--promo-count': Math.min(promos.length, 4) }}>
+              {promos.slice(0, 4).map((promo, i) => (
+                <motion.div
+                  key={promo.id || i}
+                  className="promo-card"
+                  style={{ background: promo.bgColor || '#111', color: promo.textColor || '#fff' }}
+                  variants={fadeUp}
+                  initial="hidden"
+                  whileInView="show"
+                  custom={i}
+                  viewport={{ once: true }}
+                  onClick={() => promo.link && navigate(promo.link)}
+                >
+                  {promo.imageUrl && (
+                    <img
+                      src={resolveMediaUrl(promo.imageUrl) || promo.imageUrl}
+                      alt=""
+                      className="promo-card-img"
+                    />
+                  )}
+                  <div className="promo-card-body">
+                    {promo.code && (
+                      <div className="promo-card-code">
+                        <FiTag size={11} />
+                        <span>{promo.code}</span>
+                      </div>
+                    )}
+                    <div className="promo-card-title">{promo.title}</div>
+                    {promo.subtitle && (
+                      <div className="promo-card-subtitle">{promo.subtitle}</div>
+                    )}
+                  </div>
+                  {promo.linkText && (
+                    <div
+                      className="promo-card-cta"
+                      style={{ borderColor: promo.textColor, color: promo.textColor }}
+                    >
+                      {promo.linkText}
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          </Container>
+        </section>
+      )}
 
       {/* ══════════════ CATEGORIES ══════════════ */}
       {displayCategories.length > 0 && (
@@ -321,6 +403,60 @@ const Home = () => {
           )}
         </Container>
       </section>
+
+      {/* ══════════════ PRODUCTS BY CATEGORY ══════════════ */}
+      {displayCategories.map((cat, index) => {
+        const id = String(cat.categoryId || cat._id || cat.id || '');
+        const products = catProducts[id];
+        if (!products || products.length === 0) return null;
+        return (
+          <section
+            key={id}
+            className={`cat-products-section section-py ${index % 2 === 0 ? 'cat-bg-even' : 'cat-bg-odd'}`}
+          >
+            <Container>
+              <div className="section-header">
+                <div className="cat-products-header-left">
+                  {cat.imageUrl && (
+                    <img
+                      src={resolveMediaUrl(cat.imageUrl) || PLACEHOLDER}
+                      alt=""
+                      className="cat-products-icon"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  )}
+                  <div>
+                    <span className="section-eyebrow">{cat.categoryName}</span>
+                    <h2 className="section-title cat-products-title">{cat.categoryName}</h2>
+                  </div>
+                </div>
+                <button
+                  className="see-all-btn"
+                  onClick={() => navigate(`/products?category=${id}`)}
+                >
+                  {t('home.seeAll')} <FiArrowRight size={15} />
+                </button>
+              </div>
+              <Row className="g-4">
+                {products.map((product, i) => (
+                  <Col xl={3} lg={3} md={6} xs={6} key={product._id || product.id}>
+                    <motion.div
+                      variants={fadeUp}
+                      initial="hidden"
+                      whileInView="show"
+                      custom={i}
+                      viewport={{ once: true }}
+                      style={{ height: '100%' }}
+                    >
+                      <ProductCard product={product} />
+                    </motion.div>
+                  </Col>
+                ))}
+              </Row>
+            </Container>
+          </section>
+        );
+      })}
 
       {/* ══════════════ COURTS ══════════════ */}
       {displayCourts.length > 0 && (
