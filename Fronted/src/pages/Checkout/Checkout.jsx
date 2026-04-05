@@ -195,7 +195,7 @@ const Checkout = () => {
       };
       const res = await dispatch(createOrder(orderData));
       if (createOrder.rejected.match(res)) {
-        toast.error(res.payload || 'Đặt hàng thất bại');
+        toast.error(String(res.payload || 'Đặt hàng thất bại — kiểm tra lại thông tin'));
         return;
       }
       const payload = res.payload;

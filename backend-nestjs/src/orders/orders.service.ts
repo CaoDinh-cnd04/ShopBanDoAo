@@ -499,6 +499,23 @@ export class OrdersService {
       createDto.paymentMethod,
     );
 
+    // ── Kiểm tra cấu hình VNPay SỚM — trước khi tạo đơn / trừ tồn kho ──
+    if (paymentMethod === 'VNPAY') {
+      if (!this.vnpayService.isConfigured()) {
+        throw new BadRequestException(
+          'Chưa cấu hình VNPay (VNPAY_TMN_CODE / VNPAY_HASH_SECRET) trên server. Vui lòng chọn thanh toán COD hoặc liên hệ shop.',
+        );
+      }
+      // Kiểm tra RETURN_URL có set không (gọi thử, bắt lỗi)
+      try {
+        this.vnpayService.getReturnUrl();
+      } catch {
+        throw new BadRequestException(
+          'Chưa cấu hình VNPAY_RETURN_URL trên server. Vui lòng chọn thanh toán COD hoặc liên hệ shop.',
+        );
+      }
+    }
+
     const itemsSubtotal = createDto.items.reduce(
       (s, it) => s + Number(it.price) * Number(it.quantity),
       0,
@@ -606,17 +623,19 @@ export class OrdersService {
 
     let paymentUrl: string | undefined;
     if (paymentMethod === 'VNPAY') {
-      if (!this.vnpayService.isConfigured()) {
-        throw new BadRequestException(
-          'Chưa cấu hình VNPay (VNPAY_TMN_CODE, VNPAY_HASH_SECRET, VNPAY_RETURN_URL trên server)',
-        );
+      try {
+        paymentUrl = this.vnpayService.buildPaymentUrl({
+          orderId: String(order._id),
+          amountVnd: Math.round(Number(createDto.totalAmount)),
+          orderDescription: `Thanh toan don hang ${String(order._id)}`,
+          ipAddr: this.clientIp(req),
+        });
+      } catch (e) {
+        // Nếu build URL thất bại sau khi đã tạo đơn → xóa đơn + hoàn tồn kho
+        await this.orderRepository.delete(String(order._id)).catch(() => null);
+        await this.rollbackInventoryLines(appliedInventory).catch(() => null);
+        throw e;
       }
-      paymentUrl = this.vnpayService.buildPaymentUrl({
-        orderId: String(order._id),
-        amountVnd: Math.round(Number(createDto.totalAmount)),
-        orderDescription: `Thanh toan don hang ${String(order._id)}`,
-        ipAddr: this.clientIp(req),
-      });
     }
 
     try {
