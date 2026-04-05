@@ -330,12 +330,15 @@ const AdminOrders = () => {
       .join(', ');
     if (fromParts) return fromParts;
 
-    // 4. addressDisplay là pipe string — parse thủ công
+    // 4. addressDisplay là pipe string — parse bỏ phần tên/sđt, lấy address+district+city
     if (disp && disp.includes(' | ')) {
       const pipe = parsePipeAddress(disp);
       if (pipe) {
         const addr = [pipe.addressLine, pipe.district, pipe.city].filter(Boolean).join(', ');
         if (addr) return addr;
+        // Chuỗi pipe nhưng parts[2..4] rỗng — hiển thị chuỗi thô (trừ tên/sđt)
+        const raw = disp.split(' | ').slice(2).filter(Boolean).join(', ');
+        if (raw) return raw;
       }
     }
 
@@ -345,6 +348,8 @@ const AdminOrders = () => {
       if (pipe) {
         const addr = [pipe.addressLine, pipe.district, pipe.city].filter(Boolean).join(', ');
         if (addr) return addr;
+        const raw = sa.split(' | ').slice(2).filter(Boolean).join(', ');
+        if (raw) return raw;
       }
     }
 

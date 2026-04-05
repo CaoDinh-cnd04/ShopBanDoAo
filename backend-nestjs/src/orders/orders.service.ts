@@ -271,17 +271,21 @@ export class OrdersService {
   /** Chi tiết admin: khớp field mà frontend đọc (không dùng mock SQL) */
   private mapOrderForAdminDetail(order: Record<string, unknown>) {
     const u = this.extractUser(order);
+    // Hỗ trợ: shippingAddress có thể là string pipe, object, "[object Object]", hoặc rỗng
     const shippingStr = this.formatShippingAddressToString(
       order.shippingAddress,
     );
     const parsed = parsePipeShippingParts(shippingStr);
     const receiverName = parsed?.receiverName || u.fullName || '';
     const receiverPhone = parsed?.receiverPhone || u.phone || '';
-    const addressDisplay = parsed
-      ? [parsed.addressLine, parsed.district, parsed.city]
-          .filter(Boolean)
-          .join(', ') || shippingStr
-      : shippingStr;
+    const addressParts = parsed
+      ? [parsed.addressLine, parsed.district, parsed.city].filter(Boolean)
+      : [];
+    // Nếu tất cả parts địa chỉ rỗng nhưng có pipe string → dùng chuỗi gốc (loại bỏ tiền tố tên/SĐT)
+    const addressDisplay =
+      addressParts.length > 0
+        ? addressParts.join(', ')
+        : shippingStr || '';
     const noteRaw = order.note;
     const noteStr =
       typeof noteRaw === 'string' && noteRaw.trim()
@@ -576,7 +580,7 @@ export class OrdersService {
         if (v) row.variantId = new Types.ObjectId(v);
         return row;
       }),
-      shippingAddress: createDto.shippingAddress,
+      shippingAddress: serializeShippingAddressInput(createDto.shippingAddress),
       totalAmount: createDto.totalAmount,
       orderCode: this.generateOrderCode(),
       paymentMethod,

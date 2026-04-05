@@ -41,7 +41,7 @@ export class Order {
   @Prop({ default: 'Pending' }) // Pending, Paid, Failed
   paymentStatus: string;
 
-  @Prop({ required: true })
+  @Prop({ type: String, required: true })
   shippingAddress: string;
 
   /** Pending, AwaitingPayment (VNPay chưa trả), Processing, Shipped, Delivered, Cancelled */
