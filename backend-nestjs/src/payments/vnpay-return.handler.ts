@@ -91,13 +91,14 @@ export class VnpayReturnHandler {
       )
       .exec();
     if (updated) {
-      try {
-        await this.orderEvents.onVnpayPaymentConfirmed(String(updated._id));
-      } catch (e) {
-        this.logger.error(
-          `onVnpayPaymentConfirmed: ${e instanceof Error ? e.message : e}`,
+      // Fire-and-forget — không block redirect (SMTP có thể chậm 3-10s)
+      void this.orderEvents
+        .onVnpayPaymentConfirmed(String(updated._id))
+        .catch((e) =>
+          this.logger.error(
+            `onVnpayPaymentConfirmed: ${e instanceof Error ? e.message : e}`,
+          ),
         );
-      }
     }
 
     const redirectId = updated ? String(updated._id) : String(order._id);
@@ -148,13 +149,14 @@ export class VnpayReturnHandler {
       .exec();
 
     if (updatedBooking) {
-      try {
-        await this.orderEvents.onBookingDepositPaid(updatedBooking);
-      } catch (e) {
-        this.logger.error(
-          `onBookingDepositPaid: ${e instanceof Error ? e.message : e}`,
+      // Fire-and-forget — không block redirect
+      void this.orderEvents
+        .onBookingDepositPaid(updatedBooking)
+        .catch((e) =>
+          this.logger.error(
+            `onBookingDepositPaid: ${e instanceof Error ? e.message : e}`,
+          ),
         );
-      }
     }
 
     return `${base}/profile/bookings/${encodeURIComponent(bookingId)}?payment=success`;

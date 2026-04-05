@@ -50,7 +50,15 @@ services:
       - key: CLOUDINARY_FOLDER
         value: shop-uploads
       # Email đơn hàng (khách + admin) — không đặt = không gửi mail (chỉ thông báo trong app)
-      # Gmail: App Password → SMTP_HOST=smtp.gmail.com SMTP_PORT=587 SMTP_USER=... SMTP_PASS=...
+      # Gmail: dùng App Password (không phải password thường).
+      #   EMAIL_USER=caonhatdinh04@gmail.com
+      #   EMAIL_PASS=<16-ký-tự App Password từ Google>
+      #   EMAIL_PASS phải là App Password, không phải mật khẩu Gmail thường!
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      # Aliases SMTP_* (tuỳ chọn nếu muốn dùng SMTP server khác Gmail)
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
@@ -61,7 +69,7 @@ services:
         sync: false
       - key: MAIL_FROM
         sync: false
-      # Tuỳ chọn: email admin nhận bản sao (nhiều địa chỉ phân tách phẩy). Trống = dùng email user role Admin trong DB
+      # Email admin nhận thông báo đơn hàng mới (có thể nhiều địa chỉ, cách nhau bởi dấu phẩy)
       - key: ADMIN_NOTIFY_EMAIL
         sync: false
       - key: VNPAY_SANDBOX
