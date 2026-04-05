@@ -79,6 +79,17 @@ const orderSlice = createSlice({
     clearCurrentOrder: (state) => {
       state.currentOrder = null;
     },
+    // Optimistic: đánh dấu cancelled ngay khi user bấm hủy (trước khi API trả về)
+    optimisticCancelOrder: (state, action) => {
+      const id = action.payload;
+      if (Array.isArray(state.orders)) {
+        state.orders = state.orders.map((o) =>
+          String(o._id || o.id) === String(id)
+            ? { ...o, orderStatus: 'Cancelled' }
+            : o,
+        );
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -122,5 +133,5 @@ const orderSlice = createSlice({
   },
 });
 
-export const { clearCurrentOrder } = orderSlice.actions;
+export const { clearCurrentOrder, optimisticCancelOrder } = orderSlice.actions;
 export default orderSlice.reducer;

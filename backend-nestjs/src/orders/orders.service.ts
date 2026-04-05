@@ -911,13 +911,13 @@ export class OrdersService {
     if (!updated) {
       throw new NotFoundException('Không tìm thấy đơn hàng');
     }
-    try {
-      await this.orderEvents.onOrderCancelled(String(updated._id), 'user');
-    } catch (e) {
-      this.logger.error(
-        `onOrderCancelled user: ${e instanceof Error ? e.message : e}`,
+    void this.orderEvents
+      .onOrderCancelled(String(updated._id), 'user')
+      .catch((e) =>
+        this.logger.error(
+          `onOrderCancelled user: ${e instanceof Error ? e.message : e}`,
+        ),
       );
-    }
     return { message: 'Đã hủy đơn hàng', order: updated };
   }
 
@@ -968,13 +968,13 @@ export class OrdersService {
       .trim()
       .toLowerCase();
     if (newSt2 === 'cancelled' && prevSt2 !== 'cancelled') {
-      try {
-        await this.orderEvents.onOrderCancelled(String(order._id), 'admin');
-      } catch (e) {
-        this.logger.error(
-          `onOrderCancelled admin: ${e instanceof Error ? e.message : e}`,
+      void this.orderEvents
+        .onOrderCancelled(String(order._id), 'admin')
+        .catch((e) =>
+          this.logger.error(
+            `onOrderCancelled admin: ${e instanceof Error ? e.message : e}`,
+          ),
         );
-      }
     } else if (
       willChangeOrderStatus &&
       newSt2 !== 'cancelled' &&

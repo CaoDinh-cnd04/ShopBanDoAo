@@ -7,7 +7,7 @@ import {
   FiShoppingBag, FiSearch, FiX, FiEye, FiPackage,
   FiClock, FiCheck, FiTruck, FiXCircle,
 } from 'react-icons/fi';
-import { fetchUserOrders, cancelOrder } from '../../store/slices/orderSlice';
+import { fetchUserOrders, cancelOrder, optimisticCancelOrder } from '../../store/slices/orderSlice';
 import { fetchNotifications } from '../../store/slices/notificationSlice';
 import { clearCart, fetchCart } from '../../store/slices/cartSlice';
 import Loading from '../../components/Loading/Loading';
@@ -142,11 +142,15 @@ const Orders = () => {
 
   const handleCancelOrder = async (orderId) => {
     if (!window.confirm('Bạn có chắc muốn hủy đơn hàng này? Chỉ áp dụng khi shop chưa xác nhận.')) return;
+    // Optimistic: cập nhật UI ngay lập tức, không chờ server
+    dispatch(optimisticCancelOrder(orderId));
     const res = await dispatch(cancelOrder(orderId));
     if (cancelOrder.fulfilled.match(res)) {
       toast.success('Đã hủy đơn hàng');
-      dispatch(fetchUserOrders());
+      dispatch(fetchUserOrders()); // sync lại từ server ngầm
     } else {
+      // Rollback: tải lại danh sách thật từ server
+      dispatch(fetchUserOrders());
       toast.error(res.payload || 'Không thể hủy đơn');
     }
   };
