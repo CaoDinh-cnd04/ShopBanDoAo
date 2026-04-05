@@ -638,13 +638,14 @@ export class OrdersService {
       }
     }
 
-    try {
-      await this.orderEvents.onOrderCreated(order, { paymentUrl });
-    } catch (e) {
-      this.logger.error(
-        `orderEvents.onOrderCreated: ${e instanceof Error ? e.message : e}`,
+    // Fire-and-forget: không block response (đặc biệt VNPay cần trả paymentUrl ngay)
+    void this.orderEvents
+      .onOrderCreated(order, { paymentUrl })
+      .catch((e) =>
+        this.logger.error(
+          `orderEvents.onOrderCreated: ${e instanceof Error ? e.message : e}`,
+        ),
       );
-    }
 
     return {
       message: 'Tạo đơn hàng thành công',
