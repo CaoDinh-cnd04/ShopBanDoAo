@@ -5,6 +5,7 @@ import { User, UserSchema } from '../users/schemas/user.schema';
 import { OrderRepository } from './orders.repository';
 import { OrdersService } from './orders.service';
 import { OrdersController } from './orders.controller';
+import { OrderSchedulerService } from './order-scheduler.service';
 import { PaymentsModule } from '../payments/payments.module';
 import { OrderEventsModule } from '../order-events/order-events.module';
 import { ReviewsModule } from '../reviews/reviews.module';
@@ -24,7 +25,7 @@ import { ProductsModule } from '../products/products.module';
     VouchersModule,
   ],
   controllers: [OrdersController],
-  providers: [OrderRepository, OrdersService],
+  providers: [OrderRepository, OrdersService, OrderSchedulerService],
   exports: [OrdersService],
 })
 export class OrdersModule {}

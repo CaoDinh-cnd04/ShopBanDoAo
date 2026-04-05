@@ -464,7 +464,9 @@ export class OrdersService {
         quantity?: number;
       }[];
     };
-    if (!o.inventoryDeducted) return;
+    // Chỉ bỏ qua khi đã hoàn lại rồi (inventoryDeducted === false).
+    // inventoryDeducted === undefined (đơn cũ chưa có flag) → vẫn hoàn lại.
+    if (o.inventoryDeducted === false) return;
     const items = o.items || [];
     for (const it of items) {
       const q = Number(it.quantity) || 0;
@@ -901,9 +903,7 @@ export class OrdersService {
       );
     }
     const raw = await this.orderRepository.findByIdRaw(orderId);
-    if (raw?.inventoryDeducted) {
-      await this.restoreInventoryIfDeducted(raw);
-    }
+    if (raw) await this.restoreInventoryIfDeducted(raw);
     const updated = await this.orderRepository.update(orderId, {
       orderStatus: 'Cancelled',
       inventoryDeducted: false,
@@ -951,10 +951,8 @@ export class OrdersService {
       const prevCanon = canonicalOrderStatus(before.orderStatus);
       if (prevCanon && canonNext === 'Cancelled' && prevCanon !== 'Cancelled') {
         const raw = await this.orderRepository.findByIdRaw(id);
-        if (raw?.inventoryDeducted) {
-          await this.restoreInventoryIfDeducted(raw);
-          payload.inventoryDeducted = false;
-        }
+        if (raw) await this.restoreInventoryIfDeducted(raw);
+        payload.inventoryDeducted = false;
       }
     }
 
@@ -999,9 +997,7 @@ export class OrdersService {
   async deleteOrderByAdmin(id: string) {
     const before = await this.orderRepository.findByIdRaw(id);
     if (!before) throw new NotFoundException('Không tìm thấy đơn hàng');
-    if (before.inventoryDeducted) {
-      await this.restoreInventoryIfDeducted(before);
-    }
+    await this.restoreInventoryIfDeducted(before);
     const deleted = await this.orderRepository.delete(id);
     if (!deleted) throw new NotFoundException('Không tìm thấy đơn hàng');
     return { message: 'Đã xóa đơn hàng' };
